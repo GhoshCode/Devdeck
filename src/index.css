@@ -1021,12 +1021,7 @@ html[data-theme='light'] #search-suggestions [role='option']:hover {
   [data-topbar-grid] {
     height: 128px;
   }
-  /* Collapsed to-do still shows three rows at the shorter height. */
-  [data-testid='todo-widget'] > div:first-child {
-    padding-top: 8px;
-    padding-bottom: 26px;
-    gap: 4px;
-  }
+  /* Tighter rows so the collapsed to-do still shows its first tasks. */
   [data-testid='todo-widget'] li[data-todo-id] > div {
     padding-top: 1px;
     padding-bottom: 1px;
