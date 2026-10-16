@@ -788,6 +788,9 @@ html[data-theme='light'] [class*='text-amber-300'],
 html[data-theme='light'] [class*='text-amber-200'] {
   color: #b45309 !important;
 }
+html[data-theme='light'] [class*='text-cyan-300'] {
+  color: #0e7490 !important;
+}
 
 /* To-do bullets are drawn with border-white/40, invisible on any light surface. */
 html[data-theme='light'] .todo-bullet {

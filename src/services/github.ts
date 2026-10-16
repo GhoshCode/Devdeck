@@ -16,12 +16,25 @@ export interface ContributionDay {
   level: Level;
 }
 
+// Recent public activity for the HUD footer. Every field is optional: the
+// widget shows what GitHub returned and never invents the rest.
+export interface GitActivity {
+  publicRepos: number | null;
+  branch: string | null; // of the latest push
+  repo: string | null; // "owner/name" of the latest push
+  commitSha: string | null; // short SHA of that push's head
+  commitMessage: string | null; // first line
+  commitAt: number | null; // epoch ms of the push
+  mergedPr: { number: number; repo: string; at: number } | null;
+}
+
 export interface GitStats {
   username: string;
   days: ContributionDay[]; // ascending, ~1 year
   totalYear: number; // current calendar year
   currentStreak: number;
   longestStreak: number;
+  activity?: GitActivity;
   fetchedAt: number;
 }
 
@@ -158,10 +171,76 @@ export async function loadGitStats(
     if (hit) return hit;
   }
   const fetcher = opts.fetcher ?? fetch;
-  const days = token ? await fetchWithToken(user, token, fetcher) : await fetchPublic(user, fetcher);
-  const stats = computeStats(user, days);
+  const [days, activity] = await Promise.all([
+    token ? fetchWithToken(user, token, fetcher) : fetchPublic(user, fetcher),
+    // Activity is a bonus: a failure (e.g. rate limit) must not hide the heatmap.
+    fetchActivity(user, token, fetcher).catch(() => undefined),
+  ]);
+  const stats = { ...computeStats(user, days), activity };
   writeCache(CACHE_NAME, cacheKey(user, token), stats);
   return stats;
+}
+
+interface GhEvent {
+  type: string;
+  created_at: string;
+  repo: { name: string };
+  payload: {
+    ref?: string;
+    head?: string;
+    action?: string;
+    number?: number;
+    pull_request?: { merged?: boolean; merged_at?: string | null };
+  };
+}
+
+// Picks the latest push and the latest merged PR from public events. GitHub's
+// events API is not strictly date-ordered, so sort first.
+export function summarizeEvents(events: readonly GhEvent[]): Omit<GitActivity, 'publicRepos' | 'commitMessage'> {
+  const sorted = [...events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const push = sorted.find((e) => e.type === 'PushEvent' && e.payload.head);
+  const merged = sorted.find(
+    (e) =>
+      e.type === 'PullRequestEvent' &&
+      (e.payload.action === 'merged' || (e.payload.action === 'closed' && e.payload.pull_request?.merged)),
+  );
+  return {
+    branch: push?.payload.ref?.replace('refs/heads/', '') ?? null,
+    repo: push?.repo.name ?? null,
+    commitSha: push?.payload.head?.slice(0, 7) ?? null,
+    commitAt: push ? Date.parse(push.created_at) : null,
+    mergedPr:
+      merged && merged.payload.number
+        ? {
+            number: merged.payload.number,
+            repo: merged.repo.name,
+            at: Date.parse(merged.payload.pull_request?.merged_at ?? merged.created_at),
+          }
+        : null,
+  };
+}
+
+async function fetchActivity(user: string, token: string, fetcher: Fetch): Promise<GitActivity> {
+  const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const get = async <T>(url: string): Promise<T | null> => {
+    const res = await fetcher(url, { headers });
+    return res.ok ? ((await res.json()) as T) : null;
+  };
+  const enc = encodeURIComponent(user);
+  const [profile, events] = await Promise.all([
+    get<{ public_repos?: number }>(`https://api.github.com/users/${enc}`),
+    get<GhEvent[]>(`https://api.github.com/users/${enc}/events/public?per_page=50`),
+  ]);
+  const summary = summarizeEvents(Array.isArray(events) ? events : []);
+  // Push events no longer carry commit messages, so look the head commit up.
+  let commitMessage: string | null = null;
+  if (summary.repo && summary.commitSha) {
+    const full = (Array.isArray(events) ? events : []).find((e) => e.payload.head?.startsWith(summary.commitSha!))?.payload.head;
+    const commit = full ? await get<{ commit?: { message?: string } }>(`https://api.github.com/repos/${summary.repo}/commits/${full}`) : null;
+    commitMessage = commit?.commit?.message?.split('\n')[0] ?? null;
+  }
+  return { publicRepos: profile?.public_repos ?? null, commitMessage, ...summary };
 }
 
 // The last `count` Sunday-first weeks ending with the week containing `today`,
