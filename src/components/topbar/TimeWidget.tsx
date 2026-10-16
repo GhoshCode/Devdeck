@@ -1,35 +1,65 @@
 import { memo } from 'react';
+import type { ClockStyle } from '../../types';
 import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
 import { clockParts, type ClockParts } from '../../lib/time';
 
-// TIME widget (spec §3.1): three faces picked in Settings → Appearance. All
-// share role="timer" so assistive tech and the e2e suite find the clock the
-// same way whichever face is active.
+// TIME widget (spec §3.1): three faces. They sit bare inside the clock +
+// weather card; clicking the clock cycles the face (also in Settings ->
+// Appearance). All share role="timer" so assistive tech and the e2e suite find
+// the clock the same way whichever face is active.
+
+export const CLOCK_STYLES: readonly ClockStyle[] = ['dseg7', 'cyberpunk', 'macos'];
+export const CLOCK_STYLE_NAMES: Record<ClockStyle, string> = {
+  dseg7: 'Digital (DSEG7)',
+  cyberpunk: 'Cyberpunk 2077',
+  macos: 'macOS Minimal',
+};
 
 export const TimeWidget = memo(function TimeWidget() {
   const now = useNow();
-  const { clock24h, clockStyle, showSeconds } = useStore((s) => s.settings);
+  const clock24h = useStore((s) => s.settings.clock24h);
+  const clockStyle = useStore((s) => s.settings.clockStyle);
+  const showSeconds = useStore((s) => s.settings.showSeconds);
+  const updateSettings = useStore((s) => s.updateSettings);
   const parts = clockParts(now, clock24h);
   const label = `${parts.hours}:${parts.minutes}${parts.meridiem ? ` ${parts.meridiem}` : ''}`;
 
+  const next = CLOCK_STYLES[(CLOCK_STYLES.indexOf(clockStyle) + 1) % CLOCK_STYLES.length];
+
   return (
-    <div
-      role="timer"
-      aria-label="Digital clock"
-      aria-live="off"
-      title={label}
-      data-clock-style={clockStyle}
-      className="relative h-full min-w-0 overflow-hidden select-none"
+    <button
+      type="button"
+      onClick={() => updateSettings({ clockStyle: next })}
+      aria-label={`Clock style: ${CLOCK_STYLE_NAMES[clockStyle]}. Click to switch to ${CLOCK_STYLE_NAMES[next]}`}
+      title={`${label} · ${CLOCK_STYLE_NAMES[clockStyle]} — click for ${CLOCK_STYLE_NAMES[next]}`}
+      className="group/clock relative h-full min-w-0 flex-1 cursor-pointer text-left select-none focus-visible:outline-offset-[-2px]"
     >
-      {clockStyle === 'cyberpunk' ? (
-        <CyberpunkFace parts={parts} showSeconds={showSeconds} />
-      ) : clockStyle === 'macos' ? (
-        <MacFace parts={parts} showSeconds={showSeconds} />
-      ) : (
-        <SegmentFace parts={parts} showSeconds={showSeconds} />
+      <div
+        role="timer"
+        aria-label="Digital clock"
+        aria-live="off"
+        data-clock-style={clockStyle}
+        className="relative h-full min-w-0 overflow-hidden"
+      >
+        {clockStyle === 'cyberpunk' ? (
+          <CyberpunkFace parts={parts} showSeconds={showSeconds} />
+        ) : clockStyle === 'macos' ? (
+          <MacFace parts={parts} showSeconds={showSeconds} />
+        ) : (
+          <SegmentFace parts={parts} showSeconds={showSeconds} />
+        )}
+      </div>
+      {/* The Cyberpunk face has its own header strip, so no hint over it. */}
+      {clockStyle !== 'cyberpunk' && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-1 left-3 font-mono text-[8px] tracking-[0.18em] whitespace-nowrap text-white/40 uppercase opacity-0 transition-opacity group-hover/clock:opacity-100"
+        >
+          {CLOCK_STYLE_NAMES[clockStyle]} · click to change
+        </span>
       )}
-    </div>
+    </button>
   );
 });
 
@@ -50,9 +80,9 @@ function SegmentFace({ parts, showSeconds }: FaceProps) {
   );
 
   return (
-    <div className="glass flex h-full flex-col justify-center px-4 py-3">
+    <div className="flex h-full flex-col justify-center px-4 py-3">
       <div className="flex items-end gap-2 font-clock leading-none text-white/95 [text-shadow:0_0_14px_color-mix(in_srgb,var(--color-accent)_55%,transparent)]">
-        <span className="flex items-center text-[2.6rem]">
+        <span className="flex items-center text-[2.35rem]">
           {digits(parts.hours, '88', '')}
           <span className="clock-colon mx-0.5">:</span>
           {digits(parts.minutes, '88', '')}
@@ -74,7 +104,7 @@ function SegmentFace({ parts, showSeconds }: FaceProps) {
 // the right flank. Per §7 Q9 there is deliberately NO row of world-clock cities.
 function CyberpunkFace({ parts, showSeconds }: FaceProps) {
   return (
-    <div className="cyber-face relative flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-[#fcee0a]/30 bg-[#0d0d0f]/90 px-4 pt-2 pb-2">
+    <div className="cyber-face relative m-1.5 flex h-[calc(100%-12px)] flex-col overflow-hidden rounded-xl border border-[#fcee0a]/30 bg-[#0d0d0f]/90 px-3.5 pt-1.5 pb-1.5">
       <div className="flex items-center justify-between font-mono text-[9px] font-bold tracking-[0.2em] text-[#fcee0a]/70">
         <span>// WORLD TIME</span>
         <span aria-hidden className="grid grid-cols-4 gap-[3px]">
@@ -87,12 +117,12 @@ function CyberpunkFace({ parts, showSeconds }: FaceProps) {
         </span>
       </div>
       <div className="flex flex-1 items-center gap-2">
-        <span className="cyber-digits font-cyber text-[3.4rem] leading-[0.8] font-bold tracking-tight text-[#fcee0a] tabular-nums">
+        <span className="cyber-digits font-cyber text-[2.75rem] leading-[0.8] font-bold tracking-tight text-[#fcee0a] tabular-nums">
           {parts.hours}:{parts.minutes}
         </span>
         <span className="flex flex-col justify-center gap-0.5 font-cyber leading-none">
           {showSeconds && (
-            <span className="text-[1.7rem] font-bold text-[#00f0ff] tabular-nums">{parts.seconds}</span>
+            <span className="text-[1.45rem] font-bold text-[#00f0ff] tabular-nums">{parts.seconds}</span>
           )}
           {parts.meridiem && (
             <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[#fcee0a]/70">
@@ -109,9 +139,9 @@ function CyberpunkFace({ parts, showSeconds }: FaceProps) {
 // 3. macOS — SF/Inter at light weight, tabular numerals, quiet glass.
 function MacFace({ parts, showSeconds }: FaceProps) {
   return (
-    <div className="glass flex h-full flex-col justify-center px-5 py-3 [box-shadow:inset_0_1px_0_rgba(255,255,255,0.12)]">
+    <div className="flex h-full flex-col justify-center px-5 py-3">
       <div className="flex items-baseline gap-1.5 font-mac tabular-nums text-white/95">
-        <span className="text-[2.9rem] leading-none font-extralight tracking-[-0.02em]">
+        <span className="text-[2.6rem] leading-none font-extralight tracking-[-0.02em]">
           {parts.hours}:{parts.minutes}
         </span>
         <span className="flex flex-col text-white/60">

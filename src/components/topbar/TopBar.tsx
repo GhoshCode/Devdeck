@@ -17,10 +17,11 @@ export function TopBar({ weather, command, todo, git }: TopBarProps) {
   return (
     <div
       data-topbar-grid
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:h-[150px] md:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(310px,340px)_minmax(0,1fr)_minmax(0,1fr)_minmax(200px,auto)]"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:h-[150px] md:grid-cols-[minmax(320px,350px)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(340px,370px)_minmax(0,1fr)_minmax(0,1fr)_minmax(200px,auto)]"
     >
       <div data-widget="time-cluster" className="flex min-w-0 flex-col gap-2">
-        <div className="grid min-h-[96px] flex-1 grid-cols-[minmax(0,1fr)_92px] gap-2">
+        {/* Clock + weather share one glass card (click the clock to change its face). */}
+        <div data-widget-card="clock-weather" className="glass flex min-h-[96px] flex-1 items-stretch overflow-hidden p-0">
           <TimeWidget />
           {weather}
         </div>

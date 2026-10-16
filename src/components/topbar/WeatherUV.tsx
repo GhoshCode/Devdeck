@@ -10,8 +10,8 @@ import {
   type WeatherIcon,
 } from '../../services/weather';
 
-// A (Weather °C) stacked over B (UV index + risk badge), beside the TIME widget.
-// Click either half to force a refresh.
+// A (weather °C) over B (UV badge) over the location, as the right-hand column
+// of the clock + weather card. Refreshes every 15 min; click to refresh now.
 
 const ICON: Record<WeatherIcon, string> = {
   sun: '☀️',
@@ -88,6 +88,8 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
 
   // First run with location denied and no city: say what to do instead of
   // showing a bare warning and "--°C".
+  const column = 'flex h-full w-[150px] shrink-0 flex-col items-end justify-center gap-1 border-l border-white/[0.08] pr-3 pl-2.5 text-right';
+
   if (!data && error && !manualCity.trim() && onSetup) {
     return (
       <button
@@ -96,7 +98,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
         title={`${error} — set a city in Settings → Profile`}
         aria-label="Set your location for weather"
         data-testid="weather-uv"
-        className="glass-inner flex h-full flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center"
+        className={`${column} items-center text-center hover:bg-white/[0.04]`}
       >
         <span aria-hidden className="text-base leading-none">📍</span>
         <span className="text-[11px] leading-tight font-semibold text-white/90">Set location</span>
@@ -104,10 +106,12 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
       </button>
     );
   }
+
+  const updated = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const title = error
     ? `${error} — click to retry`
     : data
-      ? `${data.conditionText} in ${data.place} · updated ${new Date(data.fetchedAt).toLocaleTimeString()} — click to refresh`
+      ? `${data.conditionText} in ${data.place}${data.postcode ? ` ${data.postcode}` : ''} · ${data.source}, updated ${updated} (refreshes every 15 min) — click to refresh now`
       : 'Loading weather…';
 
   return (
@@ -115,34 +119,35 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
       type="button"
       onClick={() => refresh(true)}
       title={title}
-      aria-label={data ? `Weather: ${Math.round(data.temperature)}°C, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}` : 'Weather'}
+      aria-label={
+        data
+          ? `Weather in ${data.place}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}`
+          : 'Weather'
+      }
       data-testid="weather-uv"
-      className={`grid h-full grid-rows-2 gap-2 text-left ${state.status === 'loading' ? 'animate-pulse' : ''}`}
+      className={`${column} hover:bg-white/[0.03] ${state.status === 'loading' && !data ? 'animate-pulse' : ''}`}
     >
-      {/* A — Weather */}
-      <div className="glass-inner flex flex-col justify-center rounded-2xl px-2.5">
-        <span className="font-mono text-[8px] font-bold tracking-[0.18em] text-white/40">A · WEATHER</span>
-        <span className="flex items-center gap-1 text-white/95">
-          <span className="text-sm leading-none">{data ? ICON[data.icon] : error ? '⚠️' : '·'}</span>
-          <span className="text-[1rem] font-semibold tabular-nums">
-            {data ? `${Math.round(data.temperature)}°C` : '--°C'}
-          </span>
+      {/* A — condition + temperature */}
+      <span className="flex items-center gap-1.5 text-white/95">
+        <span aria-hidden className="text-lg leading-none">{data ? ICON[data.icon] : error ? '⚠️' : '·'}</span>
+        <span className="font-display text-[1.45rem] leading-none font-bold tracking-tight tabular-nums">
+          {data ? `${Math.round(data.temperature)}°C` : '--°C'}
         </span>
-      </div>
-      {/* B — UV index */}
-      <div className="glass-inner flex flex-col justify-center rounded-2xl px-2.5">
-        <span className="font-mono text-[8px] font-bold tracking-[0.18em] text-white/40">B · UV</span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold tabular-nums text-white/95">
-            {data ? data.uvIndex.toFixed(1) : '--'}
-          </span>
-          {data && (
-            <span className={`rounded-md border px-1 text-[9px] font-bold uppercase ${UV_BADGE[data.uvRisk]}`}>
-              {UV_LABEL[data.uvRisk]}
-            </span>
-          )}
-        </span>
-      </div>
+      </span>
+      {/* B — UV index badge */}
+      <span
+        className={`rounded-md border px-1.5 py-px text-[9px] font-bold tracking-wider uppercase ${
+          data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
+        }`}
+      >
+        UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
+      </span>
+      {/* Location, under the UV index */}
+      <span className="flex max-w-full items-center gap-1 text-[10px] leading-tight text-white/60">
+        <span aria-hidden className="text-[9px]">📍</span>
+        <span className="truncate font-medium">{data?.place ?? (error ? 'Unavailable' : 'Locating…')}</span>
+        {data?.postcode && <span className="shrink-0 font-mono text-[9px] text-white/40">{data.postcode}</span>}
+      </span>
     </button>
   );
 });
