@@ -1083,3 +1083,31 @@ html.theme-switching *::after {
   content-visibility: auto;
   contain-intrinsic-size: auto 400px auto 600px;
 }
+
+/* Search bar — Gemini mode outlines the bar in Gemini's gradient hues. */
+.gemini-ring {
+  border-color: rgba(155, 114, 203, 0.55) !important;
+  box-shadow:
+    0 0 0 1px rgba(66, 133, 244, 0.25),
+    0 8px 28px -10px rgba(155, 114, 203, 0.55),
+    0 0 22px -8px rgba(217, 101, 112, 0.45);
+}
+/* Live microphone: a soft pulsing halo. */
+.mic-live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.55);
+  animation: mic-pulse 1.4s ease-out infinite;
+}
+@keyframes mic-pulse {
+  to {
+    box-shadow: 0 0 0 9px rgba(248, 113, 113, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-live::after {
+    animation: none;
+  }
+}

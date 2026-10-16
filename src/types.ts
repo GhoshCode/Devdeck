@@ -58,6 +58,7 @@ export interface Settings {
   weatherEnabled: boolean;
   useGeolocation: boolean;
   manualCity: string; // used when geolocation is off or denied
+  geminiMode?: boolean; // search bar sends plain text to Gemini instead of Google
 }
 
 // A to-do carries at most one due moment: a date, optionally with a time.
