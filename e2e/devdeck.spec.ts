@@ -362,7 +362,7 @@ test.describe('Settings Modal', () => {
 
     // Appearance tab should show accent color options
     // (look for a label or heading that's unique to this tab)
-    await expect(modal.getByText(/accent/i)).toBeVisible();
+    await expect(modal.getByRole('heading', { name: /accent/i })).toBeVisible();
   });
 
   test('closes with the Close button', async ({ page }) => {

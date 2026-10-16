@@ -59,6 +59,23 @@ export const PRESET_THEMES: readonly PresetTheme[] = [
     description: 'Clear azure daylight with crisp sky gradients',
   },
   {
+    id: 'lavender-light',
+    name: 'Lavender Mist',
+    mode: 'light',
+    accentColor: '#7c3aed',
+    gradient:
+      'radial-gradient(at 15% 10%, rgba(221, 214, 254, 0.9), transparent 55%), radial-gradient(at 85% 90%, rgba(251, 207, 232, 0.7), transparent 55%), linear-gradient(135deg, #f5f3ff 0%, #faf5ff 50%, #fdf2f8 100%)',
+    description: 'Soft violet morning haze with a rose glow',
+  },
+  {
+    id: 'matcha-light',
+    name: 'Matcha',
+    mode: 'light',
+    accentColor: '#15803d',
+    gradient: 'linear-gradient(135deg, #f0fdf4 0%, #ecfccb 55%, #d9f99d 100%)',
+    description: 'Calm green tea tones for long focus sessions',
+  },
+  {
     id: 'cyberpunk',
     name: 'Cyberpunk Neon',
     mode: 'dark',
@@ -105,5 +122,23 @@ export const PRESET_THEMES: readonly PresetTheme[] = [
     accentColor: '#94a3b8',
     gradient: 'linear-gradient(135deg, #090a0c 0%, #111317 50%, #181b22 100%)',
     description: 'Ultra-minimalist stealth monochrome carbon glass',
+  },
+  {
+    id: 'sequoia',
+    name: 'Sequoia Dusk',
+    mode: 'dark',
+    accentColor: '#fb7185',
+    gradient:
+      'radial-gradient(at 80% 0%, rgba(190, 60, 40, 0.55), transparent 55%), radial-gradient(at 0% 100%, rgba(120, 30, 80, 0.55), transparent 55%), linear-gradient(160deg, #1a0b10 0%, #2a0f18 50%, #12070c 100%)',
+    description: 'Redwood embers fading into a wine-dark night',
+  },
+  {
+    id: 'nebula',
+    name: 'Nebula',
+    mode: 'dark',
+    accentColor: '#a78bfa',
+    gradient:
+      'radial-gradient(at 20% 20%, rgba(99, 102, 241, 0.45), transparent 50%), radial-gradient(at 80% 70%, rgba(236, 72, 153, 0.35), transparent 55%), linear-gradient(135deg, #0a0820 0%, #120a2e 50%, #070512 100%)',
+    description: 'Indigo and magenta gas clouds in deep space',
   },
 ];

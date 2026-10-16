@@ -134,7 +134,7 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await appearanceTab.click();
 
     // 1. Test Light Theme toggle
-    const lightThemeBtn = settingsModal.getByRole('button', { name: /Default Light/i });
+    const lightThemeBtn = settingsModal.getByRole('radio', { name: 'Light', exact: true });
     await expect(lightThemeBtn).toBeVisible();
     await lightThemeBtn.click();
     await page.waitForTimeout(200);
@@ -144,7 +144,7 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     expect(themeAttr).toBe('light');
 
     // 2. Test Dark Theme toggle
-    const darkThemeBtn = settingsModal.getByRole('button', { name: /Default Dark/i });
+    const darkThemeBtn = settingsModal.getByRole('radio', { name: 'Dark', exact: true });
     await expect(darkThemeBtn).toBeVisible();
     await darkThemeBtn.click();
     await page.waitForTimeout(200);

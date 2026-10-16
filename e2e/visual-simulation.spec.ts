@@ -36,7 +36,7 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     await appearanceTab.click();
 
     // Toggle Default Light
-    const lightBtn = settingsModal.getByRole('button', { name: /Default Light/i });
+    const lightBtn = settingsModal.getByRole('radio', { name: 'Light', exact: true });
     await lightBtn.click();
     await page.waitForTimeout(200);
 
@@ -119,8 +119,8 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     // 2. Appearance Tab
     const appearanceTab = modal.getByRole('button', { name: /Appearance/i });
     await appearanceTab.click();
-    await expect(modal.getByText('Base Theme Mode')).toBeVisible();
-    await expect(modal.getByText('Preset Themes & Gradients')).toBeVisible();
+    await expect(modal.getByRole('radiogroup', { name: 'Appearance mode' })).toBeVisible();
+    await expect(modal.getByRole('region', { name: 'Themes' })).toBeVisible();
 
     // 3. Quick Links Tab
     const quickLinksTab = modal.getByRole('button', { name: /Quick Links/i });

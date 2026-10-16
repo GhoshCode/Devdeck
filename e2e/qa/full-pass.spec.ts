@@ -196,7 +196,7 @@ for (const theme of THEMES) {
       await modal.getByRole('button', { name: /Appearance/ }).click();
       await auditOpen(page, info, 'settings appearance', '[role="dialog"][aria-label="DevDeck Settings"]');
       const other = theme === 'light' ? 'dark' : 'light';
-      await t.run(`switch to ${other}`, () => modal.getByRole('button', { name: new RegExp(`Default ${other}`, 'i') }).first().click(), 800);
+      await t.run(`switch to ${other}`, () => modal.getByRole('radio', { name: other === 'light' ? 'Light' : 'Dark', exact: true }).click(), 800);
       await expect(page.locator('html')).toHaveAttribute('data-theme', other);
       await t.run('settings closes', () => modal.getByRole('button', { name: 'Close Settings' }).click());
       await expect(modal).toHaveCount(0);

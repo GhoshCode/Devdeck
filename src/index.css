@@ -828,10 +828,11 @@ html[data-theme='light'][data-skin='sonoma'] {
   --sk-text-2: rgba(60, 60, 67, 0.9);
   --sk-text-3: rgba(60, 60, 67, 0.78);
   --sk-text-4: rgba(60, 60, 67, 0.7);
-  --sk-accent-strong: #0058c4; /* accent as text on tinted fills (AA) */
-  --sk-accent: #007aff;
-  --sk-accent-2: #5e5ce6;
-  --sk-accent-soft: rgba(0, 122, 255, 0.12);
+  /* Derived from the user's accent (App sets --user-accent); blue by default. */
+  --sk-accent: var(--user-accent, #007aff);
+  --sk-accent-strong: color-mix(in srgb, var(--sk-accent) 62%, #000); /* accent as text on tinted fills (AA) */
+  --sk-accent-2: color-mix(in srgb, var(--sk-accent) 65%, #5e5ce6);
+  --sk-accent-soft: color-mix(in srgb, var(--sk-accent) 12%, transparent);
   --sk-fill: rgba(120, 120, 128, 0.1);
 
   --color-accent: var(--sk-accent) !important;
@@ -1171,4 +1172,118 @@ html[data-theme='light'] [role='dialog'] .sitemap-field input:focus {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
+}
+
+/* ---- Settings → Appearance controls ---- */
+.accent-swatch {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.accent-swatch.is-active {
+  box-shadow:
+    0 0 0 2px var(--color-base-elevated),
+    0 0 0 4px var(--color-accent);
+}
+.segmented {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.segmented-on {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.theme-card,
+.clock-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+.theme-card:hover,
+.clock-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.theme-card.is-active,
+.clock-card.is-active,
+.mode-thumb.is-active {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 1px var(--color-accent),
+    0 8px 22px -10px var(--color-accent);
+}
+.theme-card.is-active .theme-check {
+  display: flex;
+}
+.mode-thumb {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: box-shadow 0.2s;
+}
+.switch {
+  background: rgba(255, 255, 255, 0.18);
+}
+.switch.is-on {
+  background: var(--color-accent);
+}
+html[data-theme='light'] .segmented {
+  background: rgba(118, 118, 128, 0.12);
+  border-color: transparent;
+}
+html[data-theme='light'] .segmented-on {
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+html[data-theme='light'] .theme-card,
+html[data-theme='light'] .clock-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(60, 60, 67, 0.12);
+}
+html[data-theme='light'] .theme-card:hover,
+html[data-theme='light'] .clock-card:hover {
+  border-color: rgba(60, 60, 67, 0.28);
+}
+html[data-theme='light'] .mode-thumb {
+  border-color: rgba(60, 60, 67, 0.16);
+}
+html[data-theme='light'] .switch:not(.is-on) {
+  background: rgba(120, 120, 128, 0.32);
+}
+
+/* ---- Reduce transparency: solid panels, no backdrop blur ---- */
+html[data-reduce-transparency] .glass,
+html[data-reduce-transparency] .glass-raised,
+html[data-reduce-transparency] .glass-inner {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-reduce-transparency][data-theme='dark'] .glass-raised {
+  background: #120c1f !important;
+}
+html[data-reduce-transparency][data-theme='dark'] .glass {
+  background: #1b1329 !important;
+}
+html[data-reduce-transparency][data-theme='dark'] .glass-inner {
+  background: #221a33 !important;
+}
+html[data-reduce-transparency][data-theme='light'] .glass-raised {
+  background: #ececf1 !important;
+}
+html[data-reduce-transparency][data-theme='light'] .glass {
+  background: #ffffff !important;
+}
+html[data-reduce-transparency][data-theme='light'] .glass-inner {
+  background: #f5f5f8 !important;
+}
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+html[data-theme='light'] .btn-secondary {
+  background: #fff;
+  border-color: rgba(60, 60, 67, 0.16);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+html[data-theme='light'] .btn-secondary:hover {
+  background: #f5f5f7;
 }

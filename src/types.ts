@@ -59,6 +59,9 @@ export interface Settings {
   useGeolocation: boolean;
   manualCity: string; // used when geolocation is off or denied
   geminiMode?: boolean; // search bar sends plain text to Gemini instead of Google
+  followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
+  modeLooks?: Partial<Record<ThemeMode, ModeLook>>; // each mode remembers its own look
+  reduceTransparency?: boolean; // opaque panels instead of glass
 }
 
 // A to-do carries at most one due moment: a date, optionally with a time.
@@ -154,3 +157,11 @@ export interface ImportSummary {
 export type ImportResult =
   | { ok: true; summary: ImportSummary }
   | { ok: false; error: string };
+
+// What a theme mode looks like; remembered per mode so switching Light ↔ Dark
+// (by hand or by "Auto") brings back the theme last used in that mode.
+export interface ModeLook {
+  presetTheme: string;
+  accentColor: string;
+  backgroundImage: string | null;
+}

@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ProcessingPanel } from './components/processing/ProcessingPanel';
 import { useReminderMirror, useWebReminders } from './lib/reminders';
 import { skinFor } from './lib/skin';
+import { switchModePatch } from './lib/appearance';
+import { withThemeTransition } from './lib/themeTransition';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { TopBar } from './components/topbar/TopBar';
@@ -52,6 +54,7 @@ export default function App() {
     if (switching) html.classList.add('theme-switching');
     if (accentColor) {
       html.style.setProperty('--color-accent', accentColor);
+      html.style.setProperty('--user-accent', accentColor);
     }
     html.setAttribute('data-theme', themeMode);
     if (skin) html.setAttribute('data-skin', skin);
@@ -65,6 +68,26 @@ export default function App() {
       html.classList.remove('theme-switching');
     };
   }, [accentColor, themeMode, skin]);
+
+  // Appearance → Auto: follow the OS light/dark setting, live.
+  const followSystem = useStore((s) => !!s.settings.followSystem);
+  useEffect(() => {
+    if (!followSystem || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const st = useStore.getState();
+      const patch = switchModePatch(st.settings, mq.matches ? 'dark' : 'light');
+      if (Object.keys(patch).length) withThemeTransition(() => st.updateSettings(patch));
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [followSystem]);
+
+  const reduceTransparency = useStore((s) => !!s.settings.reduceTransparency);
+  useLayoutEffect(() => {
+    document.documentElement.toggleAttribute('data-reduce-transparency', reduceTransparency);
+  }, [reduceTransparency]);
 
   // Ensure active deck always contains 10+ categories and 200+ sites
   useEffect(() => {
