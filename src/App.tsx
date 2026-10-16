@@ -13,6 +13,7 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { FeedColumn } from './components/feeds/FeedColumn';
 import { SearchBar } from './components/search/SearchBar';
 import { BookmarkButton } from './components/search/BookmarkDrawer';
+import { SiteMapButton } from './components/search/SiteMapModal';
 import { LinksStrip } from './components/links/LinksStrip';
 import SettingsModal, { type SettingsTabId } from './components/settings/SettingsModal';
 import { useStore } from './store';
@@ -139,6 +140,7 @@ export default function App() {
         searchRow={
           <div className="mx-auto flex w-full max-w-5xl items-center gap-3">
             <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
+            <SiteMapButton />
             <BookmarkButton />
           </div>
         }
