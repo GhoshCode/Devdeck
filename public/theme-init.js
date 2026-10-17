@@ -26,6 +26,11 @@
       mode === 'light' && !look.backgroundImage && (!look.presetTheme || look.presetTheme === 'default-light');
     if (sonoma) html.setAttribute('data-skin', 'sonoma');
     if (s.reduceTransparency) html.setAttribute('data-reduce-transparency', '');
+    if ((s.panelSolidity || 0) > 0 || s.panelBlur !== undefined) {
+      html.setAttribute('data-glass-custom', '');
+      html.style.setProperty('--glass-solid', (s.panelSolidity || 0) + '%');
+      html.style.setProperty('--glass-blur', (s.panelBlur === undefined ? 16 : s.panelBlur) + 'px');
+    }
     var accent = look.accentColor || s.accentColor;
     if (accent) {
       html.style.setProperty('--color-accent', accent);

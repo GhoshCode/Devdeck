@@ -89,6 +89,17 @@ export default function App() {
     document.documentElement.toggleAttribute('data-reduce-transparency', reduceTransparency);
   }, [reduceTransparency]);
 
+  // Appearance → Panel glass: custom opacity / blur override the theme's glass.
+  const panelSolidity = useStore((s) => s.settings.panelSolidity ?? 0);
+  const panelBlur = useStore((s) => s.settings.panelBlur);
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const custom = panelSolidity > 0 || panelBlur !== undefined;
+    html.toggleAttribute('data-glass-custom', custom);
+    html.style.setProperty('--glass-solid', `${panelSolidity}%`);
+    html.style.setProperty('--glass-blur', `${panelBlur ?? 16}px`);
+  }, [panelSolidity, panelBlur]);
+
   // Ensure active deck always contains 10+ categories and 200+ sites
   useEffect(() => {
     const st = useStore.getState();

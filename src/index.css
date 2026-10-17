@@ -1294,3 +1294,47 @@ html[data-theme='light'] .btn-secondary:hover {
 html[data-theme='light'] .clock-time {
   color: color-mix(in srgb, var(--color-accent) 80%, #000);
 }
+
+/* ---- Appearance → Panel glass: custom opacity and blur ----
+   --glass-solid mixes each panel towards a solid colour (0% = theme glass,
+   100% = opaque); --glass-blur replaces the theme's backdrop blur. */
+html[data-glass-custom]:not([data-reduce-transparency]) .glass,
+html[data-glass-custom]:not([data-reduce-transparency]) .glass-raised,
+html[data-glass-custom]:not([data-reduce-transparency]) .glass-inner {
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4) !important;
+}
+html[data-glass-custom]:not([data-reduce-transparency])[data-theme='dark'] .glass {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.05), #1b1329 var(--glass-solid)) !important;
+}
+html[data-glass-custom]:not([data-reduce-transparency])[data-theme='dark'] .glass-raised {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.08), #120c1f var(--glass-solid)) !important;
+}
+html[data-glass-custom]:not([data-reduce-transparency])[data-theme='dark'] .glass-inner {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.05), #221a33 var(--glass-solid)) !important;
+}
+html[data-glass-custom]:not([data-reduce-transparency])[data-theme='light'] .glass {
+  background: color-mix(in srgb, var(--sk-panel, rgba(255, 255, 255, 0.76)), #ffffff var(--glass-solid)) !important;
+}
+html[data-glass-custom]:not([data-reduce-transparency])[data-theme='light'] .glass-raised {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.7), #ececf1 var(--glass-solid)) !important;
+}
+html[data-glass-custom]:not([data-reduce-transparency])[data-theme='light'] .glass-inner {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.6), #f5f5f8 var(--glass-solid)) !important;
+}
+.sub-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.preview-window {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme='light'] .sub-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(60, 60, 67, 0.12);
+}
+html[data-theme='light'] .preview-window {
+  background: #f2f2f7;
+  border-color: rgba(60, 60, 67, 0.14);
+}

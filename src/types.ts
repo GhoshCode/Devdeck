@@ -62,6 +62,9 @@ export interface Settings {
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
   modeLooks?: Partial<Record<ThemeMode, ModeLook>>; // each mode remembers its own look
   reduceTransparency?: boolean; // opaque panels instead of glass
+  panelSolidity?: number; // 0–100: 0 = default glass, 100 = solid panels
+  panelBlur?: number; // px of backdrop blur behind panels; undefined = theme default
+  gradientStudio?: GradientStudio; // last design in Appearance → Gradient Studio
 }
 
 // A to-do carries at most one due moment: a date, optionally with a time.
@@ -164,4 +167,17 @@ export interface ModeLook {
   presetTheme: string;
   accentColor: string;
   backgroundImage: string | null;
+}
+
+export interface GradientStop {
+  color: string; // '#rrggbb'
+  at: number; // 0–100 (%)
+}
+
+// A backdrop designed in Appearance → Gradient Studio.
+export interface GradientStudio {
+  type: 'linear' | 'radial' | 'conic';
+  angle: number; // degrees — linear direction / conic start
+  position: string; // radial & conic centre, e.g. '50% 50%'
+  stops: GradientStop[]; // 2–4, sorted by `at`
 }
