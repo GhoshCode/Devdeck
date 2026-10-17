@@ -428,7 +428,6 @@ function LivePreview({ settings }: { settings: Settings }) {
   const panel: CSSProperties = {
     background: solid ? (light ? '#ffffff' : '#1b1329') : light ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.07)',
     border: `1px solid ${light ? 'rgba(60,60,67,0.12)' : 'rgba(255,255,255,0.12)'}`,
-    backdropFilter: solid ? undefined : 'blur(6px)',
   };
   const ink = light ? 'rgba(29,29,31,0.75)' : 'rgba(255,255,255,0.8)';
   const muted = light ? 'rgba(60,60,67,0.18)' : 'rgba(255,255,255,0.14)';
