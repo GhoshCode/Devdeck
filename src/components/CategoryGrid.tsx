@@ -198,7 +198,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
         <section
           aria-label="Categories container"
           data-categories-container
-          className="glass-raised relative flex flex-1 min-h-0 flex-col overflow-hidden rounded-3xl border border-white/15 shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-2xl p-2.5 sm:p-3"
+          className="glass-raised relative flex flex-1 min-h-0 flex-col overflow-hidden rounded-3xl border border-white/15 shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-2xl p-3 sm:p-4"
         >
           {/* Horizontal scroll track with cards */}
           <motion.div

@@ -13,7 +13,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 interface DashboardLayoutProps {
   topBar: ReactNode;
-  searchRow: ReactNode;
+  searchRow?: ReactNode; // optional: the search lives in the top bar now
   left: ReactNode;
   center: ReactNode;
   right: ReactNode;
@@ -70,9 +70,11 @@ export function DashboardLayout({
       <div data-zone="top-bar" className="shrink-0">
         {topBar}
       </div>
-      <div data-zone="search-row" className="shrink-0 py-2">
-        {searchRow}
-      </div>
+      {searchRow && (
+        <div data-zone="search-row" className="shrink-0">
+          {searchRow}
+        </div>
+      )}
 
       {/* Below 1024px the dashboard scrolls inside itself (never the page) so the
           cockpit keeps a usable height instead of being squeezed. */}

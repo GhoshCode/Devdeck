@@ -1,7 +1,6 @@
 import {
   memo,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -9,6 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -22,18 +22,18 @@ import type { Priority } from '../../../types';
 import { PRIORITY_LABEL, TodoRow } from './TodoRow';
 import { DateTimePicker, describeDue, type DueValue } from './DateTimePicker';
 
-// TO DO widget (spec §3.4), one card that grows in place:
-//   collapsed — smart quick-add + the first tasks; Red Danger Zone on top
-//   expanded  — the card grows over the content below: views (All, Today,
-//               Upcoming, Overdue) with counts, search, drag to reorder,
-//               per-task details (notes, subtasks, priority, tags); shrinks
-//               back after 30 s without interaction
-//   archive   — completed tasks: restore, delete, purge
+// TO DO widget (spec §3.4), embedded in the left column's lower card:
+//   inline   — smart quick-add + the task list; Red Danger Zone on top
+//   expanded — a large box in the middle of the screen (like the site map):
+//              views (All, Today, Upcoming, Overdue) with counts, search,
+//              drag to reorder, per-task details (notes, subtasks, priority,
+//              tags); closes after 30 s without interaction, on Esc or a
+//              click outside
+//   archive  — completed tasks: restore, delete, purge (inside the box)
 // Quick add understands "Ship notes #launch !p1 tomorrow 5pm" and previews
-// what it understood; 📅 and 🚩 set the due moment and priority explicitly.
+// what it understood; ⚑ and 📅 set the priority and due moment explicitly.
 
 export const TODO_IDLE_MS = 30_000;
-const EXPANDED_MAX = 540; // px cap when expanded; also capped to 75% of the viewport
 
 type Mode = 'collapsed' | 'expanded' | 'archive';
 
@@ -52,10 +52,9 @@ export const TodoWidget = memo(function TodoWidget() {
   const [mode, setMode] = useState<Mode>('collapsed');
   const [view, setView] = useState<TodoView>('all');
   const [query, setQuery] = useState('');
-  const slotRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [slotHeight, setSlotHeight] = useState(224);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
+  const modalInputRef = useRef<HTMLInputElement>(null);
 
   const active = useMemo(() => sortActive(todos, now), [todos, now]);
   const archived = useMemo(() => sortArchived(todos), [todos]);
@@ -65,30 +64,18 @@ export const TodoWidget = memo(function TodoWidget() {
   const open = mode !== 'collapsed';
 
   const q = query.trim().toLowerCase();
-  const shown = useMemo(
+  const filtered = useMemo(
     () =>
       active.filter(
         (t) =>
-          (!open || matchesView(t, view, now)) &&
+          matchesView(t, view, now) &&
           (!q ||
             t.text.toLowerCase().includes(q) ||
             (t.tags ?? []).some((tag) => tag.includes(q.replace(/^#/, ''))) ||
             (t.notes ?? '').toLowerCase().includes(q)),
       ),
-    [active, open, view, now, q],
+    [active, view, now, q],
   );
-
-  // The collapsed card exactly fills its top-bar slot; expanding animates from that height.
-  useLayoutEffect(() => {
-    const el = slotRef.current;
-    if (!el) return;
-    const measure = () => setSlotHeight(el.clientHeight || 224);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const expandedHeight = Math.max(slotHeight, Math.min(EXPANDED_MAX, Math.round(window.innerHeight * 0.75)));
 
   useIdleTimeout(cardRef, open, TODO_IDLE_MS, () => setMode('collapsed'));
 
@@ -100,7 +87,6 @@ export const TodoWidget = memo(function TodoWidget() {
   }, [open]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
-  const sortableIds = shown.filter((t) => !isOverdue(t, now)).map((t) => t.id);
   const onDragEnd = ({ active: dragged, over }: DragEndEvent) => {
     if (!over || dragged.id === over.id) return;
     const all = active.filter((t) => !isOverdue(t, now)).map((t) => t.id);
@@ -112,153 +98,188 @@ export const TodoWidget = memo(function TodoWidget() {
 
   const expandAndFocus = () => {
     setMode('expanded');
-    requestAnimationFrame(() => inputRef.current?.focus());
+    requestAnimationFrame(() => modalInputRef.current?.focus());
   };
 
-  const status =
-    mode === 'archive'
-      ? `${archived.length} archived`
-      : open
-        ? 'Auto-shrinks after 30 s idle'
-        : active.length === 0
-          ? 'Zero pending'
-          : `${active.length} remaining${doneToday ? ` · ${doneToday} done today` : ''}`;
+  // The list, shared by the inline card and the big box.
+  const list = (expanded: boolean, items: typeof active) => {
+    const sortableIds = items.filter((t) => !isOverdue(t, now)).map((t) => t.id);
+    return (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+          <ul className={`mt-1.5 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 ${expanded ? 'ultra-thin-scrollbar' : ''}`}>
+            <AnimatePresence initial={false}>
+              {items.map((t) => (
+                <TodoRow key={t.id} todo={t} now={now} expanded={expanded} />
+              ))}
+            </AnimatePresence>
+            {active.length === 0 && <li className="px-1.5 pt-1 text-xs text-white/40">🎯 All done — add the next one above.</li>}
+            {active.length > 0 && items.length === 0 && (
+              <li className="px-1.5 pt-1 text-xs text-white/40">Nothing here{q ? ` for “${query}”` : ''}.</li>
+            )}
+          </ul>
+        </SortableContext>
+      </DndContext>
+    );
+  };
 
-  return (
-    <div ref={slotRef} data-testid="todo-widget" className="relative h-full">
-      <motion.div
-        ref={cardRef}
-        role={open ? 'dialog' : 'region'}
-        aria-label={mode === 'archive' ? 'Archived tasks' : open ? 'All tasks' : 'To-do'}
-        initial={false}
-        // Expanded: grow to fit the content, capped; collapsed: exactly the slot.
-        animate={{ height: open ? 'auto' : slotHeight }}
-        style={{ maxHeight: open ? expandedHeight : undefined, minHeight: open ? slotHeight : undefined }}
-        transition={{ type: 'spring', stiffness: 360, damping: 38, mass: 0.9 }}
-        className={`@container absolute top-0 right-0 left-0 flex flex-col overflow-hidden px-2.5 pt-2 pb-1 ${
-          open
-            ? 'glass-raised z-40 rounded-[var(--radius-card)] bg-[var(--color-base-elevated)]/95 shadow-2xl'
-            : 'glass z-0'
-        }`}
-      >
-        {/* Header */}
-        <div className="flex shrink-0 items-center gap-2 px-1">
-          <h2 className="font-display text-[11px] font-semibold tracking-[0.2em] whitespace-nowrap text-white/60">
+  const header = (inBox: boolean) => (
+    <div className="flex shrink-0 items-center gap-2 px-1">
+      {/* Inline, the card's tab already names the list and its count. */}
+      {inBox && (
+        <>
+          <h2 className="font-display text-[13px] font-semibold tracking-[0.2em] whitespace-nowrap text-white/65">
             {mode === 'archive' ? 'ARCHIVE' : 'TO DO'}
           </h2>
           <span className="rounded-full bg-white/10 px-1.5 font-mono text-[10px] text-white/60">
             {mode === 'archive' ? archived.length : active.length}
           </span>
-          {overdueCount > 0 && mode !== 'archive' && (
-            <span
-              className="rounded-md bg-red-500/30 px-1.5 font-mono text-[10px] font-bold whitespace-nowrap text-red-200"
-              title={`${overdueCount} overdue`}
-            >
-              {overdueCount}
-              <span className="hidden @min-[230px]:inline"> overdue</span>
-            </span>
+        </>
+      )}
+      {overdueCount > 0 && !(mode === 'archive' && inBox) && (
+        <span className="rounded-md bg-red-500/30 px-1.5 font-mono text-[10px] font-bold whitespace-nowrap text-red-200" title={`${overdueCount} overdue`}>
+          {overdueCount}
+          <span className="hidden @min-[230px]:inline"> overdue</span>
+        </span>
+      )}
+      <ProgressRing done={doneToday} left={active.length} />
+      {!inBox ? (
+        <button
+          type="button"
+          onClick={expandAndFocus}
+          aria-label="Add a task"
+          title="Add a task"
+          className="flex size-5 items-center justify-center rounded-md text-sm leading-none text-white/45 hover:bg-white/10 hover:text-white"
+        >
+          +
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setMode('collapsed')}
+          aria-label="Close tasks"
+          className="flex size-7 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+
+  const footer = (inBox: boolean) => (
+    <div className="mt-1 flex h-6 shrink-0 items-center gap-1 border-t border-white/[0.06] pt-0.5 pl-1">
+      <span data-testid={inBox ? 'todo-status-box' : 'todo-status'} className="truncate font-mono text-[10px] text-white/45">
+        {inBox
+          ? mode === 'archive'
+            ? `${archived.length} archived`
+            : 'Closes after 30 s idle · Esc'
+          : active.length === 0
+            ? 'Zero pending'
+            : `${active.length} remaining${doneToday ? ` · ${doneToday} done today` : ''}`}
+      </span>
+      <span className="ml-auto" />
+      <IconButton
+        label={mode === 'archive' && inBox ? 'Back to tasks' : `Archive (${archived.length})`}
+        active={mode === 'archive' && inBox}
+        onClick={() => setMode(mode === 'archive' ? 'expanded' : 'archive')}
+      >
+        <ArchiveIcon />
+      </IconButton>
+      <IconButton label={inBox ? 'Collapse' : 'Expand'} active={false} onClick={() => setMode(inBox ? 'collapsed' : 'expanded')}>
+        <svg className={`size-3.5 ${inBox ? '' : ''}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+          {inBox ? (
+            <path d="M4.5 1.5v3h-3M7.5 10.5v-3h3M1.5 4.5 4.5 1.5M10.5 7.5l-3 3" strokeLinecap="round" strokeLinejoin="round" />
+          ) : (
+            <path d="M7.5 1.5h3v3M4.5 10.5h-3v-3M10.5 1.5 7 5M1.5 10.5 5 7" strokeLinecap="round" strokeLinejoin="round" />
           )}
-          {mode !== 'archive' && <ProgressRing done={doneToday} left={active.length} />}
-          {mode !== 'archive' && (
-            <button
-              type="button"
-              onClick={expandAndFocus}
-              aria-label="Add a task"
-              title="Add a task"
-              className="flex size-5 items-center justify-center rounded-md text-sm leading-none text-white/45 hover:bg-white/10 hover:text-white"
-            >
-              +
-            </button>
-          )}
+        </svg>
+      </IconButton>
+    </div>
+  );
+
+  return (
+    <div data-testid="todo-widget" className="@container relative flex h-full min-h-0 flex-col">
+      <div role="region" aria-label="To-do" className="flex h-full min-h-0 flex-col">
+        {header(false)}
+        <div className="mt-1.5 shrink-0">
+          <Composer inputRef={inlineInputRef} />
         </div>
+        {list(false, active)}
+        {footer(false)}
+      </div>
 
-        {mode === 'archive' ? (
-          <ArchiveList />
-        ) : (
-          <>
-            {/* Quick add — usable without expanding. */}
-            <div className="mt-1 shrink-0">
-              <Composer inputRef={inputRef} />
-            </div>
-
-            {open && (
-              <div className="mt-1.5 flex shrink-0 items-center gap-2 px-0.5">
-                <div role="tablist" aria-label="Task views" className="segmented flex rounded-md p-0.5">
-                  {VIEWS.map((v) => {
-                    const count = active.filter((t) => matchesView(t, v.id, now)).length;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={view === v.id}
-                        onClick={() => setView(v.id)}
-                        className={`rounded px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap ${
-                          view === v.id ? 'segmented-on text-white' : 'text-white/55 hover:text-white/85'
-                        } ${v.id === 'overdue' && count ? 'text-red-300' : ''}`}
-                      >
-                        {v.label} <span className="font-mono text-white/45">{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search tasks, #tags, notes"
-                  aria-label="Search tasks"
-                  className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white placeholder-white/35 outline-none focus:border-white/25"
-                />
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                onClick={() => setMode('collapsed')}
+                className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
+              />
+              <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center px-4 pt-[7vh] pb-6">
+                <motion.div
+                  ref={cardRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={mode === 'archive' ? 'Archived tasks' : 'All tasks'}
+                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                  className="todo-box @container pointer-events-auto flex h-[min(78vh,720px)] w-full max-w-[760px] flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[var(--color-base-elevated)]/[0.97] px-4 pt-4 pb-2 shadow-2xl backdrop-blur-2xl"
+                >
+                  {header(true)}
+                  {mode === 'archive' ? (
+                    <ArchiveList />
+                  ) : (
+                    <>
+                      <div className="mt-3 shrink-0">
+                        <Composer inputRef={modalInputRef} />
+                      </div>
+                      <div className="mt-2.5 flex shrink-0 items-center gap-2 px-0.5">
+                        <div role="tablist" aria-label="Task views" className="segmented flex rounded-md p-0.5">
+                          {VIEWS.map((v) => {
+                            const count = active.filter((t) => matchesView(t, v.id, now)).length;
+                            return (
+                              <button
+                                key={v.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={view === v.id}
+                                onClick={() => setView(v.id)}
+                                className={`rounded px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
+                                  view === v.id ? 'segmented-on text-white' : 'text-white/55 hover:text-white/85'
+                                } ${v.id === 'overdue' && count ? 'text-red-300' : ''}`}
+                              >
+                                {v.label} <span className="font-mono text-white/45">{count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <input
+                          type="search"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          placeholder="Search tasks, #tags, notes"
+                          aria-label="Search tasks"
+                          className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[12px] text-white placeholder-white/35 outline-none focus:border-white/25"
+                        />
+                      </div>
+                      {list(true, filtered)}
+                    </>
+                  )}
+                  {footer(true)}
+                </motion.div>
               </div>
-            )}
-
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                <ul className={`mt-1 min-h-0 flex-1 space-y-0.5 pr-1 ${open ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-                  <AnimatePresence initial={false}>
-                    {shown.map((t) => (
-                      <TodoRow key={t.id} todo={t} now={now} expanded={open} />
-                    ))}
-                  </AnimatePresence>
-                  {active.length === 0 && (
-                    <li className="px-1.5 pt-1 text-xs text-white/40">🎯 All done — add the next one above.</li>
-                  )}
-                  {active.length > 0 && shown.length === 0 && (
-                    <li className="px-1.5 pt-1 text-xs text-white/40">Nothing here{q ? ` for “${query}”` : ''}.</li>
-                  )}
-                </ul>
-              </SortableContext>
-            </DndContext>
-          </>
-        )}
-
-        {/* Footer: status, then archive left of expand. */}
-        <div className="mt-0.5 flex h-6 shrink-0 items-center gap-1 border-t border-white/[0.06] pl-1">
-          <span data-testid="todo-status" className="truncate font-mono text-[10px] text-white/45">
-            {status}
-          </span>
-          <span className="ml-auto" />
-          <IconButton
-            label={mode === 'archive' ? 'Back to tasks' : `Archive (${archived.length})`}
-            active={mode === 'archive'}
-            onClick={() => setMode(mode === 'archive' ? 'expanded' : 'archive')}
-          >
-            <ArchiveIcon />
-          </IconButton>
-          <IconButton label={open ? 'Collapse' : 'Expand'} active={false} onClick={() => setMode(open ? 'collapsed' : 'expanded')}>
-            <svg
-              className={`size-3.5 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path d="M3 4.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </IconButton>
-        </div>
-      </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 });

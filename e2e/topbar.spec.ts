@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('top bar renders every widget slot', async ({ page }) => {
-  for (const widget of ['time-cluster', 'todo', 'git', 'date-greet']) {
+  for (const widget of ['time-cluster', 'search', 'git', 'date-greet']) {
     await expect(page.locator(`[data-widget="${widget}"]`)).toBeVisible();
   }
   await expect(page.getByTestId('weather-uv')).toBeVisible();

@@ -56,11 +56,11 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await expect(shell).toBeVisible();
     await expect(shell.getByRole('button', { name: 'Search the web' })).toBeVisible();
 
-    // 2. G1 bookmark button sits outside the search shell, to its right
+    // 2. G1 bookmark button sits outside the search shell, on the row below it
     const g1 = page.getByRole('button', { name: 'Bookmarks and site map' });
     await expect(shell.getByRole('button', { name: 'Bookmarks and site map' })).toHaveCount(0);
     const [shellBox, g1Box] = [await shell.boundingBox(), await g1.boundingBox()];
-    expect(g1Box!.x).toBeGreaterThan(shellBox!.x + shellBox!.width - 1);
+    expect(g1Box!.y).toBeGreaterThanOrEqual(shellBox!.y + shellBox!.height - 1);
 
     // 3. Typing shows the suggestions dropdown; Escape closes it
     await input.fill('git');

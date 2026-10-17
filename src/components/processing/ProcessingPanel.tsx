@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import type { ProcessingItem } from '../../types';
@@ -8,11 +8,12 @@ import { describeSchedule, nextFireTime } from '../../lib/schedule';
 import { relativeAge } from '../../services/search';
 import { Favicon } from '../Favicon';
 import { DEFAULT_SECTIONS, ProcessingEditor } from './ProcessingEditor';
+import { TodoWidget } from '../topbar/todo/TodoWidget';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
-// the first section ("Focus" by default), the lower card holds every other
-// section, each collapsible. The mini settings cog sits in the lower card's
-// bottom-right corner and opens the editor.
+// the first section ("Focus" by default). The lower card scrolls sideways
+// between the Queue (every other section, each collapsible; the mini settings
+// cog in its corner opens the editor) and the To-do list.
 
 export const ProcessingPanel = memo(function ProcessingPanel() {
   const processing = useStore((s) => s.processing);
@@ -33,8 +34,8 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
         <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />
       </section>
 
-      <section aria-label="Processing: other sections" className="glass relative flex min-h-0 flex-1 flex-col gap-2 p-3 pb-10">
-        <PanelHeader index={2} title={rest.length === 1 ? rest[0].name : 'Queue'} count={rest.reduce((n, g) => n + g.items.length, 0)} />
+      <QueueAndTodo queueTitle={rest.length === 1 ? rest[0].name : 'Queue'} queueCount={rest.reduce((n, g) => n + g.items.length, 0)}>
+      <section aria-label="Processing: other sections" className="relative flex h-full min-h-0 flex-col gap-2 pb-9">
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
           {rest.length === 0 && <p className="px-1 text-[11px] text-white/35">Group more sites with sections in the editor.</p>}
           {rest.map((g) =>
@@ -62,6 +63,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
           </svg>
         </button>
       </section>
+      </QueueAndTodo>
 
       <AnimatePresence>{managerOpen && <ProcessingManager onClose={() => setManagerOpen(false)} />}</AnimatePresence>
     </>
@@ -201,5 +203,93 @@ function ProcessingManager({ onClose }: { onClose: () => void }) {
         </div>
       </motion.div>
     </>
+  );
+}
+
+// The lower card: Queue and To-do side by side, one visible at a time. Tabs
+// jump between them; a trackpad swipe or the hair-thin scrollbar (shown only
+// while scrolling) moves too. The last pane is remembered.
+const PANE_KEY = 'devdeck.leftPane';
+
+function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string; queueCount: number; children: ReactNode }) {
+  const todoCount = useStore((s) => s.todos.filter((t) => t.archivedAt === null).length);
+  const ref = useRef<HTMLDivElement>(null);
+  const [pane, setPane] = useState<0 | 1>(() => {
+    try {
+      return localStorage.getItem(PANE_KEY) === 'todo' ? 1 : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [scrolling, setScrolling] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollLeft = pane * el.clientWidth; // restore without animating
+    let timer: ReturnType<typeof setTimeout>;
+    const onScroll = () => {
+      setScrolling(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setScrolling(false), 900);
+      const next = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)) as 0 | 1;
+      setPane(next);
+      try {
+        localStorage.setItem(PANE_KEY, next ? 'todo' : 'queue');
+      } catch {
+        // storage unavailable — the pane just isn't remembered
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('scroll', onScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount
+  }, []);
+
+  const go = (i: 0 | 1) => ref.current?.scrollTo({ left: i * ref.current.clientWidth, behavior: 'smooth' });
+  const tabs = [
+    { label: queueTitle, count: queueCount },
+    { label: 'To-do', count: todoCount },
+  ];
+
+  return (
+    <section aria-label="Queue and to-do" className="glass relative flex min-h-0 flex-1 flex-col gap-2 p-3">
+      <div className="flex items-center gap-2">
+        <span className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white/55">D2</span>
+        <div role="tablist" aria-label="Queue or to-do" className="segmented flex min-w-0 rounded-md p-0.5">
+          {tabs.map((t, i) => (
+            <button
+              key={t.label}
+              type="button"
+              role="tab"
+              aria-selected={pane === i}
+              onClick={() => go(i as 0 | 1)}
+              className={`truncate rounded px-2 py-0.5 font-display text-[10.5px] font-semibold tracking-[0.12em] uppercase ${
+                pane === i ? 'segmented-on text-white' : 'text-white/55 hover:text-white/85'
+              }`}
+            >
+              {t.label} <span className="font-mono tracking-normal text-white/45">{t.count}</span>
+            </button>
+          ))}
+        </div>
+        <span aria-hidden className="ml-auto flex gap-1">
+          {[0, 1].map((i) => (
+            <span key={i} className={`h-1.5 rounded-full transition-all ${pane === i ? 'w-3.5 bg-[var(--color-accent)]' : 'w-1.5 bg-white/25'}`} />
+          ))}
+        </span>
+      </div>
+      <div
+        ref={ref}
+        data-testid="queue-todo-scroller"
+        className={`thin-autohide-scroll flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden ${scrolling ? 'is-scrolling' : ''}`}
+      >
+        <div className="h-full w-full shrink-0 snap-start pr-1">{children}</div>
+        <div className="h-full w-full shrink-0 snap-start pl-1">
+          <TodoWidget />
+        </div>
+      </div>
+    </section>
   );
 }

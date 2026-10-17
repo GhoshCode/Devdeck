@@ -9,7 +9,6 @@ import { CategoryGrid } from './components/CategoryGrid';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
 import { CommandPrompt } from './components/topbar/CommandPrompt';
-import { TodoWidget } from './components/topbar/todo/TodoWidget';
 import { GitWidget } from './components/topbar/GitWidget';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { FeedColumn } from './components/feeds/FeedColumn';
@@ -166,19 +165,22 @@ export default function App() {
         topBar={
           <TopBar
             weather={<WeatherUV onSetup={() => openSettings('profile')} />}
-            todo={<TodoWidget />}
+            search={
+              <>
+                <div className="flex shrink-0">
+                  <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <SiteMapButton />
+                  <BookmarkButton />
+                  <div className="min-w-0 flex-1">
+                    <CommandPrompt />
+                  </div>
+                </div>
+              </>
+            }
             git={<GitWidget />}
           />
-        }
-        searchRow={
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 md:flex-nowrap">
-            <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
-            <SiteMapButton />
-            <BookmarkButton />
-            <div className="w-full md:w-[260px] md:shrink-0 xl:w-[300px]">
-              <CommandPrompt />
-            </div>
-          </div>
         }
         left={<ProcessingPanel />}
         leftFooter={settingsButton}
