@@ -1023,7 +1023,7 @@ html[data-theme='light'] #search-suggestions [role='option']:hover {
     padding-bottom: 12px;
   }
   [data-topbar-grid] {
-    height: 128px;
+    height: 140px;
   }
   /* Tighter rows so the collapsed to-do still shows its first tasks. */
   [data-testid='todo-widget'] li[data-todo-id] > div {
@@ -1336,5 +1336,31 @@ html[data-theme='light'] .sub-panel {
 }
 html[data-theme='light'] .preview-window {
   background: #f2f2f7;
+  border-color: rgba(60, 60, 67, 0.14);
+}
+
+/* Dropdowns that match the app (Settings → Profile weather source). */
+.dropdown-trigger {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.dropdown-trigger:hover,
+.dropdown-trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+.dropdown-menu {
+  background: var(--color-base-elevated);
+  border-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+}
+.dropdown-active {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+html[data-theme='light'] .dropdown-trigger {
+  background: #fff;
+  border-color: rgba(60, 60, 67, 0.16);
+}
+html[data-theme='light'] .dropdown-menu {
+  background: rgba(255, 255, 255, 0.98);
   border-color: rgba(60, 60, 67, 0.14);
 }

@@ -59,6 +59,8 @@ describe('fetchWeather', () => {
       uvIndex: 6.2,
       uvRisk: 'high',
       source: 'Open-Meteo',
+      sourceId: 'open-meteo',
+      siteUrl: 'https://open-meteo.com/en/docs?latitude=22.5700&longitude=88.3600',
       fetchedAt: 1234,
     });
   });
@@ -91,14 +93,52 @@ describe('fetchWeather', () => {
       postcode: '560037',
       uvIndex: 3.1,
       uvRisk: 'moderate',
-      source: 'MET Norway',
+      source: 'MET Norway (yr.no)',
+      sourceId: 'met-norway',
+      siteUrl: 'https://www.yr.no/en/forecast/daily-table/12.9700,77.5900',
     });
   });
 
+  test('tries the preferred source first, including a custom one', async () => {
+    const urls: string[] = [];
+    const fetcher = (async (url: string) => {
+      urls.push(url);
+      return url.startsWith('https://wttr.in/')
+        ? {
+            ok: true,
+            status: 200,
+            json: async () => ({ current_condition: [{ temp_C: '19', uvIndex: '4', weatherCode: '116' }] }),
+          }
+        : { ok: false, status: 500, json: async () => ({}) };
+    }) as unknown as typeof fetch;
+    const place = { lat: 1, lon: 2, label: 'Here', postcode: null };
+    const data = await fetchWeather(place, fetcher, 1, { weatherSource: 'wttr' });
+    expect(urls).toHaveLength(1);
+    expect(data).toMatchObject({
+      temperature: 19,
+      conditionCode: 2,
+      uvIndex: 4,
+      sourceId: 'wttr',
+      siteUrl: 'https://wttr.in/1.0000,2.0000',
+    });
+
+    urls.length = 0;
+    const mine = {
+      id: 'custom-1',
+      name: 'Mine',
+      apiUrl: 'https://meteo.example/v1/forecast?latitude={lat}&longitude={lon}',
+      siteUrl: 'https://meteo.example/',
+    };
+    await fetchWeather(place, fetcher, 1, { weatherSource: 'custom-1', customWeatherSources: [mine] });
+    expect(urls[0]).toBe(
+      'https://meteo.example/v1/forecast?latitude=1.0000&longitude=2.0000&current=temperature_2m,weather_code,uv_index,is_day&timezone=auto',
+    );
+  });
+
   test('reports the primary error when both sources fail', async () => {
-    await expect(
-      fetchWeather({ lat: 0, lon: 0, label: 'X', postcode: null }, jsonFetch({}, false)),
-    ).rejects.toThrow('Weather request failed');
+    await expect(fetchWeather({ lat: 0, lon: 0, label: 'X', postcode: null }, jsonFetch({}, false))).rejects.toThrow(
+      'Weather request failed',
+    );
   });
 });
 
@@ -118,7 +158,10 @@ test.each([
 test('geocodeCity reports unknown cities and returns a postcode when known', async () => {
   await expect(geocodeCity('Nowhere', jsonFetch({}))).rejects.toThrow('City "Nowhere" not found');
   await expect(
-    geocodeCity('Kolkata', jsonFetch({ results: [{ latitude: 1, longitude: 2, name: 'Kolkata', postcodes: ['700001'] }] })),
+    geocodeCity(
+      'Kolkata',
+      jsonFetch({ results: [{ latitude: 1, longitude: 2, name: 'Kolkata', postcodes: ['700001'] }] }),
+    ),
   ).resolves.toEqual({ lat: 1, lon: 2, label: 'Kolkata', postcode: '700001' });
 });
 

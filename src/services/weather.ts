@@ -1,16 +1,29 @@
 // A (Weather) + B (UV index) data. Sources, all key-free and CORS-open (so the
 // website and the extension behave the same):
-//   • Open-Meteo (ECMWF / national models) — primary: temperature, code, UV
-//   • MET Norway (Norwegian Meteorological Institute) — automatic fallback
+//   • Open-Meteo (ECMWF / national models) — default first choice
+//   • MET Norway (Norwegian Meteorological Institute, yr.no)
+//   • wttr.in (World Weather Online data)
+//   • any number of user-added Open-Meteo-compatible sources (Settings → Profile)
 //   • api-bdc.io (BigDataCloud) reverse geocoding — city and postcode
+// The chosen source is tried first and the rest take over if it fails.
 // Nothing is ever invented: if every source fails, the widget says so.
 
 import { readCache, writeCache } from '../lib/cache';
+import type { CustomWeatherSource } from '../types';
 
 export type UvRisk = 'low' | 'moderate' | 'high' | 'very-high' | 'extreme';
 export type WeatherIcon = 'sun' | 'moon' | 'partly' | 'cloud' | 'fog' | 'rain' | 'snow' | 'storm';
 
-export type WeatherSource = 'Open-Meteo' | 'MET Norway';
+// Built-in providers. site: the page opened when the weather is clicked.
+export const WEATHER_PROVIDERS = [
+  { id: 'open-meteo', name: 'Open-Meteo', site: 'https://open-meteo.com/en/docs?latitude={lat}&longitude={lon}' },
+  { id: 'met-norway', name: 'MET Norway (yr.no)', site: 'https://www.yr.no/en/forecast/daily-table/{lat},{lon}' },
+  { id: 'wttr', name: 'wttr.in', site: 'https://wttr.in/{lat},{lon}' },
+] as const;
+export type BuiltinProviderId = (typeof WEATHER_PROVIDERS)[number]['id'];
+
+export const fillCoords = (template: string, lat: number, lon: number) =>
+  template.replaceAll('{lat}', lat.toFixed(4)).replaceAll('{lon}', lon.toFixed(4));
 
 export interface WeatherData {
   temperature: number; // °C
@@ -21,7 +34,9 @@ export interface WeatherData {
   postcode: string | null;
   uvIndex: number;
   uvRisk: UvRisk;
-  source: WeatherSource;
+  source: string; // provider name, shown in the tooltip
+  sourceId: string;
+  siteUrl: string; // the provider's page for this location
   fetchedAt: number;
 }
 
@@ -147,11 +162,23 @@ export function browserPosition(timeoutMs = 8000): Promise<Place> {
 export const placeFromTimezone = (tz: string): string =>
   (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
 
-async function fetchOpenMeteo(place: Place, fetcher: Fetch, now: number): Promise<WeatherData> {
-  const url =
-    'https://api.open-meteo.com/v1/forecast' +
-    `?latitude=${place.lat.toFixed(3)}&longitude=${place.lon.toFixed(3)}` +
-    '&current=temperature_2m,weather_code,uv_index,is_day&timezone=auto';
+interface Provider {
+  id: string;
+  name: string;
+  site: string; // template
+  fetch: (place: Place, fetcher: Fetch, now: number) => Promise<Omit<WeatherData, 'source' | 'sourceId' | 'siteUrl'>>;
+}
+
+const OPEN_METEO_API =
+  'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,uv_index,is_day&timezone=auto';
+
+// Open-Meteo's format — also used for user-added compatible sources, whose URL
+// may omit the query fields DevDeck needs; they are appended when missing.
+async function fetchOpenMeteoFormat(apiTemplate: string, place: Place, fetcher: Fetch, now: number) {
+  let url = fillCoords(apiTemplate, place.lat, place.lon);
+  if (!/[?&]current=/.test(url)) {
+    url += `${url.includes('?') ? '&' : '?'}current=temperature_2m,weather_code,uv_index,is_day&timezone=auto`;
+  }
   const res = await fetcher(url);
   if (!res.ok) throw new Error(`Weather request failed (${res.status})`);
   const json = (await res.json()) as {
@@ -159,7 +186,7 @@ async function fetchOpenMeteo(place: Place, fetcher: Fetch, now: number): Promis
     current?: { temperature_2m: number; weather_code: number; uv_index?: number; is_day?: number };
   };
   const cur = json.current;
-  if (!cur) throw new Error('Weather response had no current conditions');
+  if (!cur || typeof cur.temperature_2m !== 'number') throw new Error('Weather response had no current conditions');
   const uv = cur.uv_index ?? 0;
   const { text, icon } = describeWeather(cur.weather_code, cur.is_day !== 0);
   return {
@@ -171,12 +198,11 @@ async function fetchOpenMeteo(place: Place, fetcher: Fetch, now: number): Promis
     postcode: place.postcode,
     uvIndex: uv,
     uvRisk: uvRisk(uv),
-    source: 'Open-Meteo',
     fetchedAt: now,
   };
 }
 
-async function fetchMetNorway(place: Place, fetcher: Fetch, now: number): Promise<WeatherData> {
+async function fetchMetNorway(place: Place, fetcher: Fetch, now: number) {
   // MET Norway asks for at most 4 decimals of coordinates.
   const url = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${place.lat.toFixed(4)}&lon=${place.lon.toFixed(4)}`;
   const res = await fetcher(url);
@@ -205,62 +231,148 @@ async function fetchMetNorway(place: Place, fetcher: Fetch, now: number): Promis
     postcode: place.postcode,
     uvIndex: uv,
     uvRisk: uvRisk(uv),
-    source: 'MET Norway',
     fetchedAt: now,
   };
 }
 
-// Primary source first; if it is down, the fallback answers instead.
-export async function fetchWeather(place: Place, fetcher: Fetch = fetch, now = Date.now()): Promise<WeatherData> {
-  const f = withTimeout(fetcher);
-  try {
-    return await fetchOpenMeteo(place, f, now);
-  } catch (primary) {
-    try {
-      return await fetchMetNorway(place, f, now);
-    } catch {
-      throw primary instanceof Error ? primary : new Error('Weather unavailable');
-    }
-  }
+// World Weather Online condition codes (used by wttr.in) → a representative WMO code.
+export function wwoToWmo(code: number): number {
+  if (code === 113) return 0;
+  if (code === 116) return 2;
+  if (code === 119 || code === 122) return 3;
+  if ([143, 248, 260].includes(code)) return 45;
+  if ([200, 386, 389, 392, 395].includes(code)) return 95;
+  if ([179, 182, 185, 227, 230, 317, 320, 323, 326, 329, 332, 335, 338, 350, 362, 365, 368, 371, 374, 377].includes(code))
+    return 73;
+  if ([263, 266, 281, 284].includes(code)) return 53;
+  if ([299, 302, 305, 308, 356, 359].includes(code)) return 65;
+  if ([176, 293, 296, 311, 314, 353].includes(code)) return 61;
+  return 3;
 }
 
-export interface WeatherPrefs {
+async function fetchWttr(place: Place, fetcher: Fetch, now: number) {
+  const res = await fetcher(`https://wttr.in/${place.lat.toFixed(4)},${place.lon.toFixed(4)}?format=j1`);
+  if (!res.ok) throw new Error(`wttr.in responded ${res.status}`);
+  const json = (await res.json()) as {
+    current_condition?: Array<{ temp_C: string; uvIndex: string; weatherCode: string }>;
+    nearest_area?: Array<{ areaName?: Array<{ value: string }> }>;
+  };
+  const cur = json.current_condition?.[0];
+  if (!cur) throw new Error('wttr.in returned no current conditions');
+  const code = wwoToWmo(Number(cur.weatherCode));
+  const hour = new Date(now).getHours();
+  const { text, icon } = describeWeather(code, hour >= 6 && hour < 19);
+  const uv = Number(cur.uvIndex) || 0;
+  return {
+    temperature: Number(cur.temp_C),
+    conditionCode: code,
+    conditionText: text,
+    icon,
+    place: place.label ?? json.nearest_area?.[0]?.areaName?.[0]?.value ?? 'Your location',
+    postcode: place.postcode,
+    uvIndex: uv,
+    uvRisk: uvRisk(uv),
+    fetchedAt: now,
+  };
+}
+
+const BUILTIN: Record<BuiltinProviderId, Provider['fetch']> = {
+  'open-meteo': (place, f, now) => fetchOpenMeteoFormat(OPEN_METEO_API, place, f, now),
+  'met-norway': fetchMetNorway,
+  wttr: fetchWttr,
+};
+
+function providerList(custom: readonly CustomWeatherSource[] = []): Provider[] {
+  return [
+    ...WEATHER_PROVIDERS.map((p) => ({ id: p.id, name: p.name, site: p.site, fetch: BUILTIN[p.id] })),
+    ...custom.map((c) => ({
+      id: c.id,
+      name: c.name,
+      site: c.siteUrl || c.apiUrl,
+      fetch: (place: Place, f: Fetch, now: number) => fetchOpenMeteoFormat(c.apiUrl, place, f, now),
+    })),
+  ];
+}
+
+export interface SourcePrefs {
+  weatherSource?: string; // 'auto' | provider id
+  customWeatherSources?: CustomWeatherSource[];
+}
+
+// The preferred source first (or the default order for 'auto'), then the rest.
+export async function fetchWeather(
+  place: Place,
+  fetcher: Fetch = fetch,
+  now = Date.now(),
+  prefs: SourcePrefs = {},
+): Promise<WeatherData> {
+  const f = withTimeout(fetcher);
+  const all = providerList(prefs.customWeatherSources);
+  const preferred = all.find((p) => p.id === prefs.weatherSource);
+  const order = preferred ? [preferred, ...all.filter((p) => p !== preferred)] : all;
+  let firstError: unknown = null;
+  for (const p of order) {
+    try {
+      const data = await p.fetch(place, f, now);
+      return { ...data, source: p.name, sourceId: p.id, siteUrl: fillCoords(p.site, place.lat, place.lon) };
+    } catch (err) {
+      firstError ??= err;
+    }
+  }
+  throw firstError instanceof Error ? firstError : new Error('Weather unavailable');
+}
+
+// One request to one source — Settings → Profile uses it to check a custom source.
+export async function testWeatherSource(source: CustomWeatherSource, place: Place): Promise<WeatherData> {
+  const data = await fetchOpenMeteoFormat(source.apiUrl, place, withTimeout(fetch), Date.now());
+  return {
+    ...data,
+    source: source.name,
+    sourceId: source.id,
+    siteUrl: fillCoords(source.siteUrl || source.apiUrl, place.lat, place.lon),
+  };
+}
+
+export interface WeatherPrefs extends SourcePrefs {
   useGeolocation: boolean;
   manualCity: string;
 }
 
-// Cache key: which location *source* the reading is for, so changing the
-// manual city or toggling geolocation invalidates the cached reading.
+// Cache key: which location *source* and weather source the reading is for,
+// so changing either invalidates the cached reading.
 const cacheKey = (p: WeatherPrefs) =>
-  p.useGeolocation ? 'geo' : `city:${p.manualCity.trim().toLowerCase()}`;
+  `${p.useGeolocation ? 'geo' : `city:${p.manualCity.trim().toLowerCase()}`}|${p.weatherSource ?? 'auto'}`;
 
 export function cachedWeather(prefs: WeatherPrefs): WeatherData | null {
-  return readCache<WeatherData>(CACHE_NAME, cacheKey(prefs), WEATHER_TTL_MS);
+  const hit = readCache<WeatherData>(CACHE_NAME, cacheKey(prefs), WEATHER_TTL_MS);
+  // Readings cached before sources had pages are refetched.
+  return hit && hit.siteUrl ? hit : null;
 }
 
-// Geolocation first (if enabled; re-read every refresh so a moved laptop gets
-// local weather), falling back to the manual city.
+// Where weather comes from: geolocation if enabled (re-read every refresh so a
+// moved laptop gets local weather), else the manual city.
+export async function resolvePlace(prefs: Pick<WeatherPrefs, 'useGeolocation' | 'manualCity'>): Promise<Place> {
+  const city = prefs.manualCity.trim();
+  if (prefs.useGeolocation) {
+    try {
+      const fix = await browserPosition();
+      return { ...fix, ...(await reverseGeocode(fix.lat, fix.lon)) };
+    } catch (err) {
+      if (!city) throw err;
+      return geocodeCity(city);
+    }
+  }
+  if (city) return geocodeCity(city);
+  throw new Error('Set a city in Settings → Profile');
+}
+
 export async function loadWeather(prefs: WeatherPrefs, opts: { force?: boolean } = {}): Promise<WeatherData> {
   if (!opts.force) {
     const hit = cachedWeather(prefs);
     if (hit) return hit;
   }
-  const city = prefs.manualCity.trim();
-  let place: Place;
-  if (prefs.useGeolocation) {
-    try {
-      const fix = await browserPosition();
-      place = { ...fix, ...(await reverseGeocode(fix.lat, fix.lon)) };
-    } catch (err) {
-      if (!city) throw err;
-      place = await geocodeCity(city);
-    }
-  } else if (city) {
-    place = await geocodeCity(city);
-  } else {
-    throw new Error('Set a city in Settings → Profile');
-  }
-  const data = await fetchWeather(place);
+  const place = await resolvePlace(prefs);
+  const data = await fetchWeather(place, fetch, Date.now(), prefs);
   writeCache(CACHE_NAME, cacheKey(prefs), data);
   return data;
 }

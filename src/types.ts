@@ -65,6 +65,8 @@ export interface Settings {
   panelSolidity?: number; // 0–100: 0 = default glass, 100 = solid panels
   panelBlur?: number; // px of backdrop blur behind panels; undefined = theme default
   gradientStudio?: GradientStudio; // last design in Appearance → Gradient Studio
+  weatherSource?: string; // "auto" (default), a built-in provider id, or a custom source id
+  customWeatherSources?: CustomWeatherSource[];
 }
 
 // A to-do carries at most one due moment: a date, optionally with a time.
@@ -180,4 +182,14 @@ export interface GradientStudio {
   angle: number; // degrees — linear direction / conic start
   position: string; // radial & conic centre, e.g. '50% 50%'
   stops: GradientStop[]; // 2–4, sorted by `at`
+}
+
+// A weather source the user added in Settings → Profile. The API must answer
+// in Open-Meteo's format (Open-Meteo mirrors, self-hosted instances, or any
+// compatible service); {lat} and {lon} are filled in.
+export interface CustomWeatherSource {
+  id: string;
+  name: string;
+  apiUrl: string; // e.g. https://my-meteo.example/v1/forecast?latitude={lat}&longitude={lon}
+  siteUrl: string; // opened when the weather is clicked; may use {lat}/{lon}
 }

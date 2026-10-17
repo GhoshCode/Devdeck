@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../store';
 import { clearCache } from '../../lib/cache';
+import { WeatherSourcePicker } from './WeatherSourcePicker';
 
 // Profile & data sources for the top-bar widgets: GitHub (Git commits) and
 // location (Weather & UV). Phase 6 folds more into this tab.
@@ -100,6 +101,7 @@ export function ProfileTab() {
             className={field}
           />
         </div>
+        <WeatherSourcePicker />
       </section>
     </div>
   );

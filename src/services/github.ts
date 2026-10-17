@@ -38,7 +38,7 @@ export interface GitStats {
   fetchedAt: number;
 }
 
-export const GIT_TTL_MS = 60 * 60 * 1000; // plan Phase 1: cached for 1 hour
+export const GIT_TTL_MS = 30 * 60 * 1000; // refreshed (and cached) every 30 min
 const CACHE_NAME = 'github';
 
 type Fetch = typeof fetch;

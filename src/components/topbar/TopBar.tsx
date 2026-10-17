@@ -17,7 +17,7 @@ export function TopBar({ weather, command, todo, git }: TopBarProps) {
   return (
     <div
       data-topbar-grid
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:h-[150px] md:grid-cols-[minmax(320px,350px)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(340px,370px)_minmax(0,1fr)_minmax(0,1fr)_minmax(200px,auto)]"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:h-[168px] md:grid-cols-[minmax(360px,400px)_minmax(0,1.15fr)_minmax(0,0.85fr)] lg:grid-cols-[minmax(430px,470px)_minmax(0,1.25fr)_minmax(0,0.8fr)_minmax(200px,auto)]"
     >
       <div data-widget="time-cluster" className="flex min-w-0 flex-col gap-2">
         {/* Clock + weather share one glass card (click the clock to change its face). */}
@@ -27,10 +27,10 @@ export function TopBar({ weather, command, todo, git }: TopBarProps) {
         </div>
         {command}
       </div>
-      <div data-widget="todo" className="relative min-h-[150px] min-w-0 md:min-h-0">
+      <div data-widget="todo" className="relative min-h-[168px] min-w-0 md:min-h-0">
         {todo}
       </div>
-      <div data-widget="git" className="min-h-[150px] min-w-0 sm:col-span-2 md:col-span-1 md:min-h-0">
+      <div data-widget="git" className="min-h-[168px] min-w-0 sm:col-span-2 md:col-span-1 md:min-h-0">
         {git}
       </div>
       {/* Below 1024px the date/greeting gives way to the widgets; the clock still shows the time. */}

@@ -40,19 +40,19 @@ export const TodoWidget = memo(function TodoWidget() {
   const slotRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [slotHeight, setSlotHeight] = useState(150);
+  const [slotHeight, setSlotHeight] = useState(168);
 
   const active = useMemo(() => sortActive(todos, now), [todos, now]);
   const archived = useMemo(() => sortArchived(todos), [todos]);
   const overdueCount = active.filter((t) => isOverdue(t, now)).length;
   const open = mode !== 'collapsed';
 
-  // The collapsed card exactly fills its top-bar slot (150px, 128px on short
+  // The collapsed card exactly fills its top-bar slot (168px, 140px on short
   // screens); expanding animates from that height.
   useLayoutEffect(() => {
     const el = slotRef.current;
     if (!el) return;
-    const measure = () => setSlotHeight(el.clientHeight || 150);
+    const measure = () => setSlotHeight(el.clientHeight || 168);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);

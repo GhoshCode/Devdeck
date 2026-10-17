@@ -82,7 +82,7 @@ function SegmentFace({ parts, showSeconds }: FaceProps) {
   return (
     <div className="flex h-full flex-col justify-center px-4 py-3">
       <div className="flex items-end gap-2 font-clock leading-none text-white/95 [text-shadow:0_0_14px_color-mix(in_srgb,var(--color-accent)_55%,transparent)]">
-        <span className="flex items-center text-[2.35rem]">
+        <span className="flex items-center text-[2.8rem]">
           {digits(parts.hours, '88', '')}
           <span className="clock-colon mx-0.5">:</span>
           {digits(parts.minutes, '88', '')}
@@ -117,12 +117,12 @@ function CyberpunkFace({ parts, showSeconds }: FaceProps) {
         </span>
       </div>
       <div className="flex flex-1 items-center gap-2">
-        <span className="cyber-digits font-cyber text-[2.75rem] leading-[0.8] font-bold tracking-tight text-[#fcee0a] tabular-nums">
+        <span className="cyber-digits font-cyber text-[3.2rem] leading-[0.8] font-bold tracking-tight text-[#fcee0a] tabular-nums">
           {parts.hours}:{parts.minutes}
         </span>
         <span className="flex flex-col justify-center gap-0.5 font-cyber leading-none">
           {showSeconds && (
-            <span className="text-[1.45rem] font-bold text-[#00f0ff] tabular-nums">{parts.seconds}</span>
+            <span className="text-[1.7rem] font-bold text-[#00f0ff] tabular-nums">{parts.seconds}</span>
           )}
           {parts.meridiem && (
             <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[#fcee0a]/70">
@@ -141,11 +141,11 @@ function MacFace({ parts, showSeconds }: FaceProps) {
   return (
     <div className="flex h-full flex-col justify-center px-5 py-3">
       <div className="flex items-baseline gap-1.5 font-mac tabular-nums text-white/95">
-        <span className="text-[2.6rem] leading-none font-extralight tracking-[-0.02em]">
+        <span className="text-[3.1rem] leading-none font-extralight tracking-[-0.02em]">
           {parts.hours}:{parts.minutes}
         </span>
         <span className="flex flex-col text-white/60">
-          {showSeconds && <span className="text-[1rem] font-light">{parts.seconds}</span>}
+          {showSeconds && <span className="text-[1.15rem] font-light">{parts.seconds}</span>}
           {parts.meridiem && <span className="text-[10px] font-medium tracking-wide">{parts.meridiem}</span>}
         </span>
       </div>
