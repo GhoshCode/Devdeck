@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ClockParts } from '../../../lib/time';
 import type { ClockStyle } from '../../../lib/clockStyles';
+import { FACES2 } from './faces2';
 
 // TIME widget faces. Each fills a size container (`[container-type:size]`) and
 // sizes itself with container units, so the same component renders the
@@ -126,26 +127,6 @@ function MacFace({ parts, showSeconds }: FaceProps) {
 }
 
 // ---- Glass & neumorphic ------------------------------------------------------------
-
-function GlassProFace({ parts, showSeconds, now }: FaceProps) {
-  const offset = -now.getTimezoneOffset();
-  const utc = `UTC${offset >= 0 ? '+' : '−'}${Math.floor(Math.abs(offset) / 60)}${offset % 60 ? `:${String(Math.abs(offset) % 60).padStart(2, '0')}` : ''}`;
-  return (
-    <div className="p-[3cqh] h-full w-full">
-      <div className="face-glass relative flex h-full items-center justify-center gap-[2cqw] overflow-hidden rounded-[6cqh] border">
-        <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(120% 90% at 85% 0%, ${mix(22)}, transparent 60%)` }} />
-        <span className={`relative font-mac ${MAIN} leading-none font-bold tracking-tight text-white tabular-nums`}>
-          {parts.hours}:{parts.minutes}
-        </span>
-        <span className="relative flex flex-col gap-[1cqh] self-start pt-[16cqh] leading-none">
-          <Meridiem parts={parts} className="text-white/80" />
-          <span className={`${TINY} font-mono text-white/55`}>{showSeconds ? `:${parts.seconds}` : utc}</span>
-          {showSeconds && <span className={`${TINY} font-mono text-white/45`}>{utc}</span>}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function NeumorphicFace({ parts, showSeconds }: FaceProps) {
   return (
@@ -523,11 +504,10 @@ function CliSophisticatedFace({ parts, showSeconds, now }: FaceProps) {
   );
 }
 
-export const FACES: Record<ClockStyle, (p: FaceProps) => ReactNode> = {
+const FACES1 = {
   dseg7: DsegFace,
   cyberpunk: CyberpunkFace,
   macos: MacFace,
-  'glass-pro': GlassProFace,
   neumorphic: NeumorphicFace,
   'ambient-neumorphic': AmbientNeumorphicFace,
   'dot-matrix': DotMatrixFace,
@@ -544,6 +524,8 @@ export const FACES: Record<ClockStyle, (p: FaceProps) => ReactNode> = {
   'cli-chrono': CliChronoFace,
   'cli-sophisticated': CliSophisticatedFace,
 };
+
+export const FACES: Record<ClockStyle, (p: FaceProps) => ReactNode> = { ...FACES1, ...FACES2 };
 
 // A face inside its size container — what the dashboard and the previews render.
 export function ClockFace({ style, ...props }: FaceProps & { style: ClockStyle }) {

@@ -113,3 +113,19 @@ test('Reduce transparency survives a reload; reset restores the defaults', async
   await expect(modal.getByRole('button', { name: /Obsidian Violet/ })).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => accentVar(page)).toBe('#ff2e9a');
 });
+
+test('Multi-Timezone shows zone options under the gallery and adds a city', async ({ page }) => {
+  const modal = await openAppearance(page);
+  await expect(modal.getByTestId('zone-picker')).toHaveCount(0);
+  await modal.getByRole('radio', { name: 'Multi-Timezone' }).click();
+  const picker = modal.getByTestId('zone-picker');
+  await expect(picker).toBeVisible();
+  await expect(picker).toContainText('New York');
+  await picker.getByRole('combobox', { name: 'Add a time zone' }).selectOption('Europe/London');
+  await expect(picker).toContainText('London');
+  await expect(picker.getByRole('combobox', { name: 'Add a time zone' })).toHaveCount(0); // 3 of 3
+  await page.keyboard.press('Escape');
+  const clock = page.getByRole('timer', { name: 'Digital clock' });
+  await expect(clock).toHaveAttribute('data-clock-style', 'multi-timezone');
+  await expect(clock).toContainText('London');
+});

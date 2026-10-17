@@ -9,6 +9,7 @@ import { useNow } from '../../hooks/useNow';
 import { CLOCK_STYLE_INFO } from '../../lib/clockStyles';
 import { clockParts } from '../../lib/time';
 import { ClockFace } from '../topbar/clock/faces';
+import { DEFAULT_ZONES, ZONE_CHOICES, zoneCity, zoneTime } from '../../lib/zones';
 import type { ClockStyle, GradientStudio, Settings, ThemeMode } from '../../types';
 
 // Settings → Appearance & Display, ordered the way people tune a look:
@@ -329,6 +330,9 @@ export function AppearanceTab() {
           showSeconds={settings.showSeconds}
           onPick={(id) => updateSettings({ clockStyle: id })}
         />
+        {settings.clockStyle === 'multi-timezone' && (
+          <ZonePicker zones={settings.clockZones ?? DEFAULT_ZONES} onChange={(clockZones) => updateSettings({ clockZones })} />
+        )}
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Hour format">
             <div role="radiogroup" aria-label="Clock format" className="segmented flex w-fit rounded-lg p-0.5">
@@ -1066,6 +1070,56 @@ function ClockFaces({ style, h24, showSeconds, onPick }: { style: ClockStyle; h2
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Multi-Timezone face: up to three cities shown beside local time.
+function ZonePicker({ zones, onChange }: { zones: string[]; onChange: (z: string[]) => void }) {
+  const now = useNow(30_000);
+  const available = ZONE_CHOICES.filter((z) => !zones.includes(z.tz));
+  return (
+    <div data-testid="zone-picker" className="sub-panel mt-2 rounded-xl border p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[10px] font-semibold tracking-wider text-white/60 uppercase">Time zones</span>
+        <span className="text-[10px] text-white/45">{zones.length}/3 · shown beside your local time</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {zones.map((tz) => {
+          const t = zoneTime(now, tz, false);
+          return (
+            <span key={tz} className="btn-secondary flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] text-white/85">
+              {zoneCity(tz)}
+              <span className="font-mono text-[10px] text-white/50">
+                {t.hours}:{t.minutes} {t.meridiem} · {t.offset}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(zones.filter((z) => z !== tz))}
+                aria-label={`Remove ${zoneCity(tz)}`}
+                className="text-white/45 hover:text-red-300"
+              >
+                ✕
+              </button>
+            </span>
+          );
+        })}
+        {zones.length < 3 && (
+          <select
+            value=""
+            onChange={(e) => e.target.value && onChange([...zones, e.target.value])}
+            aria-label="Add a time zone"
+            className="dtp-select rounded-lg border px-2 py-1 text-[11px]"
+          >
+            <option value="">+ Add city…</option>
+            {available.map((z) => (
+              <option key={z.tz} value={z.tz}>
+                {z.city} ({zoneTime(now, z.tz, false).offset})
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
     </div>
   );
 }
