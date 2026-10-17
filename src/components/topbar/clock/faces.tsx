@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { ClockParts } from '../../../lib/time';
 import type { ClockStyle } from '../../../lib/clockStyles';
 import { FACES2 } from './faces2';
+import { FACES3 } from './faces3';
 
 // TIME widget faces. Each fills a size container (`[container-type:size]`) and
 // sizes itself with container units, so the same component renders the
@@ -525,7 +526,7 @@ const FACES1 = {
   'cli-sophisticated': CliSophisticatedFace,
 };
 
-export const FACES: Record<ClockStyle, (p: FaceProps) => ReactNode> = { ...FACES1, ...FACES2 };
+export const FACES: Record<ClockStyle, (p: FaceProps) => ReactNode> = { ...FACES1, ...FACES2, ...FACES3 };
 
 // A face inside its size container — what the dashboard and the previews render.
 export function ClockFace({ style, ...props }: FaceProps & { style: ClockStyle }) {
