@@ -77,7 +77,10 @@ for (const theme of THEMES) {
 
       await panel.getByRole('textbox', { name: 'New task' }).fill('Write QA report');
       await panel.getByRole('button', { name: 'Attach due date' }).click();
-      await panel.getByRole('textbox', { name: 'Due date' }).fill('2030-01-15');
+      const picker = page.getByRole('dialog', { name: 'Due date and time' });
+      await picker.getByRole('button', { name: /^Tomorrow/ }).click();
+      await step(page, info, 'date & time picker', async () => {});
+      await picker.getByRole('button', { name: 'Done' }).click();
       await panel.getByRole('textbox', { name: 'New task' }).press('Enter');
       await step(page, info, 'task added', async () => {});
       await expect(panel.getByText('Write QA report')).toBeVisible();

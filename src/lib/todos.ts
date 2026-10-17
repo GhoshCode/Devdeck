@@ -58,3 +58,15 @@ export function formatDue(t: Todo, now: number): string | null {
         : shortDate.format(new Date(due));
   return t.dueTime ? `${day} ${t.dueTime}` : day;
 }
+
+export type TodoView = 'all' | 'today' | 'upcoming' | 'overdue';
+
+// Expanded to-do views: today = due today or overdue, upcoming = due later,
+// overdue = past due.
+export function matchesView(t: Todo, view: TodoView, now: number): boolean {
+  if (view === 'all') return true;
+  const overdue = isOverdue(t, now);
+  if (view === 'overdue') return overdue;
+  if (view === 'today') return overdue || isDueToday(t, now);
+  return !!t.dueDate && !overdue && !isDueToday(t, now);
+}

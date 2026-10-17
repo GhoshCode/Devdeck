@@ -46,6 +46,10 @@ test('Auto follows the system setting live, and after a reload', async ({ page }
   await modal.getByRole('radio', { name: 'Auto', exact: true }).click();
   await expect(modal.getByRole('radio', { name: 'Auto', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(html(page)).toHaveAttribute('data-theme', 'dark');
+  // Wait for the choice to land (it commits inside a theme view transition).
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('devdeck') ?? '{}').state?.settings?.followSystem))
+    .toBe(true);
 
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(html(page)).toHaveAttribute('data-theme', 'light');
@@ -74,14 +78,14 @@ test('accent applies everywhere, including the Sonoma light skin', async ({ page
 
 test('theme filters and clock faces', async ({ page }) => {
   const modal = await openAppearance(page);
-  const themes = modal.getByRole('region', { name: 'Themes' });
-  const cards = themes.getByRole('button', { pressed: undefined });
-  await modal.getByRole('tab', { name: /^light/i }).click();
-  await expect(themes.getByText('DARK', { exact: true })).toHaveCount(0);
-  await modal.getByRole('tab', { name: /^dark/i }).click();
-  await expect(themes.getByText('LIGHT', { exact: true })).toHaveCount(0);
-  await modal.getByRole('tab', { name: /^all/i }).click();
-  expect(await cards.count()).toBeGreaterThan(12);
+  const themes = modal.getByRole('region', { name: /Themes & wallpapers/ });
+  const cards = themes.locator('.theme-card');
+  await themes.getByRole('tab', { name: /^Jewel/ }).click();
+  await expect(cards).toHaveCount(6);
+  await themes.getByRole('tab', { name: /^All/ }).click();
+  expect(await cards.count()).toBeGreaterThan(30);
+  await themes.getByRole('searchbox', { name: 'Search themes' }).fill('nebula');
+  await expect(cards).toHaveCount(1);
 
   await modal.getByRole('radio', { name: 'macOS Minimal' }).click();
   await page.keyboard.press('Escape');
@@ -89,6 +93,7 @@ test('theme filters and clock faces', async ({ page }) => {
 });
 
 test('Reduce transparency survives a reload; reset restores the defaults', async ({ page }) => {
+  test.setTimeout(60_000); // two full page loads plus the Appearance tab
   let modal = await openAppearance(page);
   const sw = modal.getByRole('switch', { name: 'Reduce transparency' });
   await sw.click();

@@ -81,6 +81,18 @@ export interface Todo {
   createdAt: number; // epoch ms
   order: number;
   archivedAt: number | null; // epoch ms; non-null = completed + archived
+  priority?: Priority; // 0 none · 1 urgent · 2 high · 3 normal
+  tags?: string[]; // lower-case, without the #
+  notes?: string;
+  subtasks?: Subtask[];
+}
+
+export type Priority = 0 | 1 | 2 | 3;
+
+export interface Subtask {
+  id: string;
+  text: string;
+  done: boolean;
 }
 
 export type ScheduleFrequency = 'minute' | 'hourly' | 'daily';

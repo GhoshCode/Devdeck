@@ -28,18 +28,18 @@ import {
 } from '../../services/github';
 
 // GIT COMMITS (spec §3.5), top to bottom:
-//   profile — avatar, name, @login, followers / following / public repos
+//   profile — avatar, @username, public repo count
 //   repo    — the repository you pushed to last, shown as text; click it to
-//             turn it into a searchable list of all your repos; its language,
-//             stars, forks and open issues underneath
+//             turn it into a searchable list of all your repos
 //   tiles   — exactly the last six months up to today, month labels on top;
 //             streak, best streak, total and active days beside them
-//   branch  — where that repo's latest push landed, and its newest commits;
+//   branch  — the branch with that repo's latest push (still existing), and its
+//             newest commits;
 //             every commit links to GitHub
 // Everything refreshes every 30 minutes (↻ forces it). With no username it
 // shows an inline setup field.
 
-const CELL = 11; // largest tile size (px)
+const CELL = 9; // largest tile size (px) — leaves room for the stats beside the tiles
 const MIN_CELL = 6;
 const GAP = 2;
 const MONTHS_BACK = 6;
@@ -167,17 +167,13 @@ export const GitWidget = memo(function GitWidget() {
             href={profile.data?.url ?? `https://github.com/${username}`}
             className="block truncate text-[12px] font-semibold text-white/90 hover:underline"
           >
-            {profile.data?.name ?? username}
-          </a>
-          <span className="block truncate font-mono text-[9.5px] text-white/50">
             @{profile.data?.login ?? username}
-            {profile.data && (
-              <span className="hidden @min-[360px]:inline">
-                {' '}
-                · {profile.data.followers} followers · {profile.data.following} following · {profile.data.publicRepos} repos
-              </span>
-            )}
-          </span>
+          </a>
+          {profile.data && (
+            <span className="block truncate font-mono text-[9.5px] text-white/50">
+              {profile.data.publicRepos} public {profile.data.publicRepos === 1 ? 'repo' : 'repos'}
+            </span>
+          )}
         </div>
         <span className="ml-auto shrink-0 font-mono text-[9px] text-white/40" title="Refreshes every 30 minutes">
           {updatedAt ? `updated ${ago(updatedAt, now)}` : ''}
@@ -207,7 +203,6 @@ export const GitWidget = memo(function GitWidget() {
           onPick={(id) => updateSettings({ gitRepo: id })}
         />
       </div>
-      {repo && <RepoMeta repo={repo} />}
 
       {/* Six months of tiles, stats beside them */}
       <div className="flex min-h-0 flex-1 gap-3">
@@ -352,29 +347,6 @@ function RepoSelector({
         </div>
       )}
     </div>
-  );
-}
-
-function RepoMeta({ repo }: { repo: RepoSummary }) {
-  return (
-    <a
-      href={repo.url}
-      title={repo.description ?? `${repo.fullName} on GitHub`}
-      className="-mt-1 flex min-w-0 items-center gap-2.5 font-mono text-[9.5px] text-white/50 hover:text-white/75"
-    >
-      {repo.language && (
-        <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full" style={{ background: LANG_COLOR[repo.language] ?? '#8b949e' }} />
-          {repo.language}
-        </span>
-      )}
-      <span title="Stars">★ {repo.stars}</span>
-      <span title="Forks">⑂ {repo.forks}</span>
-      <span title="Open issues and pull requests">◎ {repo.openIssues} open</span>
-      <span className="truncate" title="Default branch">
-        ⎇ {repo.defaultBranch}
-      </span>
-    </a>
   );
 }
 

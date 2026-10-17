@@ -206,12 +206,10 @@ export interface GitProfile {
   name: string | null;
   avatarUrl: string;
   url: string;
-  followers: number;
-  following: number;
   publicRepos: number;
 }
 
-// Name, avatar and counts for the Git widget header.
+// Avatar and repo count for the Git widget header.
 export async function loadProfile(
   username: string,
   token: string,
@@ -227,8 +225,6 @@ export async function loadProfile(
     name: string | null;
     avatar_url: string;
     html_url: string;
-    followers: number;
-    following: number;
     public_repos: number;
   }>(`https://api.github.com/users/${encodeURIComponent(username)}`, token, opts.fetcher ?? fetch);
   const profile: GitProfile = {
@@ -236,8 +232,6 @@ export async function loadProfile(
     name: u.name,
     avatarUrl: u.avatar_url,
     url: u.html_url,
-    followers: u.followers,
-    following: u.following,
     publicRepos: u.public_repos,
   };
   writeCache(CACHE_NAME, key, profile);
@@ -328,22 +322,30 @@ export async function loadRepoActivity(
   token: string,
   opts: { force?: boolean; fetcher?: Fetch } = {},
 ): Promise<RepoActivity> {
-  const key = `activity|${repo.fullName.toLowerCase()}|${token ? 'pat' : 'public'}`;
+  const key = `activity2|${repo.fullName.toLowerCase()}|${token ? 'pat' : 'public'}`;
   if (!opts.force) {
     const hit = readCache<RepoActivity>(CACHE_NAME, key, GIT_TTL_MS);
     if (hit) return hit;
   }
   const fetcher = opts.fetcher ?? fetch;
   const base = `https://api.github.com/repos/${repo.fullName}`;
-  const events = await ghJson<Array<{ type: string; created_at: string; payload: { ref?: string } }>>(
-    `${base}/events?per_page=30`,
-    token,
-    fetcher,
-  ).catch(() => []);
-  const push = [...events]
-    .filter((e) => e.type === 'PushEvent' && e.payload.ref?.startsWith('refs/heads/'))
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
-  const branch = push?.payload.ref?.replace('refs/heads/', '') ?? repo.defaultBranch;
+  const [rawEvents, branchList] = await Promise.all([
+    ghJson<Array<{ type: string; created_at: string; payload: { ref?: string } }>>(
+      `${base}/events?per_page=30`,
+      token,
+      fetcher,
+    ).catch(() => []),
+    ghJson<Array<{ name: string }>>(`${base}/branches?per_page=100`, token, fetcher).catch(() => null),
+  ]);
+  // Newest push first; a branch deleted since (e.g. merged and removed) is skipped.
+  const existing = Array.isArray(branchList) ? new Set(branchList.map((b) => b.name)) : null;
+  const events = Array.isArray(rawEvents) ? rawEvents : [];
+  const branch =
+    [...events]
+      .filter((e) => e.type === 'PushEvent' && e.payload.ref?.startsWith('refs/heads/'))
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+      .map((e) => e.payload.ref!.replace('refs/heads/', ''))
+      .find((name) => !existing || existing.has(name)) ?? repo.defaultBranch;
   const commits = await ghJson<
     Array<{ sha: string; html_url: string; commit: { message: string; author: { name?: string; date?: string } | null } }>
   >(`${base}/commits?sha=${encodeURIComponent(branch)}&per_page=3`, token, fetcher).catch(() => []); // empty repo

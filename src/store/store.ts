@@ -14,6 +14,7 @@ import type {
   Settings,
   Site,
   Subcategory,
+  Priority,
   Todo,
   Topic,
 } from '../types';
@@ -65,6 +66,13 @@ const normalizeTodo = (raw: unknown, i: number): Todo | null => {
     createdAt: typeof t.createdAt === 'number' ? t.createdAt : Date.now(),
     order: typeof t.order === 'number' ? t.order : i,
     archivedAt: typeof t.archivedAt === 'number' ? t.archivedAt : null,
+    priority: t.priority === 1 || t.priority === 2 || t.priority === 3 ? t.priority : 0,
+    tags: toArray<unknown>(t.tags).filter((x): x is string => typeof x === 'string'),
+    notes: typeof t.notes === 'string' ? t.notes : '',
+    subtasks: toArray<unknown>(t.subtasks)
+      .map(asRecord)
+      .filter((x) => typeof x.id === 'string' && typeof x.text === 'string')
+      .map((x) => ({ id: x.id as string, text: x.text as string, done: x.done === true })),
   };
 };
 
@@ -154,7 +162,13 @@ export type NewSite = {
   primary?: boolean;
 };
 export type NewQuickLink = { name: string; url: string };
-export type NewTodo = { text: string; dueDate?: string | null; dueTime?: string | null };
+export type NewTodo = {
+  text: string;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  priority?: Priority;
+  tags?: string[];
+};
 export type NewProcessingItem = {
   name: string;
   url: string;
@@ -195,7 +209,10 @@ export interface StoreActions {
   pinCategory: (id: string | null) => void;
   // To-dos
   addTodo: (input: NewTodo) => Todo;
-  updateTodo: (id: string, patch: Partial<Pick<Todo, 'text' | 'dueDate' | 'dueTime'>>) => void;
+  updateTodo: (
+    id: string,
+    patch: Partial<Pick<Todo, 'text' | 'dueDate' | 'dueTime' | 'priority' | 'tags' | 'notes' | 'subtasks'>>,
+  ) => void;
   completeTodo: (id: string) => void; // bullet click → archived
   restoreTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
@@ -429,7 +446,7 @@ export const useStore = create<Store>()(
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
 
       // ---- To-dos --------------------------------------------------------
-      addTodo: ({ text, dueDate = null, dueTime = null }) => {
+      addTodo: ({ text, dueDate = null, dueTime = null, priority = 0, tags = [] }) => {
         const todo: Todo = {
           id: newId(),
           text,
@@ -438,6 +455,10 @@ export const useStore = create<Store>()(
           createdAt: Date.now(),
           order: nextOrder(get().todos),
           archivedAt: null,
+          priority,
+          tags,
+          notes: '',
+          subtasks: [],
         };
         set((s) => ({ todos: [...s.todos, todo] }));
         return todo;
