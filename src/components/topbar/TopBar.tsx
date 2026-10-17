@@ -5,17 +5,17 @@ import { DateGreet } from './DateGreet';
 // Zone 1 (plan §1), three columns:
 //   left   — DATE/GREET (with the daily quote) over [TIME | A/B]
 //   middle — TO DO
-//   right  — GIT COMMITS over C (command prompt), pinned to the top-right corner
+//   right  — GIT COMMITS, pinned to the top-right corner (the command prompt
+//            lives in the search row)
 // Slots for widgets built separately are passed in so this stays layout-only.
 // <640px: one column · 640–767px: two · ≥768px: the three columns.
 interface TopBarProps {
   weather: ReactNode;
-  command: ReactNode;
   todo: ReactNode;
   git: ReactNode;
 }
 
-export function TopBar({ weather, command, todo, git }: TopBarProps) {
+export function TopBar({ weather, todo, git }: TopBarProps) {
   return (
     <div
       data-topbar-grid
@@ -34,9 +34,8 @@ export function TopBar({ weather, command, todo, git }: TopBarProps) {
       <div data-widget="todo" className="relative min-h-[224px] min-w-0 md:min-h-0">
         {todo}
       </div>
-      <div data-widget="git" className="flex min-h-[224px] min-w-0 flex-col gap-2 md:min-h-0">
-        <div className="relative z-10 min-h-0 flex-1">{git}</div>
-        {command}
+      <div data-widget="git" className="relative z-10 min-h-[224px] min-w-0 md:min-h-0">
+        {git}
       </div>
     </div>
   );

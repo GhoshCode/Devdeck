@@ -70,7 +70,7 @@ export function DashboardLayout({
       <div data-zone="top-bar" className="shrink-0">
         {topBar}
       </div>
-      <div data-zone="search-row" className="shrink-0">
+      <div data-zone="search-row" className="shrink-0 py-2">
         {searchRow}
       </div>
 

@@ -32,6 +32,7 @@ export interface WeatherData {
   icon: WeatherIcon;
   place: string; // city / locality, or a timezone-derived label
   postcode: string | null;
+  area: string | null; // neighbourhood, e.g. "Koramangala" (GPS only)
   uvIndex: number;
   uvRisk: UvRisk;
   source: string; // provider name, shown in the tooltip
@@ -100,6 +101,7 @@ export interface Place {
   lon: number;
   label: string | null; // null → the forecast's timezone name
   postcode: string | null;
+  area?: string | null; // neighbourhood within the city
 }
 
 type Fetch = typeof fetch;
@@ -122,21 +124,53 @@ export async function geocodeCity(name: string, fetcher: Fetch = fetch): Promise
   return { lat: hit.latitude, lon: hit.longitude, label: hit.name, postcode: hit.postcodes?.[0] ?? null };
 }
 
-// City/locality and postcode for GPS coordinates. Best effort: a failure
-// just leaves the label to the forecast's timezone.
+// OpenStreetMap address parts → the neighbourhood people actually say:
+// "Kormangala East" → "Kormangala", "Koramangala 4th Block" → "Koramangala".
+export function areaName(addr: Record<string, string | undefined>): string | null {
+  for (const key of ['suburb', 'neighbourhood', 'quarter', 'city_district']) {
+    const raw = addr[key];
+    if (!raw || /corporation|municipal|taluk|district/i.test(raw)) continue;
+    const clean = raw
+      .replace(/\s+\d+(st|nd|rd|th)\s+(block|stage|phase|sector|cross|main)\b.*$/i, '')
+      .replace(/\s+(east|west|north|south)$/i, '')
+      .trim();
+    if (clean) return clean;
+  }
+  return null;
+}
+
+// City, neighbourhood and postcode for GPS coordinates. OpenStreetMap
+// (Nominatim) knows neighbourhoods; BigDataCloud is the fallback for city and
+// postcode. Best effort: failures just leave the label to the forecast's timezone.
 export async function reverseGeocode(
   lat: number,
   lon: number,
   fetcher: Fetch = fetch,
-): Promise<Pick<Place, 'label' | 'postcode'>> {
+): Promise<Pick<Place, 'label' | 'postcode' | 'area'>> {
+  const f = withTimeout(fetcher);
+  try {
+    const res = await f(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&addressdetails=1&accept-language=en&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`,
+    );
+    if (res.ok) {
+      const j = (await res.json()) as { address?: Record<string, string | undefined> };
+      const a = j.address ?? {};
+      const label = a.city || a.town || a.village || a.county || null;
+      if (label) return { label, postcode: a.postcode ?? null, area: areaName(a) };
+    }
+  } catch {
+    // fall through to BigDataCloud
+  }
   try {
     const url = `https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
-    const res = await withTimeout(fetcher)(url);
-    if (!res.ok) return { label: null, postcode: null };
+    const res = await f(url);
+    if (!res.ok) return { label: null, postcode: null, area: null };
     const j = (await res.json()) as { city?: string; locality?: string; principalSubdivision?: string; postcode?: string };
-    return { label: j.city || j.locality || j.principalSubdivision || null, postcode: j.postcode || null };
+    const label = j.city || j.locality || j.principalSubdivision || null;
+    const area = j.locality && j.locality !== label ? j.locality : null;
+    return { label, postcode: j.postcode || null, area };
   } catch {
-    return { label: null, postcode: null };
+    return { label: null, postcode: null, area: null };
   }
 }
 
@@ -196,6 +230,7 @@ async function fetchOpenMeteoFormat(apiTemplate: string, place: Place, fetcher: 
     icon,
     place: place.label ?? placeFromTimezone(json.timezone ?? ''),
     postcode: place.postcode,
+    area: place.area ?? null,
     uvIndex: uv,
     uvRisk: uvRisk(uv),
     fetchedAt: now,
@@ -229,6 +264,7 @@ async function fetchMetNorway(place: Place, fetcher: Fetch, now: number) {
     icon,
     place: place.label ?? 'Your location',
     postcode: place.postcode,
+    area: place.area ?? null,
     uvIndex: uv,
     uvRisk: uvRisk(uv),
     fetchedAt: now,
@@ -270,6 +306,7 @@ async function fetchWttr(place: Place, fetcher: Fetch, now: number) {
     icon,
     place: place.label ?? json.nearest_area?.[0]?.areaName?.[0]?.value ?? 'Your location',
     postcode: place.postcode,
+    area: place.area ?? null,
     uvIndex: uv,
     uvRisk: uvRisk(uv),
     fetchedAt: now,

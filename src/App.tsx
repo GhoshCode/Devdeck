@@ -166,16 +166,18 @@ export default function App() {
         topBar={
           <TopBar
             weather={<WeatherUV onSetup={() => openSettings('profile')} />}
-            command={<CommandPrompt />}
             todo={<TodoWidget />}
             git={<GitWidget />}
           />
         }
         searchRow={
-          <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3 sm:flex-nowrap">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 md:flex-nowrap">
             <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
             <SiteMapButton />
             <BookmarkButton />
+            <div className="w-full md:w-[260px] md:shrink-0 xl:w-[300px]">
+              <CommandPrompt />
+            </div>
           </div>
         }
         left={<ProcessingPanel />}

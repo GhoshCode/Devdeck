@@ -194,6 +194,54 @@ export interface RepoSummary {
   pushedAt: number; // epoch ms
   url: string;
   fork: boolean;
+  language: string | null;
+  stars: number;
+  forks: number;
+  openIssues: number; // issues + pull requests
+  description: string | null;
+}
+
+export interface GitProfile {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+  url: string;
+  followers: number;
+  following: number;
+  publicRepos: number;
+}
+
+// Name, avatar and counts for the Git widget header.
+export async function loadProfile(
+  username: string,
+  token: string,
+  opts: { force?: boolean; fetcher?: Fetch } = {},
+): Promise<GitProfile> {
+  const key = `profile|${cacheKey(username, token)}`;
+  if (!opts.force) {
+    const hit = readCache<GitProfile>(CACHE_NAME, key, GIT_TTL_MS);
+    if (hit) return hit;
+  }
+  const u = await ghJson<{
+    login: string;
+    name: string | null;
+    avatar_url: string;
+    html_url: string;
+    followers: number;
+    following: number;
+    public_repos: number;
+  }>(`https://api.github.com/users/${encodeURIComponent(username)}`, token, opts.fetcher ?? fetch);
+  const profile: GitProfile = {
+    login: u.login,
+    name: u.name,
+    avatarUrl: u.avatar_url,
+    url: u.html_url,
+    followers: u.followers,
+    following: u.following,
+    publicRepos: u.public_repos,
+  };
+  writeCache(CACHE_NAME, key, profile);
+  return profile;
 }
 
 export interface RepoCommit {
@@ -230,13 +278,25 @@ export async function loadRepos(
   token: string,
   opts: { force?: boolean; fetcher?: Fetch } = {},
 ): Promise<RepoSummary[]> {
-  const key = `repos|${cacheKey(username, token)}`;
+  const key = `repos2|${cacheKey(username, token)}`; // v2: with language, stars, forks
   if (!opts.force) {
     const hit = readCache<RepoSummary[]>(CACHE_NAME, key, GIT_TTL_MS);
     if (hit) return hit;
   }
   const raw = await ghJson<
-    Array<{ name: string; full_name: string; default_branch: string; pushed_at: string | null; html_url: string; fork: boolean }>
+    Array<{
+      name: string;
+      full_name: string;
+      default_branch: string;
+      pushed_at: string | null;
+      html_url: string;
+      fork: boolean;
+      language: string | null;
+      stargazers_count: number;
+      forks_count: number;
+      open_issues_count: number;
+      description: string | null;
+    }>
   >(
     `https://api.github.com/users/${encodeURIComponent(username)}/repos?type=owner&sort=pushed&per_page=100`,
     token,
@@ -250,6 +310,11 @@ export async function loadRepos(
       pushedAt: r.pushed_at ? Date.parse(r.pushed_at) : 0,
       url: r.html_url,
       fork: r.fork,
+      language: r.language ?? null,
+      stars: r.stargazers_count ?? 0,
+      forks: r.forks_count ?? 0,
+      openIssues: r.open_issues_count ?? 0,
+      description: r.description ?? null,
     }))
     .sort((a, b) => b.pushedAt - a.pushedAt);
   writeCache(CACHE_NAME, key, repos);

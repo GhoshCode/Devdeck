@@ -41,7 +41,6 @@ export const BookmarkButton = memo(function BookmarkButton() {
         <svg className="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
           <path d="M5 2.5A1.5 1.5 0 003.5 4v13.2a.5.5 0 00.8.4L10 13.5l5.7 4.1a.5.5 0 00.8-.4V4A1.5 1.5 0 0015 2.5H5z" />
         </svg>
-        <span className="hidden max-sm:inline md:inline">BOOKMARKS</span>
       </button>
       <AnimatePresence>{open && <BookmarkDrawer onClose={() => setOpen(false)} />}</AnimatePresence>
     </>

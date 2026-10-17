@@ -117,11 +117,12 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
     );
   }
 
+  const where = data ? (data.area ? `${data.area}, ${data.place}` : data.place) : '';
   const updated = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const title = error
     ? `${error} — click to retry`
     : data
-      ? `${data.conditionText} in ${data.place}${data.postcode ? ` ${data.postcode}` : ''} · ${data.source}, updated ${updated} (refreshes every 15 min) — click to open ${data.source}`
+      ? `${data.conditionText} in ${where}${data.postcode ? ` ${data.postcode}` : ''} · ${data.source}, updated ${updated} (refreshes every 15 min) — click to open ${data.source}`
       : 'Loading weather…';
   const site = !error && data?.siteUrl ? data.siteUrl : null;
 
@@ -139,7 +140,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
         title={title}
         aria-label={
           data
-            ? `Weather in ${data.place}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}`
+            ? `Weather in ${where}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}`
             : 'Weather'
         }
         data-testid="weather-uv"
@@ -167,7 +168,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
           <span aria-hidden className="text-[9px]">
             📍
           </span>
-          <span className="truncate font-medium">{data?.place ?? (error ? 'Unavailable' : 'Locating…')}</span>
+          <span className="truncate font-medium">{data ? (data.area ?? data.place) : (error ? 'Unavailable' : 'Locating…')}</span>
           {data?.postcode && <span className="shrink-0 font-mono text-[9px] text-white/40">{data.postcode}</span>}
         </span>
       </a>

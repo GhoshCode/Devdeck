@@ -41,8 +41,7 @@ export const SiteMapButton = memo(function SiteMapButton() {
         className="glass-raised flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-semibold tracking-wide text-white/80 transition-colors hover:bg-white/10 hover:text-white max-sm:flex-1"
       >
         <HierarchyIcon className="size-4" />
-        <span className="hidden lg:inline">SITE MAP &amp; HIERARCHY</span>
-        <span className="sm:hidden">SITE MAP</span>
+        <span className="max-md:hidden">SITE MAP</span>
       </button>
       {createPortal(<AnimatePresence>{open && <SiteMapModal onClose={() => setOpen(false)} />}</AnimatePresence>, document.body)}
     </>

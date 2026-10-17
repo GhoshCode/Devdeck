@@ -8,17 +8,19 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
-  type ReactNode,
 } from 'react';
 import { useStore } from '../../store';
+import { localDateKey } from '../../lib/time';
 import {
   GIT_TTL_MS,
   buildWeeks,
   cachedGitStats,
   loadGitStats,
+  loadProfile,
   loadRepoActivity,
   loadRepos,
   type ContributionDay,
+  type GitProfile,
   type GitStats,
   type Level,
   type RepoActivity,
@@ -26,17 +28,21 @@ import {
 } from '../../services/github';
 
 // GIT COMMITS (spec §3.5), top to bottom:
-//   repo   — the repository you pushed to most recently (click for all repos)
-//   tiles  — the last six months of contributions, streaks and total beside them
-//   branch — where that repo's latest push landed, with its newest commits;
-//            every commit links to GitHub
+//   profile — avatar, name, @login, followers / following / public repos
+//   repo    — the repository you pushed to last, shown as text; click it to
+//             turn it into a searchable list of all your repos; its language,
+//             stars, forks and open issues underneath
+//   tiles   — exactly the last six months up to today, month labels on top;
+//             streak, best streak, total and active days beside them
+//   branch  — where that repo's latest push landed, and its newest commits;
+//             every commit links to GitHub
 // Everything refreshes every 30 minutes (↻ forces it). With no username it
 // shows an inline setup field.
 
-const WEEKS = 26; // ≈ 6 months
-const CELL = 10; // largest tile size (px)
+const CELL = 11; // largest tile size (px)
 const MIN_CELL = 6;
 const GAP = 2;
+const MONTHS_BACK = 6;
 
 // GitHub's greens; the --gh-* tokens switch to the light palette in light mode.
 const LEVEL_BG: Record<Level, string> = {
@@ -47,7 +53,42 @@ const LEVEL_BG: Record<Level, string> = {
   4: 'var(--gh-4)',
 };
 
+// GitHub linguist colours for the languages people use most.
+const LANG_COLOR: Record<string, string> = {
+  TypeScript: '#3178c6',
+  JavaScript: '#f1e05a',
+  Python: '#3572A5',
+  Go: '#00ADD8',
+  Rust: '#dea584',
+  Java: '#b07219',
+  Kotlin: '#A97BFF',
+  Swift: '#F05138',
+  'C#': '#178600',
+  'C++': '#f34b7d',
+  C: '#555555',
+  Ruby: '#701516',
+  PHP: '#4F5D95',
+  HTML: '#e34c26',
+  CSS: '#563d7c',
+  Shell: '#89e051',
+  Dart: '#00B4AB',
+  Vue: '#41b883',
+};
+
 type Load<T> = { status: 'idle' | 'loading' | 'ready' | 'error'; data: T | null; error?: string };
+const message = (err: unknown) => (err instanceof Error ? err.message : 'GitHub unavailable');
+
+// Runs a loader into a Load<T> state slot.
+function useLoad<T>() {
+  const [state, setState] = useState<Load<T>>({ status: 'idle', data: null });
+  const run = useCallback((p: Promise<T>) => {
+    setState((s) => ({ ...s, status: 'loading' }));
+    p.then((data) => setState({ status: 'ready', data })).catch((err) =>
+      setState((s) => ({ ...s, status: 'error', error: message(err) })),
+    );
+  }, []);
+  return [state, run, setState] as const;
+}
 
 export const GitWidget = memo(function GitWidget() {
   const username = useStore((s) => s.settings.githubUsername);
@@ -55,34 +96,31 @@ export const GitWidget = memo(function GitWidget() {
   const gitRepo = useStore((s) => s.settings.gitRepo ?? null);
   const updateSettings = useStore((s) => s.updateSettings);
 
-  const [stats, setStats] = useState<Load<GitStats>>(() => {
-    const hit = username ? cachedGitStats(username, token) : null;
-    return { status: hit ? 'ready' : 'idle', data: hit };
-  });
-  const [repos, setRepos] = useState<Load<RepoSummary[]>>({ status: 'idle', data: null });
-  const [activity, setActivity] = useState<Load<RepoActivity>>({ status: 'idle', data: null });
+  const [stats, runStats, setStats] = useLoad<GitStats>();
+  const [profile, runProfile] = useLoad<GitProfile>();
+  const [repos, runRepos] = useLoad<RepoSummary[]>();
+  const [activity, runActivity] = useLoad<RepoActivity>();
   const [hovered, setHovered] = useState<ContributionDay | null>(null);
 
-  const message = (err: unknown) => (err instanceof Error ? err.message : 'GitHub unavailable');
+  // Show cached contributions immediately.
+  useLayoutEffect(() => {
+    const hit = username ? cachedGitStats(username, token) : null;
+    if (hit) setStats({ status: 'ready', data: hit });
+  }, [username, token, setStats]);
 
   const refresh = useCallback(
     (force: boolean) => {
       if (!username) return;
-      setStats((s) => ({ ...s, status: 'loading' }));
-      loadGitStats(username, token, { force })
-        .then((data) => setStats({ status: 'ready', data }))
-        .catch((err) => setStats((s) => ({ ...s, status: 'error', error: message(err) })));
-      setRepos((s) => ({ ...s, status: 'loading' }));
-      loadRepos(username, token, { force })
-        .then((data) => setRepos({ status: 'ready', data }))
-        .catch((err) => setRepos((s) => ({ ...s, status: 'error', error: message(err) })));
+      runStats(loadGitStats(username, token, { force }));
+      runProfile(loadProfile(username, token, { force }));
+      runRepos(loadRepos(username, token, { force }));
     },
-    [username, token],
+    [username, token, runStats, runProfile, runRepos],
   );
 
   useEffect(() => {
     refresh(false);
-    const timer = setInterval(() => refresh(false), GIT_TTL_MS);
+    const timer = setInterval(() => refresh(false), GIT_TTL_MS); // every 30 minutes
     return () => clearInterval(timer);
   }, [refresh]);
 
@@ -94,44 +132,56 @@ export const GitWidget = memo(function GitWidget() {
 
   const loadActivity = useCallback(
     (force: boolean) => {
-      if (!repo) return;
-      setActivity((s) => ({ ...s, status: 'loading' }));
-      loadRepoActivity(repo, token, { force })
-        .then((data) => setActivity({ status: 'ready', data }))
-        .catch((err) => setActivity((s) => ({ ...s, status: 'error', error: message(err) })));
+      if (repo) runActivity(loadRepoActivity(repo, token, { force }));
     },
-    [repo, token],
+    [repo, token, runActivity],
   );
-  useEffect(() => loadActivity(false), [loadActivity]);
+  useEffect(() => {
+    loadActivity(false);
+    const timer = setInterval(() => loadActivity(false), GIT_TTL_MS);
+    return () => clearInterval(timer);
+  }, [loadActivity]);
 
   if (!username) return <GitSetup />;
 
-  const days = stats.data?.days ?? [];
-  const loading = stats.status === 'loading' || repos.status === 'loading' || activity.status === 'loading';
+  const loading = [stats, profile, repos, activity].some((l) => l.status === 'loading');
   const shown = activity.data && repo && activity.data.fullName === repo.fullName ? activity.data : null;
   const now = Date.now();
+  const updatedAt = stats.data?.fetchedAt;
 
   return (
-    <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1.5 px-3 pt-2 pb-2">
-      {/* Top: repo <current repo ▾> */}
+    <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1.5 px-3 pt-2.5 pb-2.5">
+      {/* Profile */}
       <div className="flex min-w-0 items-center gap-2">
-        <a href={`https://github.com/${username}`} title={`@${username} on GitHub`} aria-label={`@${username} on GitHub`}>
-          <GitHubMark />
+        <a href={profile.data?.url ?? `https://github.com/${username}`} className="shrink-0" title={`@${username} on GitHub`}>
+          {profile.data ? (
+            <img src={profile.data.avatarUrl} alt="" className="size-6 rounded-full ring-1 ring-white/15" loading="lazy" />
+          ) : (
+            <span className="flex size-6 items-center justify-center rounded-full bg-white/[0.06]">
+              <GitHubMark />
+            </span>
+          )}
         </a>
-        <span className="shrink-0 font-display text-[10px] font-semibold tracking-[0.18em] text-white/55 uppercase">Repo</span>
-        <div className="min-w-0 flex-1">
-          <Picker
-            label="Repository"
-            icon="📁"
-            value={repo?.name ?? (repos.status === 'error' ? 'Repos unavailable' : 'Loading repos…')}
-            badge={repos.data ? `${repos.data.length} ${repos.data.length === 1 ? 'repo' : 'repos'}` : undefined}
-            options={(repos.data ?? []).map((r) => ({ id: r.fullName, label: r.name, hint: ago(r.pushedAt, now) }))}
-            selected={repo?.fullName ?? null}
-            searchable
-            onPick={(id) => updateSettings({ gitRepo: id })}
-            title={repos.error}
-          />
+        <div className="min-w-0 leading-tight">
+          <a
+            href={profile.data?.url ?? `https://github.com/${username}`}
+            className="block truncate text-[12px] font-semibold text-white/90 hover:underline"
+          >
+            {profile.data?.name ?? username}
+          </a>
+          <span className="block truncate font-mono text-[9.5px] text-white/50">
+            @{profile.data?.login ?? username}
+            {profile.data && (
+              <span className="hidden @min-[360px]:inline">
+                {' '}
+                · {profile.data.followers} followers · {profile.data.following} following · {profile.data.publicRepos} repos
+              </span>
+            )}
+          </span>
         </div>
+        <span className="ml-auto shrink-0 font-mono text-[9px] text-white/40" title="Refreshes every 30 minutes">
+          {updatedAt ? `updated ${ago(updatedAt, now)}` : ''}
+        </span>
         <button
           type="button"
           onClick={() => {
@@ -139,51 +189,338 @@ export const GitWidget = memo(function GitWidget() {
             loadActivity(true);
           }}
           aria-label="Refresh contributions"
-          title={stats.data ? `Updated ${new Date(stats.data.fetchedAt).toLocaleTimeString()} — refresh` : 'Refresh'}
-          className={`shrink-0 text-xs text-white/35 hover:text-white/80 ${loading ? 'animate-spin' : ''}`}
+          title="Refresh now (auto every 30 min)"
+          className={`shrink-0 text-xs text-white/40 hover:text-white/85 ${loading ? 'animate-spin' : ''}`}
         >
           ↻
         </button>
       </div>
 
-      {/* Middle: six months of tiles, stats beside them */}
+      {/* Repo — text until clicked */}
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 font-display text-[9.5px] font-semibold tracking-[0.18em] text-white/50 uppercase">Repo</span>
+        <RepoSelector
+          repos={repos.data ?? []}
+          current={repo}
+          status={repos.status}
+          error={repos.error}
+          onPick={(id) => updateSettings({ gitRepo: id })}
+        />
+      </div>
+      {repo && <RepoMeta repo={repo} />}
+
+      {/* Six months of tiles, stats beside them */}
       <div className="flex min-h-0 flex-1 gap-3">
         {stats.status === 'error' && !stats.data ? (
           <p className="flex-1 text-[11px] text-red-300/80" role="alert">
             {stats.error}
           </p>
         ) : (
-          <Heatmap days={days} loading={!stats.data} onHover={setHovered} />
+          <Heatmap days={stats.data?.days ?? []} loading={!stats.data} onHover={setHovered} />
         )}
-        <div data-git-stats className="flex min-w-0 flex-1 flex-col justify-between font-mono">
-          <div className="flex flex-col gap-0.5">
-            <Stat value={stats.data?.currentStreak} unit="d" label="streak" accent />
-            <Stat value={stats.data?.longestStreak} unit="d" label="best" />
-            <Stat value={stats.data ? lastWeeksTotal(days, WEEKS) : undefined} label="in 6 mo" />
-          </div>
-          <p data-testid="git-activity" className="truncate text-[9px] text-white/55">
-            {hovered ? (
-              <span className="text-emerald-300">
-                {hovered.count} on {formatDay(hovered.date)}
-              </span>
-            ) : (
-              <span aria-hidden className="flex items-center gap-0.5 text-white/40">
-                Less
-                {([0, 1, 2, 3, 4] as const).map((l) => (
-                  <span key={l} className="inline-block size-[7px] rounded-[1.5px]" style={{ background: LEVEL_BG[l] }} />
-                ))}
-                More
-              </span>
-            )}
-          </p>
-        </div>
+        <StatsColumn stats={stats.data} hovered={hovered} />
       </div>
 
-      {/* Bottom: the branch with the latest push, and its newest commits */}
+      {/* The branch with the latest push, and its newest commits */}
       <RecentCommits repo={repo} activity={shown} status={activity.status} error={activity.error} now={now} />
     </div>
   );
 });
+
+// ---- Repo selector: plain text that turns into a searchable list ----------------
+
+function RepoSelector({
+  repos,
+  current,
+  status,
+  error,
+  onPick,
+}: {
+  repos: RepoSummary[];
+  current: RepoSummary | null;
+  status: Load<unknown>['status'];
+  error?: string;
+  onPick: (fullName: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [active, setActive] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const q = query.trim().toLowerCase();
+  const shown = q ? repos.filter((r) => r.name.toLowerCase().includes(q)) : repos;
+  const now = Date.now();
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !rootRef.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const pick = (id: string) => {
+    onPick(id);
+    setOpen(false);
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      setOpen(false);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (shown.length) setActive((i) => (i + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length);
+    } else if (e.key === 'Enter' && shown[active]) {
+      e.preventDefault();
+      pick(shown[active].fullName);
+    }
+  };
+
+  if (!current) {
+    return (
+      <span className="truncate text-[12px] text-white/50" title={error}>
+        {status === 'error' ? (error ?? 'Repos unavailable') : status === 'loading' ? 'Loading repos…' : 'No public repos'}
+      </span>
+    );
+  }
+
+  return (
+    <div ref={rootRef} className="relative min-w-0 flex-1">
+      {open ? (
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActive(0);
+          }}
+          onKeyDown={onKeyDown}
+          placeholder={`Search ${repos.length} repositories…`}
+          aria-label="Search repositories"
+          role="combobox"
+          aria-expanded
+          aria-controls="git-repo-list"
+          className="git-picker w-full rounded-md border px-2 py-[3px] text-[12px] text-white placeholder-white/40 outline-none"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('');
+            setActive(Math.max(0, repos.findIndex((r) => r.fullName === current.fullName)));
+            setOpen(true);
+          }}
+          aria-label={`Repository: ${current.name}. Click to choose another`}
+          title={`${current.description ?? current.fullName} — click to choose another repository`}
+          className="group/repo flex max-w-full min-w-0 items-center gap-1 text-left"
+        >
+          <span className="truncate text-[13px] font-semibold text-white group-hover/repo:underline">{current.name}</span>
+          <span className="shrink-0 text-[10px] text-white/35 transition-colors group-hover/repo:text-white/70">▾</span>
+        </button>
+      )}
+      {open && (
+        <div className="dropdown-menu absolute top-full right-0 left-0 z-50 mt-1 min-w-[260px] overflow-hidden rounded-xl border shadow-2xl">
+          <div id="git-repo-list" role="listbox" aria-label="Repositories" className="ultra-thin-scrollbar max-h-[260px] overflow-y-auto py-1">
+            {shown.map((r, i) => (
+              <div
+                key={r.fullName}
+                role="option"
+                aria-selected={r.fullName === current.fullName}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => pick(r.fullName)}
+                className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 ${active === i ? 'dropdown-active' : ''}`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-medium text-white/90">
+                    {r.name}
+                    {r.fork && <span className="ml-1 text-[9px] text-white/40">fork</span>}
+                  </span>
+                  <span className="flex items-center gap-2 font-mono text-[9.5px] text-white/45">
+                    {r.language && (
+                      <span className="flex items-center gap-1">
+                        <span className="size-1.5 rounded-full" style={{ background: LANG_COLOR[r.language] ?? '#8b949e' }} />
+                        {r.language}
+                      </span>
+                    )}
+                    {r.stars > 0 && <span>★ {r.stars}</span>}
+                    <span>pushed {ago(r.pushedAt, now)}</span>
+                  </span>
+                </span>
+                {r.fullName === current.fullName && <span className="text-xs text-[var(--color-accent)]">✓</span>}
+              </div>
+            ))}
+            {shown.length === 0 && <p className="px-3 py-2 text-xs text-white/45">No repository matches “{query}”</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RepoMeta({ repo }: { repo: RepoSummary }) {
+  return (
+    <a
+      href={repo.url}
+      title={repo.description ?? `${repo.fullName} on GitHub`}
+      className="-mt-1 flex min-w-0 items-center gap-2.5 font-mono text-[9.5px] text-white/50 hover:text-white/75"
+    >
+      {repo.language && (
+        <span className="flex items-center gap-1">
+          <span className="size-2 rounded-full" style={{ background: LANG_COLOR[repo.language] ?? '#8b949e' }} />
+          {repo.language}
+        </span>
+      )}
+      <span title="Stars">★ {repo.stars}</span>
+      <span title="Forks">⑂ {repo.forks}</span>
+      <span title="Open issues and pull requests">◎ {repo.openIssues} open</span>
+      <span className="truncate" title="Default branch">
+        ⎇ {repo.defaultBranch}
+      </span>
+    </a>
+  );
+}
+
+// ---- Contributions ---------------------------------------------------------------
+
+// The first day shown: the same date six months ago.
+function windowStart(today: Date): Date {
+  return new Date(today.getFullYear(), today.getMonth() - MONTHS_BACK, today.getDate());
+}
+
+function weeksSince(start: Date, today: Date): number {
+  const sundayOfStart = new Date(start.getFullYear(), start.getMonth(), start.getDate() - start.getDay());
+  return Math.floor((today.getTime() - sundayOfStart.getTime()) / (7 * 86_400_000)) + 1;
+}
+
+const monthFmt = new Intl.DateTimeFormat('en-US', { month: 'short' });
+const dayFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
+function windowDays(days: readonly ContributionDay[], today = new Date()): ContributionDay[] {
+  const from = localDateKey(windowStart(today));
+  const to = localDateKey(today);
+  return days.filter((d) => d.date >= from && d.date <= to);
+}
+
+function StatsColumn({ stats, hovered }: { stats: GitStats | null; hovered: ContributionDay | null }) {
+  const inWindow = stats ? windowDays(stats.days) : [];
+  const total = inWindow.reduce((sum, d) => sum + d.count, 0);
+  const active = inWindow.filter((d) => d.count > 0).length;
+  return (
+    <div data-git-stats className="flex min-w-0 flex-1 flex-col justify-between font-mono">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+        <Stat value={stats?.currentStreak} unit="d" label="streak" accent />
+        <Stat value={stats?.longestStreak} unit="d" label="best" />
+        <Stat value={stats ? total : undefined} label="6 months" />
+        <Stat value={stats ? active : undefined} label="active days" />
+      </div>
+      <p data-testid="git-activity" className="truncate text-[9px] text-white/55">
+        {hovered ? (
+          <span className="text-emerald-300">
+            {hovered.count} contribution{hovered.count === 1 ? '' : 's'} · {formatDay(hovered.date)}
+          </span>
+        ) : (
+          <span aria-hidden className="flex items-center gap-0.5 text-white/40">
+            Less
+            {([0, 1, 2, 3, 4] as const).map((l) => (
+              <span key={l} className="inline-block size-[7px] rounded-[1.5px]" style={{ background: LEVEL_BG[l] }} />
+            ))}
+            More
+          </span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+// Sunday-first week columns covering exactly the last six months up to today
+// (days outside the window stay blank), with month labels above.
+function Heatmap({
+  days,
+  loading,
+  onHover,
+}: {
+  days: readonly ContributionDay[];
+  loading: boolean;
+  onHover: (day: ContributionDay | null) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [cell, setCell] = useState(CELL);
+  const today = new Date();
+  const start = windowStart(today);
+  const startKey = localDateKey(start);
+  const weeks = weeksSince(start, today);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const byHeight = Math.floor((el.clientHeight - 12 + GAP) / 7) - GAP; // 12px for month labels
+      setCell(Math.max(MIN_CELL, Math.min(CELL, byHeight || CELL)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const columns = useMemo(
+    () => buildWeeks(days, weeks, new Date()).map((week) => week.map((d) => (d && d.date >= startKey ? d : null))),
+    [days, weeks, startKey],
+  );
+  // A month label over the first column that starts a new month (skipped when
+  // the next month starts too soon for both to fit).
+  const starts = columns.map((week, i) => {
+    const first = week.find(Boolean);
+    if (!first) return null;
+    const month = first.date.slice(0, 7);
+    return month === columns[i - 1]?.find(Boolean)?.date.slice(0, 7) ? null : month;
+  });
+  const labels = starts.map((month, i) => {
+    if (!month || starts.slice(i + 1, i + 3).some(Boolean)) return null;
+    const [y, m] = month.split('-').map(Number);
+    return monthFmt.format(new Date(y, m - 1, 1));
+  });
+
+  return (
+    <div
+      ref={ref}
+      onMouseLeave={() => onHover(null)}
+      className="flex min-h-0 shrink-0 flex-col overflow-hidden"
+      style={{ width: weeks * (cell + GAP) - GAP }}
+      aria-label={`Contribution graph, ${dayFmt.format(start)} – ${dayFmt.format(today)}`}
+      title={`${dayFmt.format(start)} – ${dayFmt.format(today)}`}
+    >
+      <div className="relative h-3 shrink-0 font-mono text-[8.5px] leading-none text-white/45">
+        {labels.map((label, i) =>
+          label ? (
+            <span key={i} className="absolute top-0" style={{ left: i * (cell + GAP) }}>
+              {label}
+            </span>
+          ) : null,
+        )}
+      </div>
+      <div className="flex" style={{ gap: GAP }}>
+        {columns.map((week, i) => (
+          <div key={i} className="flex flex-col" style={{ gap: GAP }}>
+            {week.map((day, j) => (
+              <span
+                key={j}
+                onMouseEnter={day ? () => onHover(day) : undefined}
+                className={loading ? 'animate-pulse' : 'transition-transform hover:scale-125'}
+                style={{
+                  width: cell,
+                  height: cell,
+                  borderRadius: 2,
+                  background: day ? LEVEL_BG[day.level] : 'transparent',
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Latest branch and commits ------------------------------------------------------
 
 function RecentCommits({
   repo,
@@ -241,134 +578,8 @@ function RecentCommits({
   );
 }
 
-// A compact field-like button that opens a list (optionally searchable).
-function Picker({
-  label,
-  icon,
-  value,
-  badge,
-  options,
-  selected,
-  searchable = false,
-  mono = false,
-  disabled = false,
-  title,
-  onPick,
-}: {
-  label: string;
-  icon: ReactNode;
-  value: string;
-  badge?: string;
-  options: Array<{ id: string; label: string; hint?: string }>;
-  selected: string | null;
-  searchable?: boolean;
-  mono?: boolean;
-  disabled?: boolean;
-  title?: string;
-  onPick: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [active, setActive] = useState(0);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const q = query.trim().toLowerCase();
-  const shown = q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+// ---- Helpers --------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => !rootRef.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
-
-  const openList = () => {
-    setQuery('');
-    setActive(Math.max(0, options.findIndex((o) => o.id === selected)));
-    setOpen(true);
-  };
-  const pick = (id: string) => {
-    onPick(id);
-    setOpen(false);
-  };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (!open) return;
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      setOpen(false);
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (shown.length) setActive((i) => (i + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length);
-    } else if (e.key === 'Enter' && shown[active]) {
-      e.preventDefault();
-      pick(shown[active].id);
-    }
-  };
-
-  return (
-    <div ref={rootRef} className="relative min-w-0" onKeyDown={onKeyDown}>
-      <button
-        type="button"
-        disabled={disabled || options.length === 0}
-        onClick={() => (open ? setOpen(false) : openList())}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`${label}: ${value}`}
-        title={title ?? `${label}: ${value}`}
-        className="git-picker flex w-full min-w-0 items-center gap-1.5 rounded-md border px-1.5 py-[3px] text-left disabled:cursor-default"
-      >
-        <span aria-hidden className="shrink-0 text-[10px] text-white/55">
-          {icon}
-        </span>
-        <span className={`min-w-0 flex-1 truncate text-[11px] font-semibold text-white/90 ${mono ? 'font-mono' : ''}`}>{value}</span>
-        {badge && <span className="shrink-0 font-mono text-[9px] text-white/50">{badge}</span>}
-        <svg className={`size-3 shrink-0 text-white/45 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-          <path d="M3 4.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {open && (
-        <div className="dropdown-menu absolute top-full right-0 z-50 mt-1 w-[max(100%,240px)] overflow-hidden rounded-xl border shadow-2xl">
-          {searchable && (
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setActive(0);
-              }}
-              placeholder={`Find a ${label.toLowerCase()}…`}
-              aria-label={`Find a ${label.toLowerCase()}`}
-              className="w-full border-b border-white/[0.08] bg-transparent px-3 py-2 text-xs text-white placeholder-white/35 outline-none"
-            />
-          )}
-          <div role="listbox" aria-label={`${label} list`} className="ultra-thin-scrollbar max-h-[240px] overflow-y-auto py-1">
-            {shown.map((o, i) => (
-              <div
-                key={o.id}
-                role="option"
-                aria-selected={o.id === selected}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => pick(o.id)}
-                className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs ${active === i ? 'dropdown-active' : ''}`}
-              >
-                <span className={`min-w-0 flex-1 truncate text-white/90 ${mono ? 'font-mono' : ''}`}>{o.label}</span>
-                {o.hint && <span className="shrink-0 font-mono text-[10px] text-white/45">{o.hint}</span>}
-                {o.id === selected && <span className="text-[var(--color-accent)]">✓</span>}
-              </div>
-            ))}
-            {shown.length === 0 && <p className="px-3 py-2 text-xs text-white/45">No match</p>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function lastWeeksTotal(days: readonly ContributionDay[], weeks: number): number {
-  const cols = buildWeeks(days, weeks, new Date());
-  return cols.flat().reduce((sum, d) => sum + (d?.count ?? 0), 0);
-}
-
-const dayFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 const formatDay = (key: string) => {
   const [y, m, d] = key.split('-').map(Number);
   return dayFmt.format(new Date(y, m - 1, d));
@@ -377,7 +588,8 @@ const formatDay = (key: string) => {
 function ago(then: number, now: number): string {
   if (!then) return '';
   const mins = Math.max(0, Math.round((now - then) / 60_000));
-  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
   const hours = Math.round(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
@@ -394,74 +606,13 @@ function GitHubMark() {
 
 function Stat({ value, unit = '', label, accent = false }: { value?: number; unit?: string; label: string; accent?: boolean }) {
   return (
-    <span className="flex items-baseline gap-1">
-      <span className={`text-[13px] font-bold tabular-nums ${accent ? 'text-[#39d353]' : 'text-white/90'}`}>
+    <span className="flex min-w-0 flex-col leading-tight">
+      <span className={`text-[14px] font-bold tabular-nums ${accent ? 'text-[#39d353]' : 'text-white/90'}`}>
         {value ?? '–'}
         {value !== undefined && unit}
       </span>
-      <span className="text-[9px] tracking-wider text-white/45 uppercase">{label}</span>
+      <span className="truncate text-[8.5px] tracking-wider text-white/45 uppercase">{label}</span>
     </span>
-  );
-}
-
-// Twenty-six Sunday-first week columns (≈ 6 months), newest on the right. Tile
-// size follows the available height so all seven rows fit.
-function Heatmap({
-  days,
-  loading,
-  onHover,
-}: {
-  days: readonly ContributionDay[];
-  loading: boolean;
-  onHover: (day: ContributionDay | null) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [cell, setCell] = useState(CELL);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => {
-      const byHeight = Math.floor((el.clientHeight + GAP) / 7) - GAP;
-      setCell(Math.max(MIN_CELL, Math.min(CELL, byHeight || CELL)));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const columns = useMemo(() => buildWeeks(days, WEEKS, new Date()), [days]);
-
-  return (
-    <div
-      ref={ref}
-      onMouseLeave={() => onHover(null)}
-      className="min-h-0 flex-1 overflow-hidden"
-      style={{ width: WEEKS * (cell + GAP) - GAP }}
-      aria-label="Contribution graph, last 6 months"
-    >
-      <div className="flex" style={{ gap: GAP }}>
-        {columns.map((week, i) => (
-          <div key={i} className="flex flex-col" style={{ gap: GAP }}>
-            {week.map((day, j) => (
-              <span
-                key={j}
-                onMouseEnter={day ? () => onHover(day) : undefined}
-                title={day ? `${day.count} contribution${day.count === 1 ? '' : 's'} on ${formatDay(day.date)}` : undefined}
-                className={loading ? 'animate-pulse' : 'transition-transform hover:scale-125'}
-                style={{
-                  width: cell,
-                  height: cell,
-                  borderRadius: 2,
-                  background: day ? LEVEL_BG[day.level] : 'transparent',
-                }}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 

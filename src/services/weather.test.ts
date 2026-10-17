@@ -6,6 +6,7 @@ import {
   metSymbolToWmo,
   placeFromTimezone,
   reverseGeocode,
+  areaName,
   uvRisk,
 } from './weather';
 
@@ -56,6 +57,7 @@ describe('fetchWeather', () => {
       icon: 'rain',
       place: 'Kolkata',
       postcode: '700001',
+      area: null,
       uvIndex: 6.2,
       uvRisk: 'high',
       source: 'Open-Meteo',
@@ -165,9 +167,33 @@ test('geocodeCity reports unknown cities and returns a postcode when known', asy
   ).resolves.toEqual({ lat: 1, lon: 2, label: 'Kolkata', postcode: '700001' });
 });
 
-test('reverseGeocode prefers the city and never throws', async () => {
+test('reverseGeocode uses OpenStreetMap for the neighbourhood, BigDataCloud as fallback, and never throws', async () => {
+  const osm = (async (url: string) => ({
+    ok: true,
+    status: 200,
+    json: async () =>
+      url.includes('nominatim')
+        ? { address: { neighbourhood: 'Koramangala 4th Block', suburb: 'Kormangala East', city: 'Bengaluru', postcode: '560034' } }
+        : {},
+  })) as unknown as typeof fetch;
+  await expect(reverseGeocode(12.93, 77.62, osm)).resolves.toEqual({
+    label: 'Bengaluru',
+    postcode: '560034',
+    area: 'Kormangala',
+  });
+  // OSM answers without a city → BigDataCloud
   await expect(
     reverseGeocode(12.97, 77.59, jsonFetch({ city: 'Bengaluru', locality: 'Shanthala Nagar', postcode: '560037' })),
-  ).resolves.toEqual({ label: 'Bengaluru', postcode: '560037' });
-  await expect(reverseGeocode(0, 0, jsonFetch({}, false))).resolves.toEqual({ label: null, postcode: null });
+  ).resolves.toEqual({ label: 'Bengaluru', postcode: '560037', area: 'Shanthala Nagar' });
+  await expect(reverseGeocode(0, 0, jsonFetch({}, false))).resolves.toEqual({ label: null, postcode: null, area: null });
+});
+
+test.each([
+  [{ suburb: 'Kormangala East' }, 'Kormangala'],
+  [{ neighbourhood: 'Koramangala 4th Block' }, 'Koramangala'],
+  [{ suburb: 'Marathahalli' }, 'Marathahalli'],
+  [{ city_district: 'Bengaluru East City Corporation', quarter: 'Brookefield' }, 'Brookefield'],
+  [{ city_district: 'Bengaluru East City Corporation' }, null],
+])('areaName(%o) → %s', (addr, expected) => {
+  expect(areaName(addr)).toBe(expected);
 });
