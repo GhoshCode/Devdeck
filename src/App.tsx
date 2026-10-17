@@ -7,6 +7,7 @@ import { withThemeTransition } from './lib/themeTransition';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { TopBar } from './components/topbar/TopBar';
+import { GreetingCard } from './components/topbar/GreetingCard';
 import { WeatherUV } from './components/topbar/WeatherUV';
 import { CommandPrompt } from './components/topbar/CommandPrompt';
 import { TodoWidget } from './components/topbar/todo/TodoWidget';
@@ -165,6 +166,7 @@ export default function App() {
       <DashboardLayout
         topBar={
           <TopBar
+            greeting={<GreetingCard onSetName={() => openSettings('appearance')} />}
             weather={<WeatherUV onSetup={() => openSettings('profile')} />}
             command={<CommandPrompt />}
             todo={<TodoWidget />}

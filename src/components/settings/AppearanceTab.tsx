@@ -385,7 +385,7 @@ export function AppearanceTab() {
         </div>
       </Section>
 
-      <Section title="Greeting" hint="Shown after Good morning / afternoon / evening.">
+      <Section title="Greeting" hint="Your name is shown after Good morning / afternoon / evening.">
         <input
           type="text"
           value={settings.greetingName}
@@ -393,6 +393,12 @@ export function AppearanceTab() {
           placeholder="Your name"
           aria-label="Greeting name"
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
+        />
+        <Toggle
+          label="Daily motivational quote"
+          hint="A new quote every day under the greeting — hover it and press ↻ for another."
+          checked={settings.showQuote ?? true}
+          onChange={(v) => updateSettings({ showQuote: v })}
         />
       </Section>
 

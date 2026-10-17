@@ -1,4 +1,4 @@
-// Pure time helpers shared by the TIME widget, DateGreet and the to-do list.
+// Pure time helpers shared by the TIME widget, greeting card and the to-do list.
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
