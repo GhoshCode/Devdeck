@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   Category,
-  ClockStyle,
   FeedSource,
   FeedsConfig,
   ImportResult,
@@ -33,7 +32,7 @@ const asRecord = (v: unknown): Record<string, unknown> =>
 
 const toArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
-const CLOCK_STYLES: readonly ClockStyle[] = ['dseg7', 'cyberpunk', 'macos'];
+import { CLOCK_STYLES } from '../lib/clockStyles';
 
 const clamp = (n: unknown, min: number, max: number, fallback: number): number =>
   typeof n === 'number' && Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;

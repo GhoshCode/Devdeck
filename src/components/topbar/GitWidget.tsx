@@ -28,8 +28,8 @@ import {
 } from '../../services/github';
 
 // GIT COMMITS (spec §3.5), top to bottom:
-//   profile — avatar, @username, public repo count
-//   repo    — the repository you pushed to last, shown as text; click it to
+//   header  — avatar, @username, public repo count; on the right the repo you
+//             pushed to last, shown as text — click it to
 //             turn it into a searchable list of all your repos
 //   tiles   — exactly the last six months up to today, month labels on top;
 //             streak, best streak, total and active days beside them
@@ -162,10 +162,10 @@ export const GitWidget = memo(function GitWidget() {
             </span>
           )}
         </a>
-        <div className="min-w-0 leading-tight">
+        <div className="min-w-0 shrink-0 leading-tight">
           <a
             href={profile.data?.url ?? `https://github.com/${username}`}
-            className="block truncate text-[12px] font-semibold text-white/90 hover:underline"
+            className="block truncate text-[14.5px] font-semibold text-white/95 hover:underline"
           >
             @{profile.data?.login ?? username}
           </a>
@@ -175,9 +175,18 @@ export const GitWidget = memo(function GitWidget() {
             </span>
           )}
         </div>
-        <span className="ml-auto shrink-0 font-mono text-[9px] text-white/40" title="Refreshes every 30 minutes">
-          {updatedAt ? `updated ${ago(updatedAt, now)}` : ''}
-        </span>
+
+        {/* Repo — text until clicked, top right */}
+        <div className="ml-auto flex min-w-0 items-center justify-end gap-1.5">
+          <span className="shrink-0 font-display text-[9px] font-semibold tracking-[0.18em] text-white/45 uppercase">Repo</span>
+          <RepoSelector
+            repos={repos.data ?? []}
+            current={repo}
+            status={repos.status}
+            error={repos.error}
+            onPick={(id) => updateSettings({ gitRepo: id })}
+          />
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -185,23 +194,11 @@ export const GitWidget = memo(function GitWidget() {
             loadActivity(true);
           }}
           aria-label="Refresh contributions"
-          title="Refresh now (auto every 30 min)"
+          title={`${updatedAt ? `Updated ${ago(updatedAt, now)} · ` : ''}refresh now (auto every 30 min)`}
           className={`shrink-0 text-xs text-white/40 hover:text-white/85 ${loading ? 'animate-spin' : ''}`}
         >
           ↻
         </button>
-      </div>
-
-      {/* Repo — text until clicked */}
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="shrink-0 font-display text-[9.5px] font-semibold tracking-[0.18em] text-white/50 uppercase">Repo</span>
-        <RepoSelector
-          repos={repos.data ?? []}
-          current={repo}
-          status={repos.status}
-          error={repos.error}
-          onPick={(id) => updateSettings({ gitRepo: id })}
-        />
       </div>
 
       {/* Six months of tiles, stats beside them */}
@@ -278,7 +275,7 @@ function RepoSelector({
   }
 
   return (
-    <div ref={rootRef} className="relative min-w-0 flex-1">
+    <div ref={rootRef} className="relative flex min-w-0 justify-end">
       {open ? (
         <input
           autoFocus
@@ -293,7 +290,7 @@ function RepoSelector({
           role="combobox"
           aria-expanded
           aria-controls="git-repo-list"
-          className="git-picker w-full rounded-md border px-2 py-[3px] text-[12px] text-white placeholder-white/40 outline-none"
+          className="git-picker w-[220px] max-w-full rounded-md border px-2 py-[3px] text-[12px] text-white placeholder-white/40 outline-none"
         />
       ) : (
         <button
@@ -312,7 +309,7 @@ function RepoSelector({
         </button>
       )}
       {open && (
-        <div className="dropdown-menu absolute top-full right-0 left-0 z-50 mt-1 min-w-[260px] overflow-hidden rounded-xl border shadow-2xl">
+        <div className="dropdown-menu absolute top-full right-0 z-50 mt-1 w-[280px] overflow-hidden rounded-xl border shadow-2xl">
           <div id="git-repo-list" role="listbox" aria-label="Repositories" className="ultra-thin-scrollbar max-h-[260px] overflow-y-auto py-1">
             {shown.map((r, i) => (
               <div
@@ -381,7 +378,7 @@ function StatsColumn({ stats, hovered }: { stats: GitStats | null; hovered: Cont
         <Stat value={stats?.currentStreak} unit="d" label="streak" accent />
         <Stat value={stats?.longestStreak} unit="d" label="best" />
         <Stat value={stats ? total : undefined} label="6 months" />
-        <Stat value={stats ? active : undefined} label="active days" />
+        <Stat value={stats ? active : undefined} label="active" />
       </div>
       <p data-testid="git-activity" className="truncate text-[9px] text-white/55">
         {hovered ? (

@@ -37,7 +37,8 @@ export interface QuickLink {
 export type ThemeMode = 'dark' | 'light';
 
 // TIME widget face — IMPLEMENTATION_PLAN §7 Q9 / spec §3.1.
-export type ClockStyle = 'dseg7' | 'cyberpunk' | 'macos';
+export type { ClockStyle } from './lib/clockStyles';
+import type { ClockStyle } from './lib/clockStyles';
 
 export interface Settings {
   accentColor: string;

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 import { useStore } from '../../store';
 import { PRESET_THEMES, THEME_CATEGORIES, type PresetTheme, type ThemeCategory } from '../../store/themes';
 import { DEFAULT_SETTINGS } from '../../store/seed';
@@ -6,7 +6,9 @@ import { withThemeTransition } from '../../lib/themeTransition';
 import { contrastWithWhite, switchModePatch, systemMode } from '../../lib/appearance';
 import { DEFAULT_STUDIO, STUDIO_PALETTES, accentFromGradient, gradientCss, modeForGradient } from '../../lib/gradient';
 import { useNow } from '../../hooks/useNow';
-import { CLOCK_STYLES, CLOCK_STYLE_NAMES } from '../topbar/TimeWidget';
+import { CLOCK_STYLE_INFO } from '../../lib/clockStyles';
+import { clockParts } from '../../lib/time';
+import { ClockFace } from '../topbar/clock/faces';
 import type { ClockStyle, GradientStudio, Settings, ThemeMode } from '../../types';
 
 // Settings → Appearance & Display, ordered the way people tune a look:
@@ -28,17 +30,6 @@ const ACCENTS = [
   { name: 'Teal', hex: '#00c7be' },
   { name: 'Graphite', hex: '#8c8c8c' },
 ];
-
-const CLOCK_FONT: Record<ClockStyle, string> = {
-  dseg7: 'font-clock',
-  cyberpunk: 'font-cyber font-bold tracking-wide',
-  macos: 'font-mac font-light',
-};
-const CLOCK_DESC: Record<ClockStyle, string> = {
-  dseg7: '7-segment retro digital',
-  cyberpunk: 'Bold futuristic HUD with neon',
-  macos: 'Apple San Francisco typography',
-};
 
 const ANGLE_CHIPS = [
   { angle: 135, label: '↘ 135°' },
@@ -335,7 +326,7 @@ export function AppearanceTab() {
         <ClockFaces
           style={settings.clockStyle}
           h24={settings.clock24h}
-          accent={settings.accentColor}
+          showSeconds={settings.showSeconds}
           onPick={(id) => updateSettings({ clockStyle: id })}
         />
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -882,9 +873,6 @@ function LivePreview({ settings }: { settings: Settings }) {
   const ink = light ? 'rgba(29,29,31,0.75)' : 'rgba(255,255,255,0.8)';
   const muted = light ? 'rgba(60,60,67,0.18)' : 'rgba(255,255,255,0.14)';
   const now = useNow(30_000);
-  const time = now
-    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: !settings.clock24h })
-    .replace(/\s?[AP]M$/i, '');
 
   return (
     <div className="preview-window overflow-hidden rounded-2xl border">
@@ -914,13 +902,8 @@ function LivePreview({ settings }: { settings: Settings }) {
         />
         <div className="relative grid h-full grid-rows-[46px_22px_1fr] gap-2 p-3">
           <div className="grid grid-cols-[1.1fr_1fr_1fr_0.9fr] gap-2">
-            <div className="flex items-center justify-center rounded-lg" style={panel}>
-              <span
-                className={`${CLOCK_FONT[settings.clockStyle]} text-[18px] leading-none`}
-                style={{ color: settings.clockStyle === 'macos' ? ink : settings.accentColor }}
-              >
-                {time}
-              </span>
+            <div className="overflow-hidden rounded-lg" style={panel}>
+              <ClockFace style={settings.clockStyle} parts={clockParts(now, settings.clock24h)} showSeconds={false} now={now} />
             </div>
             {[0, 1].map((i) => (
               <div key={i} className="space-y-1.5 rounded-lg p-2" style={panel}>
@@ -1016,22 +999,52 @@ function ThemeThumb({ preset }: { preset: PresetTheme }) {
   );
 }
 
-function ClockFaces({
-  style,
-  h24,
-  accent,
-  onPick,
-}: {
-  style: ClockStyle;
-  h24: boolean;
-  accent: string;
-  onPick: (id: ClockStyle) => void;
-}) {
-  const now = useNow(30_000);
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: !h24 }).replace(/\s?[AP]M$/i, '');
+// Every clock face as a live preview, in one horizontal row. The scrollbar is
+// hair-thin and only shows while you scroll; a vertical wheel scrolls sideways.
+function ClockFaces({ style, h24, showSeconds, onPick }: { style: ClockStyle; h24: boolean; showSeconds: boolean; onPick: (id: ClockStyle) => void }) {
+  const now = useNow(1000);
+  const parts = clockParts(now, h24);
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrolling, setScrolling] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const show = () => {
+      setScrolling(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setScrolling(false), 900);
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if ((e.deltaY < 0 && el.scrollLeft <= 0) || (e.deltaY > 0 && el.scrollLeft >= max)) return; // let the page scroll at the ends
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('scroll', show, { passive: true });
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('scroll', show);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
+  // Keep the chosen face in view when the section opens.
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, []);
+
   return (
-    <div role="radiogroup" aria-label="Clock style" className="grid grid-cols-3 gap-3">
-      {CLOCK_STYLES.map((id) => {
+    <div
+      ref={ref}
+      role="radiogroup"
+      aria-label="Clock style"
+      className={`thin-autohide-scroll -mx-1 flex snap-x gap-3 overflow-x-auto px-1 pt-1 pb-2.5 ${scrolling ? 'is-scrolling' : ''}`}
+    >
+      {CLOCK_STYLE_INFO.map(({ id, name, desc }) => {
         const checked = style === id;
         return (
           <button
@@ -1039,18 +1052,17 @@ function ClockFaces({
             type="button"
             role="radio"
             aria-checked={checked}
-            aria-label={CLOCK_STYLE_NAMES[id]}
+            aria-label={name}
             onClick={() => onPick(id)}
-            className={`clock-card flex flex-col items-center gap-1.5 rounded-xl border px-2 pt-4 pb-2.5 ${checked ? 'is-active' : ''}`}
+            className={`clock-card flex w-[210px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border text-left ${checked ? 'is-active' : ''}`}
           >
-            <span
-              className={`${CLOCK_FONT[id]} text-[26px] leading-none ${id === 'macos' ? '' : 'clock-time'}`}
-              style={{ textShadow: id === 'cyberpunk' ? `0 0 12px ${accent}` : undefined }}
-            >
-              {time}
+            <span className="clock-preview block h-[96px] w-full">
+              <ClockFace style={id} parts={parts} showSeconds={showSeconds} now={now} />
             </span>
-            <span className={`text-[11px] font-medium ${checked ? 'text-white' : 'text-white/60'}`}>{CLOCK_STYLE_NAMES[id]}</span>
-            <span className="text-[10px] text-white/50">{CLOCK_DESC[id]}</span>
+            <span className="px-2.5 pt-1.5 pb-2">
+              <span className={`block truncate text-[11.5px] font-semibold ${checked ? 'text-white' : 'text-white/75'}`}>{name}</span>
+              <span className="block truncate text-[10px] text-white/50">{desc}</span>
+            </span>
           </button>
         );
       })}
