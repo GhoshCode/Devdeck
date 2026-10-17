@@ -1023,7 +1023,7 @@ html[data-theme='light'] #search-suggestions [role='option']:hover {
     padding-bottom: 12px;
   }
   [data-topbar-grid] {
-    height: 140px;
+    height: 188px;
   }
   /* Tighter rows so the collapsed to-do still shows its first tasks. */
   [data-testid='todo-widget'] li[data-todo-id] > div {

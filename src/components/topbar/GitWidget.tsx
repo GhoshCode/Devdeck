@@ -16,23 +16,24 @@ import {
   buildWeeks,
   cachedGitStats,
   loadGitStats,
-  loadRepoDetail,
+  loadRepoActivity,
   loadRepos,
   type ContributionDay,
   type GitStats,
   type Level,
-  type RepoDetail,
+  type RepoActivity,
   type RepoSummary,
 } from '../../services/github';
 
-// GIT COMMITS (spec §3.5), two halves:
-//   left  — the last three months of contribution tiles, streaks in the header
-//   right — your repositories: pick one (count + names), then a branch, and see
-//           that branch's latest commit
+// GIT COMMITS (spec §3.5), top to bottom:
+//   repo   — the repository you pushed to most recently (click for all repos)
+//   tiles  — the last six months of contributions, streaks and total beside them
+//   branch — where that repo's latest push landed, with its newest commits;
+//            every commit links to GitHub
 // Everything refreshes every 30 minutes (↻ forces it). With no username it
 // shows an inline setup field.
 
-const WEEKS = 13; // ≈ 3 months
+const WEEKS = 26; // ≈ 6 months
 const CELL = 10; // largest tile size (px)
 const MIN_CELL = 6;
 const GAP = 2;
@@ -52,7 +53,6 @@ export const GitWidget = memo(function GitWidget() {
   const username = useStore((s) => s.settings.githubUsername);
   const token = useStore((s) => s.settings.githubToken);
   const gitRepo = useStore((s) => s.settings.gitRepo ?? null);
-  const gitBranch = useStore((s) => s.settings.gitBranch ?? null);
   const updateSettings = useStore((s) => s.updateSettings);
 
   const [stats, setStats] = useState<Load<GitStats>>(() => {
@@ -60,7 +60,7 @@ export const GitWidget = memo(function GitWidget() {
     return { status: hit ? 'ready' : 'idle', data: hit };
   });
   const [repos, setRepos] = useState<Load<RepoSummary[]>>({ status: 'idle', data: null });
-  const [detail, setDetail] = useState<Load<RepoDetail>>({ status: 'idle', data: null });
+  const [activity, setActivity] = useState<Load<RepoActivity>>({ status: 'idle', data: null });
   const [hovered, setHovered] = useState<ContributionDay | null>(null);
 
   const message = (err: unknown) => (err instanceof Error ? err.message : 'GitHub unavailable');
@@ -86,54 +86,57 @@ export const GitWidget = memo(function GitWidget() {
     return () => clearInterval(timer);
   }, [refresh]);
 
-  // The selected repo, else the most recently pushed one.
+  // The chosen repo, else the one with the most recent push.
   const repo = useMemo(() => {
     const list = repos.data ?? [];
     return list.find((r) => r.fullName === gitRepo) ?? list[0] ?? null;
   }, [repos.data, gitRepo]);
-  const branch = repo && gitRepo === repo.fullName ? gitBranch : null;
 
-  const loadDetail = useCallback(
+  const loadActivity = useCallback(
     (force: boolean) => {
       if (!repo) return;
-      setDetail((s) => ({ ...s, status: 'loading' }));
-      loadRepoDetail(repo, branch, token, { force })
-        .then((data) => setDetail({ status: 'ready', data }))
-        .catch((err) => setDetail((s) => ({ ...s, status: 'error', error: message(err) })));
+      setActivity((s) => ({ ...s, status: 'loading' }));
+      loadRepoActivity(repo, token, { force })
+        .then((data) => setActivity({ status: 'ready', data }))
+        .catch((err) => setActivity((s) => ({ ...s, status: 'error', error: message(err) })));
     },
-    [repo, branch, token],
+    [repo, token],
   );
-  useEffect(() => loadDetail(false), [loadDetail]);
+  useEffect(() => loadActivity(false), [loadActivity]);
 
   if (!username) return <GitSetup />;
 
   const days = stats.data?.days ?? [];
-  const loading = stats.status === 'loading' || repos.status === 'loading' || detail.status === 'loading';
-  const shownDetail = detail.data && repo && detail.data.fullName === repo.fullName ? detail.data : null;
+  const loading = stats.status === 'loading' || repos.status === 'loading' || activity.status === 'loading';
+  const shown = activity.data && repo && activity.data.fullName === repo.fullName ? activity.data : null;
+  const now = Date.now();
 
   return (
     <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1.5 px-3 pt-2 pb-2">
-      {/* Header: who, streaks, refresh */}
+      {/* Top: repo <current repo ▾> */}
       <div className="flex min-w-0 items-center gap-2">
-        <GitHubMark />
-        <a
-          href={`https://github.com/${username}`}
-          className="truncate font-display text-[11px] font-semibold tracking-[0.12em] text-white/80 uppercase hover:text-white"
-          title="Open GitHub profile"
-        >
-          {username}
+        <a href={`https://github.com/${username}`} title={`@${username} on GitHub`} aria-label={`@${username} on GitHub`}>
+          <GitHubMark />
         </a>
-        <span data-git-stats className="ml-auto flex shrink-0 items-baseline gap-2.5 font-mono whitespace-nowrap">
-          <Stat value={stats.data?.currentStreak} unit="d" label="streak" accent />
-          <span className="hidden @min-[340px]:contents">
-            <Stat value={stats.data?.longestStreak} unit="d" label="best" />
-          </span>
-        </span>
+        <span className="shrink-0 font-display text-[10px] font-semibold tracking-[0.18em] text-white/55 uppercase">Repo</span>
+        <div className="min-w-0 flex-1">
+          <Picker
+            label="Repository"
+            icon="📁"
+            value={repo?.name ?? (repos.status === 'error' ? 'Repos unavailable' : 'Loading repos…')}
+            badge={repos.data ? `${repos.data.length} ${repos.data.length === 1 ? 'repo' : 'repos'}` : undefined}
+            options={(repos.data ?? []).map((r) => ({ id: r.fullName, label: r.name, hint: ago(r.pushedAt, now) }))}
+            selected={repo?.fullName ?? null}
+            searchable
+            onPick={(id) => updateSettings({ gitRepo: id })}
+            title={repos.error}
+          />
+        </div>
         <button
           type="button"
           onClick={() => {
             refresh(true);
-            loadDetail(true);
+            loadActivity(true);
           }}
           aria-label="Refresh contributions"
           title={stats.data ? `Updated ${new Date(stats.data.fetchedAt).toLocaleTimeString()} — refresh` : 'Refresh'}
@@ -143,87 +146,98 @@ export const GitWidget = memo(function GitWidget() {
         </button>
       </div>
 
+      {/* Middle: six months of tiles, stats beside them */}
       <div className="flex min-h-0 flex-1 gap-3">
-        {/* Left: three months of tiles */}
-        <div className="flex min-h-0 shrink-0 flex-col gap-1">
-          {stats.status === 'error' && !stats.data ? (
-            <p className="w-[140px] text-[11px] text-red-300/80" role="alert">
-              {stats.error}
-            </p>
-          ) : (
-            <Heatmap days={days} loading={!stats.data} onHover={setHovered} />
-          )}
-          <p data-testid="git-activity" className="truncate font-mono text-[9px] text-white/55">
+        {stats.status === 'error' && !stats.data ? (
+          <p className="flex-1 text-[11px] text-red-300/80" role="alert">
+            {stats.error}
+          </p>
+        ) : (
+          <Heatmap days={days} loading={!stats.data} onHover={setHovered} />
+        )}
+        <div data-git-stats className="flex min-w-0 flex-1 flex-col justify-between font-mono">
+          <div className="flex flex-col gap-0.5">
+            <Stat value={stats.data?.currentStreak} unit="d" label="streak" accent />
+            <Stat value={stats.data?.longestStreak} unit="d" label="best" />
+            <Stat value={stats.data ? lastWeeksTotal(days, WEEKS) : undefined} label="in 6 mo" />
+          </div>
+          <p data-testid="git-activity" className="truncate text-[9px] text-white/55">
             {hovered ? (
               <span className="text-emerald-300">
                 {hovered.count} on {formatDay(hovered.date)}
               </span>
             ) : (
-              `${lastWeeksTotal(days, WEEKS)} in 3 months`
+              <span aria-hidden className="flex items-center gap-0.5 text-white/40">
+                Less
+                {([0, 1, 2, 3, 4] as const).map((l) => (
+                  <span key={l} className="inline-block size-[7px] rounded-[1.5px]" style={{ background: LEVEL_BG[l] }} />
+                ))}
+                More
+              </span>
             )}
           </p>
         </div>
-
-        {/* Right: repos → branch → latest commit */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5 border-l border-white/[0.07] pl-3">
-          <Picker
-            label="Repository"
-            icon="📁"
-            value={repo?.name ?? (repos.status === 'error' ? 'Repos unavailable' : 'Loading repos…')}
-            badge={repos.data ? `${repos.data.length} ${repos.data.length === 1 ? 'repo' : 'repos'}` : undefined}
-            options={(repos.data ?? []).map((r) => ({ id: r.fullName, label: r.name, hint: ago(r.pushedAt, Date.now()) }))}
-            selected={repo?.fullName ?? null}
-            searchable
-            onPick={(id) => updateSettings({ gitRepo: id, gitBranch: null })}
-            title={repos.error}
-          />
-          <Picker
-            label="Branch"
-            icon="⎇"
-            mono
-            value={shownDetail?.branch ?? repo?.defaultBranch ?? '—'}
-            badge={shownDetail ? `${shownDetail.branches.length} ${shownDetail.branches.length === 1 ? 'branch' : 'branches'}` : undefined}
-            options={(shownDetail?.branches ?? []).map((b) => ({
-              id: b,
-              label: b,
-              hint: b === repo?.defaultBranch ? 'default' : undefined,
-            }))}
-            selected={shownDetail?.branch ?? null}
-            searchable={(shownDetail?.branches.length ?? 0) > 8}
-            onPick={(id) => repo && updateSettings({ gitRepo: repo.fullName, gitBranch: id === repo.defaultBranch ? null : id })}
-            disabled={!shownDetail}
-          />
-          <LatestCommit detail={shownDetail} status={detail.status} error={detail.error} />
-        </div>
       </div>
+
+      {/* Bottom: the branch with the latest push, and its newest commits */}
+      <RecentCommits repo={repo} activity={shown} status={activity.status} error={activity.error} now={now} />
     </div>
   );
 });
 
-function LatestCommit({ detail, status, error }: { detail: RepoDetail | null; status: Load<RepoDetail>['status']; error?: string }) {
-  if (!detail) {
+function RecentCommits({
+  repo,
+  activity,
+  status,
+  error,
+  now,
+}: {
+  repo: RepoSummary | null;
+  activity: RepoActivity | null;
+  status: Load<RepoActivity>['status'];
+  error?: string;
+  now: number;
+}) {
+  if (!repo || !activity) {
     return (
       <p className="font-mono text-[10px] text-white/45">
-        {status === 'error' ? (error ?? 'Unavailable') : status === 'loading' ? 'Loading latest commit…' : ' '}
+        {status === 'error' ? (error ?? 'Unavailable') : repo || status === 'loading' ? 'Loading commits…' : ' '}
       </p>
     );
   }
-  if (!detail.commit) return <p className="text-[10px] text-white/45">No commits on this branch yet</p>;
-  const c = detail.commit;
   return (
-    <a
-      data-testid="git-latest-commit"
-      href={c.url}
-      title={`${c.message}${c.author ? ` — ${c.author}` : ''}`}
-      className="group/commit block min-w-0 rounded-md text-[10.5px] leading-snug"
-    >
-      <span className="flex items-center gap-1.5 font-mono text-[9.5px]">
-        <span className="text-amber-300">{c.sha}</span>
-        <span className="text-white/45">{ago(c.at, Date.now())}</span>
-        {c.author && <span className="truncate text-white/45">· {c.author}</span>}
-      </span>
-      <span className="line-clamp-1 text-white/80 group-hover/commit:text-white">{c.message}</span>
-    </a>
+    <div className="min-w-0 border-t border-white/[0.07] pt-1.5">
+      <a
+        href={`${repo.url}/tree/${encodeURIComponent(activity.branch)}`}
+        className="flex min-w-0 items-center gap-1.5 font-mono text-[10px] hover:underline"
+        title={`Branch ${activity.branch} on GitHub`}
+      >
+        <span aria-hidden className="text-white/55">⎇</span>
+        <span className="truncate font-semibold text-purple-300">{activity.branch}</span>
+        <span className="shrink-0 text-[9px] text-white/45">latest push</span>
+      </a>
+      {activity.commits.length === 0 ? (
+        <p className="mt-0.5 text-[10px] text-white/45">No commits on this branch yet</p>
+      ) : (
+        <ul data-testid="git-commits" className="mt-0.5 space-y-px">
+          {activity.commits.slice(0, 2).map((c) => (
+            <li key={c.sha}>
+              <a
+                href={c.url}
+                title={`${c.message}${c.author ? ` — ${c.author}` : ''} · open on GitHub`}
+                className="group/commit flex min-w-0 items-baseline gap-1.5 rounded text-[10.5px] leading-snug"
+              >
+                <span className="shrink-0 font-mono text-[9.5px] text-amber-300">{c.sha}</span>
+                <span className="min-w-0 flex-1 truncate text-white/80 group-hover/commit:text-white group-hover/commit:underline">
+                  {c.message}
+                </span>
+                <span className="shrink-0 font-mono text-[9px] text-white/45">{ago(c.at, now)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -390,7 +404,7 @@ function Stat({ value, unit = '', label, accent = false }: { value?: number; uni
   );
 }
 
-// Thirteen Sunday-first week columns (≈ 3 months), newest on the right. Tile
+// Twenty-six Sunday-first week columns (≈ 6 months), newest on the right. Tile
 // size follows the available height so all seven rows fit.
 function Heatmap({
   days,
@@ -425,7 +439,7 @@ function Heatmap({
       onMouseLeave={() => onHover(null)}
       className="min-h-0 flex-1 overflow-hidden"
       style={{ width: WEEKS * (cell + GAP) - GAP }}
-      aria-label="Contribution graph, last 3 months"
+      aria-label="Contribution graph, last 6 months"
     >
       <div className="flex" style={{ gap: GAP }}>
         {columns.map((week, i) => (

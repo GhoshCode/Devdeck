@@ -60,8 +60,7 @@ export interface Settings {
   manualCity: string; // used when geolocation is off or denied
   geminiMode?: boolean; // search bar sends plain text to Gemini instead of Google
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
-  gitRepo?: string | null; // Git widget: selected repo (owner/name); null = most recently pushed
-  gitBranch?: string | null; // branch shown for gitRepo; null = its default branch
+  gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
   modeLooks?: Partial<Record<ThemeMode, ModeLook>>; // each mode remembers its own look
   reduceTransparency?: boolean; // opaque panels instead of glass

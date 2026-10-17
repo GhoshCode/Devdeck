@@ -204,11 +204,10 @@ export interface RepoCommit {
   url: string;
 }
 
-export interface RepoDetail {
+export interface RepoActivity {
   fullName: string;
-  branch: string;
-  branches: string[]; // default branch first
-  commit: RepoCommit | null;
+  branch: string; // where the latest push landed (default branch if unknown)
+  commits: RepoCommit[]; // newest first, up to 3
   fetchedAt: number;
 }
 
@@ -257,47 +256,44 @@ export async function loadRepos(
   return repos;
 }
 
-// Branches of one repository and the latest commit on `branch` (default
-// branch when null).
-export async function loadRepoDetail(
+// The branch with the latest push in a repository (from its public events;
+// the default branch when there are none) and that branch's newest commits.
+export async function loadRepoActivity(
   repo: Pick<RepoSummary, 'fullName' | 'defaultBranch'>,
-  branch: string | null,
   token: string,
   opts: { force?: boolean; fetcher?: Fetch } = {},
-): Promise<RepoDetail> {
-  const target = branch ?? repo.defaultBranch;
-  const key = `repo|${repo.fullName.toLowerCase()}|${target}|${token ? 'pat' : 'public'}`;
+): Promise<RepoActivity> {
+  const key = `activity|${repo.fullName.toLowerCase()}|${token ? 'pat' : 'public'}`;
   if (!opts.force) {
-    const hit = readCache<RepoDetail>(CACHE_NAME, key, GIT_TTL_MS);
+    const hit = readCache<RepoActivity>(CACHE_NAME, key, GIT_TTL_MS);
     if (hit) return hit;
   }
   const fetcher = opts.fetcher ?? fetch;
   const base = `https://api.github.com/repos/${repo.fullName}`;
-  const [branchList, commits] = await Promise.all([
-    ghJson<Array<{ name: string }>>(`${base}/branches?per_page=100`, token, fetcher),
-    ghJson<Array<{ sha: string; html_url: string; commit: { message: string; author: { name?: string; date?: string } | null } }>>(
-      `${base}/commits?sha=${encodeURIComponent(target)}&per_page=1`,
-      token,
-      fetcher,
-    ).catch(() => []), // an empty repository has no commits
-  ]);
-  const names = branchList.map((b) => b.name);
-  const c = commits[0];
-  const detail: RepoDetail = {
+  const events = await ghJson<Array<{ type: string; created_at: string; payload: { ref?: string } }>>(
+    `${base}/events?per_page=30`,
+    token,
+    fetcher,
+  ).catch(() => []);
+  const push = [...events]
+    .filter((e) => e.type === 'PushEvent' && e.payload.ref?.startsWith('refs/heads/'))
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const branch = push?.payload.ref?.replace('refs/heads/', '') ?? repo.defaultBranch;
+  const commits = await ghJson<
+    Array<{ sha: string; html_url: string; commit: { message: string; author: { name?: string; date?: string } | null } }>
+  >(`${base}/commits?sha=${encodeURIComponent(branch)}&per_page=3`, token, fetcher).catch(() => []); // empty repo
+  const activity: RepoActivity = {
     fullName: repo.fullName,
-    branch: target,
-    branches: [repo.defaultBranch, ...names.filter((n) => n !== repo.defaultBranch)].filter((n) => names.includes(n)),
-    commit: c
-      ? {
-          sha: c.sha.slice(0, 7),
-          message: c.commit.message.split('\n')[0],
-          author: c.commit.author?.name ?? null,
-          at: c.commit.author?.date ? Date.parse(c.commit.author.date) : 0,
-          url: c.html_url,
-        }
-      : null,
+    branch,
+    commits: commits.map((c) => ({
+      sha: c.sha.slice(0, 7),
+      message: c.commit.message.split('\n')[0],
+      author: c.commit.author?.name ?? null,
+      at: c.commit.author?.date ? Date.parse(c.commit.author.date) : 0,
+      url: c.html_url,
+    })),
     fetchedAt: Date.now(),
   };
-  writeCache(CACHE_NAME, key, detail);
-  return detail;
+  writeCache(CACHE_NAME, key, activity);
+  return activity;
 }
