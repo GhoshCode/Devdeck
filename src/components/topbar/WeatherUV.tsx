@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../../store';
 import {
   UV_LABEL,
@@ -11,8 +11,8 @@ import {
 } from '../../services/weather';
 
 // A (weather °C) over B (UV badge) over the location, as the right-hand column
-// of the clock + weather card. Refreshes every 15 min. Clicking opens the page of
-// the source the reading came from; the ↻ in the corner refreshes now.
+// of the clock + weather area. Refreshes every 15 min. Click to refresh now;
+// double-click to open the page of the source the reading came from.
 
 const ICON: Record<WeatherIcon, string> = {
   sun: '☀️',
@@ -88,7 +88,10 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
     };
   }, [enabled, refresh]);
 
-  if (!enabled) return <div aria-hidden className="glass h-full opacity-40" />;
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (clickTimer.current && clearTimeout(clickTimer.current)), []);
+
+  if (!enabled) return <div aria-hidden className="h-full w-[170px] opacity-40" />;
 
   const { data } = state;
   const error = state.status === 'error' ? state.error : null;
@@ -96,7 +99,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
   // First run with location denied and no city: say what to do instead of
   // showing a bare warning and "--°C".
   const column =
-    'flex h-full w-[150px] shrink-0 flex-col items-end justify-center gap-1 border-l border-white/[0.08] pr-3 pl-2.5 text-right';
+    'flex h-full w-[170px] shrink-0 flex-col items-end justify-center gap-1.5 border-l border-white/[0.08] pr-2 pl-3 text-right';
 
   if (!data && error && !manualCity.trim() && onSetup) {
     return (
@@ -117,72 +120,80 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
     );
   }
 
-  const where = data ? (data.area ? `${data.area}, ${data.place}` : data.place) : '';
+  const where = data ? [data.area, data.place].filter(Boolean).join(', ') : '';
   const updated = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const site = !error && data?.siteUrl ? data.siteUrl : null;
   const title = error
     ? `${error} — click to retry`
     : data
-      ? `${data.conditionText} in ${where}${data.postcode ? ` ${data.postcode}` : ''} · ${data.source}, updated ${updated} (refreshes every 15 min) — click to open ${data.source}`
+      ? `${data.conditionText} in ${where}${data.postcode ? ` ${data.postcode}` : ''} · ${data.source}, updated ${updated}\nClick to refresh · double-click to open ${data.source}`
       : 'Loading weather…';
-  const site = !error && data?.siteUrl ? data.siteUrl : null;
+
+  // One click refreshes; a double click opens the source's page instead (the
+  // single click waits a moment so a double click doesn't also refresh).
+  const onClick = () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      refresh(true);
+    }, 260);
+  };
+  const onDoubleClick = () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = null;
+    if (site) window.open(site, '_blank', 'noopener');
+  };
 
   return (
-    <div className="group/weather relative flex h-full shrink-0">
-      <a
-        href={site ?? undefined}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => {
-          if (site) return;
-          e.preventDefault();
-          refresh(true);
-        }}
-        title={title}
-        aria-label={
-          data
-            ? `Weather in ${where}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}`
-            : 'Weather'
-        }
-        data-testid="weather-uv"
-        className={`${column} cursor-pointer hover:bg-white/[0.03] ${state.status === 'loading' && !data ? 'animate-pulse' : ''}`}
+    <button
+      type="button"
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      title={title}
+      aria-label={
+        data
+          ? `Weather in ${where}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}. Click to refresh, double-click to open ${data.source}`
+          : 'Weather'
+      }
+      data-testid="weather-uv"
+      className={`${column} cursor-pointer rounded-r-xl transition-colors select-none hover:bg-white/[0.03] ${
+        state.status === 'loading' ? (data ? 'opacity-70' : 'animate-pulse') : ''
+      }`}
+    >
+      {/* A — condition + temperature */}
+      <span className="flex items-center gap-1.5 text-white/90">
+        <span aria-hidden className="text-base leading-none">
+          {data ? ICON[data.icon] : error ? '⚠️' : '·'}
+        </span>
+        <span className="font-mac text-[1.3rem] leading-none font-light tracking-tight tabular-nums">
+          {data ? `${Math.round(data.temperature)}°` : '--°'}
+          <span className="text-[0.8rem] text-white/55">C</span>
+        </span>
+      </span>
+      {/* B — UV index */}
+      <span
+        className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
+          data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
+        }`}
       >
-        {/* A — condition + temperature */}
-        <span className="flex items-center gap-1.5 text-white/95">
-          <span aria-hidden className="text-lg leading-none">
-            {data ? ICON[data.icon] : error ? '⚠️' : '·'}
-          </span>
-          <span className="font-display text-[1.45rem] leading-none font-bold tracking-tight tabular-nums">
-            {data ? `${Math.round(data.temperature)}°C` : '--°C'}
-          </span>
-        </span>
-        {/* B — UV index badge */}
-        <span
-          className={`rounded-md border px-1.5 py-px text-[9px] font-bold tracking-wider uppercase ${
-            data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
-          }`}
-        >
-          UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
-        </span>
-        {/* Location, under the UV index */}
-        <span className="flex max-w-full items-center gap-1 text-[10px] leading-tight text-white/60">
+        UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
+      </span>
+      {/* Location: area, then city and pincode */}
+      <span className="flex max-w-full flex-col items-end leading-tight">
+        <span className="flex max-w-full items-center gap-1 text-[10.5px] text-white/80">
           <span aria-hidden className="text-[9px]">
             📍
           </span>
-          <span className="truncate font-medium">{data ? (data.area ?? data.place) : (error ? 'Unavailable' : 'Locating…')}</span>
-          {data?.postcode && <span className="shrink-0 font-mono text-[9px] text-white/40">{data.postcode}</span>}
+          <span className="truncate font-medium">{data ? (data.area ?? data.place) : error ? 'Unavailable' : 'Locating…'}</span>
         </span>
-      </a>
-      <button
-        type="button"
-        onClick={() => refresh(true)}
-        aria-label="Refresh weather"
-        title="Refresh now"
-        className={`absolute top-1 right-1 flex size-5 items-center justify-center rounded-md text-[11px] text-white/45 opacity-0 transition-opacity group-hover/weather:opacity-100 hover:bg-white/10 hover:text-white focus-visible:opacity-100 ${
-          state.status === 'loading' ? 'animate-spin opacity-100' : ''
-        }`}
-      >
-        ↻
-      </button>
-    </div>
+        {data && (data.area || data.postcode) && (
+          <span className="max-w-full truncate text-[9.5px] text-white/50">
+            {data.area ? data.place : ''}
+            {data.area && data.postcode ? ' · ' : ''}
+            {data.postcode && <span className="font-mono">{data.postcode}</span>}
+          </span>
+        )}
+      </span>
+    </button>
   );
 });

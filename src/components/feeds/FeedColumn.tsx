@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { SplitPanes } from '../layout/SplitPanes';
 import { useStore } from '../../store';
 import type { Topic } from '../../types';
 import { useNow } from '../../hooks/useNow';
@@ -44,6 +45,7 @@ export const FeedColumn = memo(function FeedColumn({ onManage }: { onManage: () 
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
+      <SplitPanes setting="feedSplit" label="Resize Tech news and Dev jobs" fitHint="fit Tech news to its stories">
       <FeedPanel
         title="TECH NEWS"
         start={1}
@@ -64,6 +66,7 @@ export const FeedColumn = memo(function FeedColumn({ onManage }: { onManage: () 
         }
       />
       <FeedPanel title="DEV JOBS" start={PER_PANEL + 1} items={jobs} now={now} loading={state.loading && !state.data} topic={topic} />
+      </SplitPanes>
       <TopicChips topics={feeds.topics} active={topic?.id ?? null} onSelect={setTopicId} onManage={onManage} />
     </div>
   );

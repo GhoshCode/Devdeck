@@ -64,6 +64,7 @@ export interface Settings {
   aiCustomUrl?: string; // custom AI: URL template with {q}
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
   leftSplit?: number; // 0–1: share of the left column given to Focus (rest: Queue / To-do)
+  feedSplit?: number; // 0–1: share of the right column given to Tech news (rest: Dev jobs)
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
   gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
