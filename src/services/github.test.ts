@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { buildWeeks, computeStats, loadGitStats, summarizeEvents, type ContributionDay } from './github';
+import { buildWeeks, computeStats, loadGitStats, type ContributionDay } from './github';
 
 const NOW = new Date(2026, 9, 15, 12); // Oct 15 2026
 
@@ -102,41 +102,4 @@ test('buildWeeks lays out Sunday-first columns ending this week', () => {
   expect(weeks[1][3]).toEqual({ date: '2026-10-14', count: 3, level: 2 }); // Wednesday
   expect(weeks[1][4]!.date).toBe('2026-10-15'); // today, no data → level 0
   expect(weeks[1][5]).toBeNull(); // Friday is in the future
-});
-
-describe('summarizeEvents', () => {
-  const ev = (type: string, created_at: string, payload: Record<string, unknown>, repo = 'me/app') => ({
-    type,
-    created_at,
-    repo: { name: repo },
-    payload,
-  });
-
-  test('picks the newest push and merged PR even when events are out of order', () => {
-    const s = summarizeEvents([
-      ev('PushEvent', '2026-10-15T09:00:00Z', { ref: 'refs/heads/old', head: 'aaaaaaaa11' }),
-      ev('PullRequestEvent', '2026-10-16T15:07:03Z', { action: 'merged', number: 3 }),
-      ev('PushEvent', '2026-10-16T10:00:00Z', { ref: 'refs/heads/v8.0', head: 'bbbbbbbb22' }, 'me/deck'),
-      ev('PullRequestEvent', '2026-10-16T15:06:52Z', { action: 'opened', number: 3 }),
-    ]);
-    expect(s).toEqual({
-      branch: 'v8.0',
-      repo: 'me/deck',
-      commitSha: 'bbbbbbb',
-      commitAt: Date.parse('2026-10-16T10:00:00Z'),
-      mergedPr: { number: 3, repo: 'me/app', at: Date.parse('2026-10-16T15:07:03Z') },
-    });
-  });
-
-  test('accepts the classic closed+merged shape and handles no activity', () => {
-    const s = summarizeEvents([
-      ev('PullRequestEvent', '2026-10-01T00:00:00Z', {
-        action: 'closed',
-        number: 9,
-        pull_request: { merged: true, merged_at: '2026-10-01T00:00:05Z' },
-      }),
-    ]);
-    expect(s.mergedPr).toEqual({ number: 9, repo: 'me/app', at: Date.parse('2026-10-01T00:00:05Z') });
-    expect(summarizeEvents([])).toEqual({ branch: null, repo: null, commitSha: null, commitAt: null, mergedPr: null });
-  });
 });

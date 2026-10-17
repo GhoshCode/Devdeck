@@ -16,25 +16,12 @@ export interface ContributionDay {
   level: Level;
 }
 
-// Recent public activity for the HUD footer. Every field is optional: the
-// widget shows what GitHub returned and never invents the rest.
-export interface GitActivity {
-  publicRepos: number | null;
-  branch: string | null; // of the latest push
-  repo: string | null; // "owner/name" of the latest push
-  commitSha: string | null; // short SHA of that push's head
-  commitMessage: string | null; // first line
-  commitAt: number | null; // epoch ms of the push
-  mergedPr: { number: number; repo: string; at: number } | null;
-}
-
 export interface GitStats {
   username: string;
   days: ContributionDay[]; // ascending, ~1 year
   totalYear: number; // current calendar year
   currentStreak: number;
   longestStreak: number;
-  activity?: GitActivity;
   fetchedAt: number;
 }
 
@@ -171,78 +158,10 @@ export async function loadGitStats(
     if (hit) return hit;
   }
   const fetcher = opts.fetcher ?? fetch;
-  const [days, activity] = await Promise.all([
-    token ? fetchWithToken(user, token, fetcher) : fetchPublic(user, fetcher),
-    // Activity is a bonus: a failure (e.g. rate limit) must not hide the heatmap.
-    fetchActivity(user, token, fetcher).catch(() => undefined),
-  ]);
-  const stats = { ...computeStats(user, days), activity };
+  const days = await (token ? fetchWithToken(user, token, fetcher) : fetchPublic(user, fetcher));
+  const stats = computeStats(user, days);
   writeCache(CACHE_NAME, cacheKey(user, token), stats);
   return stats;
-}
-
-interface GhEvent {
-  type: string;
-  created_at: string;
-  repo: { name: string };
-  payload: {
-    ref?: string;
-    head?: string;
-    action?: string;
-    number?: number;
-    pull_request?: { merged?: boolean; merged_at?: string | null };
-  };
-}
-
-// Picks the latest push and the latest merged PR from public events. GitHub's
-// events API is not strictly date-ordered, so sort first.
-export function summarizeEvents(events: readonly GhEvent[]): Omit<GitActivity, 'publicRepos' | 'commitMessage'> {
-  const sorted = [...events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-  const push = sorted.find((e) => e.type === 'PushEvent' && e.payload.head);
-  const merged = sorted.find(
-    (e) =>
-      e.type === 'PullRequestEvent' &&
-      (e.payload.action === 'merged' || (e.payload.action === 'closed' && e.payload.pull_request?.merged)),
-  );
-  return {
-    branch: push?.payload.ref?.replace('refs/heads/', '') ?? null,
-    repo: push?.repo.name ?? null,
-    commitSha: push?.payload.head?.slice(0, 7) ?? null,
-    commitAt: push ? Date.parse(push.created_at) : null,
-    mergedPr:
-      merged && merged.payload.number
-        ? {
-            number: merged.payload.number,
-            repo: merged.repo.name,
-            at: Date.parse(merged.payload.pull_request?.merged_at ?? merged.created_at),
-          }
-        : null,
-  };
-}
-
-async function fetchActivity(user: string, token: string, fetcher: Fetch): Promise<GitActivity> {
-  const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const get = async <T>(url: string): Promise<T | null> => {
-    const res = await fetcher(url, { headers });
-    return res.ok ? ((await res.json()) as T) : null;
-  };
-  const enc = encodeURIComponent(user);
-  const [profile, events] = await Promise.all([
-    get<{ public_repos?: number }>(`https://api.github.com/users/${enc}`),
-    get<GhEvent[]>(`https://api.github.com/users/${enc}/events/public?per_page=50`),
-  ]);
-  // Rate-limited or blocked: report "unknown" rather than "no activity".
-  if (!Array.isArray(events)) throw new Error('GitHub events unavailable');
-  const summary = summarizeEvents(events);
-  // Push events no longer carry commit messages, so look the head commit up.
-  let commitMessage: string | null = null;
-  if (summary.repo && summary.commitSha) {
-    const full = events.find((e) => e.payload.head?.startsWith(summary.commitSha!))?.payload.head;
-    const commit = full ? await get<{ commit?: { message?: string } }>(`https://api.github.com/repos/${summary.repo}/commits/${full}`) : null;
-    commitMessage = commit?.commit?.message?.split('\n')[0] ?? null;
-  }
-  return { publicRepos: profile?.public_repos ?? null, commitMessage, ...summary };
 }
 
 // The last `count` Sunday-first weeks ending with the week containing `today`,
@@ -264,4 +183,121 @@ export function buildWeeks(
       return byDate.get(key) ?? { date: key, count: 0, level: 0 };
     }),
   );
+}
+
+// ---- Repositories (Git widget repo picker) ------------------------------------
+
+export interface RepoSummary {
+  name: string;
+  fullName: string; // owner/name
+  defaultBranch: string;
+  pushedAt: number; // epoch ms
+  url: string;
+  fork: boolean;
+}
+
+export interface RepoCommit {
+  sha: string; // short
+  message: string; // first line
+  author: string | null;
+  at: number; // epoch ms
+  url: string;
+}
+
+export interface RepoDetail {
+  fullName: string;
+  branch: string;
+  branches: string[]; // default branch first
+  commit: RepoCommit | null;
+  fetchedAt: number;
+}
+
+const ghHeaders = (token: string): Record<string, string> => ({
+  Accept: 'application/vnd.github+json',
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+});
+
+async function ghJson<T>(url: string, token: string, fetcher: Fetch): Promise<T> {
+  const res = await fetcher(url, { headers: ghHeaders(token) });
+  if (res.status === 403 || res.status === 429) throw new Error('GitHub rate limit reached — try again later');
+  if (res.status === 404) throw new Error('Not found on GitHub');
+  if (!res.ok) throw new Error(`GitHub request failed (${res.status})`);
+  return (await res.json()) as T;
+}
+
+// The user's own public repositories, most recently pushed first.
+export async function loadRepos(
+  username: string,
+  token: string,
+  opts: { force?: boolean; fetcher?: Fetch } = {},
+): Promise<RepoSummary[]> {
+  const key = `repos|${cacheKey(username, token)}`;
+  if (!opts.force) {
+    const hit = readCache<RepoSummary[]>(CACHE_NAME, key, GIT_TTL_MS);
+    if (hit) return hit;
+  }
+  const raw = await ghJson<
+    Array<{ name: string; full_name: string; default_branch: string; pushed_at: string | null; html_url: string; fork: boolean }>
+  >(
+    `https://api.github.com/users/${encodeURIComponent(username)}/repos?type=owner&sort=pushed&per_page=100`,
+    token,
+    opts.fetcher ?? fetch,
+  );
+  const repos = raw
+    .map((r) => ({
+      name: r.name,
+      fullName: r.full_name,
+      defaultBranch: r.default_branch,
+      pushedAt: r.pushed_at ? Date.parse(r.pushed_at) : 0,
+      url: r.html_url,
+      fork: r.fork,
+    }))
+    .sort((a, b) => b.pushedAt - a.pushedAt);
+  writeCache(CACHE_NAME, key, repos);
+  return repos;
+}
+
+// Branches of one repository and the latest commit on `branch` (default
+// branch when null).
+export async function loadRepoDetail(
+  repo: Pick<RepoSummary, 'fullName' | 'defaultBranch'>,
+  branch: string | null,
+  token: string,
+  opts: { force?: boolean; fetcher?: Fetch } = {},
+): Promise<RepoDetail> {
+  const target = branch ?? repo.defaultBranch;
+  const key = `repo|${repo.fullName.toLowerCase()}|${target}|${token ? 'pat' : 'public'}`;
+  if (!opts.force) {
+    const hit = readCache<RepoDetail>(CACHE_NAME, key, GIT_TTL_MS);
+    if (hit) return hit;
+  }
+  const fetcher = opts.fetcher ?? fetch;
+  const base = `https://api.github.com/repos/${repo.fullName}`;
+  const [branchList, commits] = await Promise.all([
+    ghJson<Array<{ name: string }>>(`${base}/branches?per_page=100`, token, fetcher),
+    ghJson<Array<{ sha: string; html_url: string; commit: { message: string; author: { name?: string; date?: string } | null } }>>(
+      `${base}/commits?sha=${encodeURIComponent(target)}&per_page=1`,
+      token,
+      fetcher,
+    ).catch(() => []), // an empty repository has no commits
+  ]);
+  const names = branchList.map((b) => b.name);
+  const c = commits[0];
+  const detail: RepoDetail = {
+    fullName: repo.fullName,
+    branch: target,
+    branches: [repo.defaultBranch, ...names.filter((n) => n !== repo.defaultBranch)].filter((n) => names.includes(n)),
+    commit: c
+      ? {
+          sha: c.sha.slice(0, 7),
+          message: c.commit.message.split('\n')[0],
+          author: c.commit.author?.name ?? null,
+          at: c.commit.author?.date ? Date.parse(c.commit.author.date) : 0,
+          url: c.html_url,
+        }
+      : null,
+    fetchedAt: Date.now(),
+  };
+  writeCache(CACHE_NAME, key, detail);
+  return detail;
 }

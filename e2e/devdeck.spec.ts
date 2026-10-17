@@ -135,23 +135,18 @@ test.describe('Page Load & Header', () => {
     await expect(page.getByText(currentMonth)).toBeVisible();
   });
 
-  test('greeting card leads the top bar with greeting, line and quote', async ({ page }) => {
+  test('date, greeting and a shuffleable daily quote on the right', async ({ page }) => {
     // ┌─────────────────────────────────────────────────────────┐
-    // │  The greeting card is the first widget: greeting       │
-    // │  heading, a friendly line and a shuffleable quote.      │
+    // │  The far right of the top bar: date line, greeting     │
+    // │  heading and a motivational quote (↻ for another).      │
     // └─────────────────────────────────────────────────────────┘
-    const card = page.getByTestId('greeting-card');
-    await expect(card.getByRole('heading', { level: 1 })).toContainText(/Good|night owl/);
-    await expect(card.getByTestId('greeting-line')).not.toBeEmpty();
-    const quote = card.getByTestId('greeting-quote');
+    const dateGreet = page.locator('[data-widget="date-greet"]');
+    await expect(dateGreet.getByRole('heading', { level: 1 })).toContainText('GOOD');
+    const quote = dateGreet.getByTestId('greeting-quote');
     const first = await quote.textContent();
-    await card.getByRole('button', { name: 'Another quote' }).click();
+    await quote.hover();
+    await dateGreet.getByRole('button', { name: 'Another quote' }).click();
     await expect(quote).not.toHaveText(first ?? '');
-    const [greet, clock] = await Promise.all([
-      page.locator('[data-widget="greeting"]').boundingBox(),
-      page.locator('[data-widget="time-cluster"]').boundingBox(),
-    ]);
-    expect(greet!.x).toBeLessThan(clock!.x);
   });
 });
 
