@@ -32,7 +32,7 @@ export const DateGreet = memo(function DateGreet() {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.25 }}
             >
-              <p data-testid="greeting-quote" title={`${quote.text} — ${quote.author}`}className="line-clamp-2 text-[12px] leading-snug text-white/75 italic">
+              <p data-testid="greeting-quote" title={`${quote.text} — ${quote.author}`} className="line-clamp-1 text-[12px] leading-snug text-white/75 italic">
                 “{quote.text}” <span className="text-[10.5px] tracking-wide text-white/50 not-italic">— {quote.author}</span>
               </p>
             </motion.blockquote>

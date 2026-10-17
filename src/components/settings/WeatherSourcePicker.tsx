@@ -10,11 +10,15 @@ import type { CustomWeatherSource } from '../../types';
 // the widget keeps working if a provider ever shuts down. The chosen source
 // is tried first; the others remain as fallbacks.
 
+// Stable empty list: a fresh [] in a store selector re-renders forever.
+const NO_SOURCES: CustomWeatherSource[] = [];
+
 type Option = { id: string; name: string; detail: string; custom?: boolean };
 
 export function WeatherSourcePicker() {
   const weatherSource = useStore((s) => s.settings.weatherSource ?? 'auto');
-  const custom = useStore((s) => s.settings.customWeatherSources ?? []);
+  const customSetting = useStore((s) => s.settings.customWeatherSources);
+  const custom = customSetting ?? NO_SOURCES;
   const useGeolocation = useStore((s) => s.settings.useGeolocation);
   const manualCity = useStore((s) => s.settings.manualCity);
   const updateSettings = useStore((s) => s.updateSettings);

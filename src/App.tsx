@@ -166,7 +166,7 @@ export default function App() {
           <TopBar
             weather={<WeatherUV onSetup={() => openSettings('profile')} />}
             search={
-              <div className="mx-auto flex w-full max-w-[680px] items-center gap-2.5">
+              <div className="mx-auto flex w-full max-w-[780px] items-center gap-2">
                 <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
                 <SiteMapButton />
                 <BookmarkButton />

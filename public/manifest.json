@@ -13,10 +13,13 @@
   "content_scripts": [
     {
       "matches": [
-        "https://gemini.google.com/*"
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
       ],
       "js": [
-        "gemini-content.js"
+        "ai-content.js"
       ],
       "run_at": "document_idle"
     }

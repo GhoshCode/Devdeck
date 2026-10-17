@@ -38,7 +38,7 @@ export const SiteMapButton = memo(function SiteMapButton() {
         title="Site Map & Hierarchy"
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="glass-raised flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-semibold tracking-wide text-white/80 transition-colors hover:bg-white/10 hover:text-white max-sm:flex-1"
+        className="glass-raised flex h-[52px] shrink-0 items-center justify-center gap-1.5 rounded-2xl px-2.5 text-xs font-semibold tracking-wide text-white/80 transition-colors hover:bg-white/10 hover:text-white max-sm:flex-1"
       >
         <HierarchyIcon className="size-4" />
         <span className="max-md:hidden">SITE MAP</span>

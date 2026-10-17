@@ -59,8 +59,11 @@ export interface Settings {
   weatherEnabled: boolean;
   useGeolocation: boolean;
   manualCity: string; // used when geolocation is off or denied
-  geminiMode?: boolean; // search bar sends plain text to Gemini instead of Google
+  geminiMode?: boolean; // AI mode: the search bar sends plain text to the chosen AI instead of Google
+  aiProvider?: 'gemini' | 'chatgpt' | 'claude' | 'perplexity' | 'custom'; // default gemini
+  aiCustomUrl?: string; // custom AI: URL template with {q}
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
+  leftSplit?: number; // 0–1: share of the left column given to Focus (rest: Queue / To-do)
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
   gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS

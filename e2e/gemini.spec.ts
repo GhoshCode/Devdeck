@@ -3,11 +3,11 @@ import path from 'node:path';
 
 // Search bar → Gemini hand-off and voice input.
 //   • web build: prompt goes to the clipboard, Gemini opens in a new tab
-//   • extension: public/gemini-content.js types the parked prompt into
+//   • extension: public/ai-content.js types the parked prompt into
 //     Gemini's box and sends it — exercised here against a stand-in page
 //     with Gemini's editor markup.
 
-const CONTENT_SCRIPT = path.resolve('public/gemini-content.js');
+const CONTENT_SCRIPT = path.resolve('public/ai-content.js');
 
 // Gemini's prompt box: a Quill editor inside <rich-textarea>, with a send
 // button that stays disabled until the editor has text.
@@ -36,7 +36,7 @@ async function openFakeGemini(page: Page, pending: unknown, delayEditorMs = 0) {
     }),
   );
   await page.addInitScript((item) => {
-    const store: Record<string, unknown> = item ? { 'devdeck.geminiPrompt': item } : {};
+    const store: Record<string, unknown> = item ? { 'devdeck.aiPrompt': item } : {};
     (window as unknown as { chrome: unknown; removed: string[] }).removed = [];
     (window as unknown as { chrome: unknown }).chrome = {
       storage: {
@@ -61,7 +61,7 @@ test.describe('content script on Gemini', () => {
       'explain react server components',
     ]);
     expect(await page.evaluate(() => (window as unknown as { removed: string[] }).removed)).toEqual([
-      'devdeck.geminiPrompt',
+      'devdeck.aiPrompt',
     ]);
   });
 
@@ -77,7 +77,7 @@ test.describe('content script on Gemini', () => {
     await page.waitForTimeout(800);
     await expect(page.locator('.ql-editor')).toHaveText('');
     expect(await page.evaluate(() => (window as unknown as { removed: string[] }).removed)).toEqual([
-      'devdeck.geminiPrompt',
+      'devdeck.aiPrompt',
     ]);
   });
 
@@ -182,5 +182,50 @@ test.describe('search bar', () => {
     await page.locator('[data-category-id]').first().waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'Search by voice' }).click();
     await expect(page.getByTestId('search-hint')).toContainText('Microphone access is blocked');
+  });
+});
+
+test.describe('other AI providers', () => {
+  test('content script types and sends on ChatGPT, and ignores prompts meant for another site', async ({ page }) => {
+    const body = `<!doctype html><html><body>
+      <div id="prompt-textarea" contenteditable="true"></div>
+      <button data-testid="send-button" disabled>Send</button>
+      <script>
+        window.sent = [];
+        const ed = () => document.getElementById('prompt-textarea');
+        const send = document.querySelector('[data-testid=send-button]');
+        document.addEventListener('input', () => { send.disabled = !ed().textContent.trim(); });
+        send.addEventListener('click', () => window.sent.push(ed().textContent));
+      </script></body></html>`;
+    await page.route('https://chatgpt.com/**', (route) => route.fulfill({ contentType: 'text/html', body }));
+    const run = async (item: unknown) => {
+      await page.addInitScript((it) => {
+        const store: Record<string, unknown> = { 'devdeck.aiPrompt': it };
+        (window as unknown as { chrome: unknown }).chrome = {
+          storage: { local: { get: async (k: string) => (k in store ? { [k]: store[k] } : {}), remove: async (k: string) => void delete store[k] } },
+        };
+      }, item);
+      await page.goto('https://chatgpt.com/');
+      await page.addScriptTag({ path: CONTENT_SCRIPT });
+    };
+    await run({ text: 'refactor this hook', at: Date.now(), site: 'chatgpt' });
+    await expect.poll(() => page.evaluate(() => (window as unknown as { sent: string[] }).sent)).toEqual(['refactor this hook']);
+  });
+
+  test('Perplexity runs straight from the link', async ({ page, context }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.locator('[data-category-id]').first().waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const modal = page.getByRole('dialog', { name: 'DevDeck Settings' });
+    await modal.getByRole('button', { name: /Profile/ }).click();
+    await modal.getByRole('radio', { name: /^Perplexity/ }).click();
+    await page.keyboard.press('Escape');
+    await context.route('https://www.perplexity.ai/**', (route) => route.fulfill({ body: 'pplx' }));
+    await page.getByRole('button', { name: 'Perplexity mode' }).click();
+    const search = page.getByRole('combobox', { name: 'Search' });
+    await search.fill('best rust web framework');
+    await Promise.all([page.waitForURL(/perplexity\.ai\/search\?q=best%20rust%20web%20framework/), search.press('Enter')]);
   });
 });
