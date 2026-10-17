@@ -181,7 +181,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     <div ref={rootRef} className="relative min-w-0 flex-1 max-sm:basis-full">
       <div
         data-gemini={geminiMode || undefined}
-        className={`glass-raised flex h-12 items-center gap-3 rounded-2xl pr-1.5 pl-4 transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
+        className={`glass-raised flex h-11 items-center gap-2.5 rounded-2xl pr-1.5 pl-3.5 transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
           geminiMode ? 'gemini-ring' : ''
         }`}
       >

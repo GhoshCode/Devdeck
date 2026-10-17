@@ -85,7 +85,7 @@ export const CommandPrompt = memo(function CommandPrompt() {
   return (
     <div ref={rootRef} className="relative">
       <div
-        className={`glass-raised flex h-12 items-center gap-2 rounded-2xl pr-1.5 pl-3.5 font-mono text-xs transition-colors ${
+        className={`glass flex h-9 items-center gap-2 rounded-xl pr-1 pl-3 font-mono text-xs transition-colors ${
           admin ? 'border-amber-400/60 shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_0_18px_rgba(251,191,36,0.15)]' : ''
         }`}
       >
