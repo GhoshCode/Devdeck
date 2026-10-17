@@ -131,6 +131,59 @@ for (const theme of THEMES) {
       await t.done();
     });
 
+    test('site map — open, browse, search, keyboard, open site, close', async ({ page }, info) => {
+      const t = transitions(page, info);
+      await t.run('site map opens', () => page.getByRole('button', { name: 'Site Map & Hierarchy' }).click());
+      const dialog = page.getByRole('dialog', { name: 'Site Map & Hierarchy' });
+      await expect(dialog.getByRole('region', { name: 'Currently Processing' }).getByText('DevDeck Core')).toBeVisible();
+      await auditOpen(page, info, 'site map grid', '[role="dialog"][aria-label="Site Map & Hierarchy"]');
+      const grid = dialog.locator('.overflow-y-auto').first();
+      await t.run('scroll the category grid', () => grid.evaluate((el) => el.scrollBy({ top: 900, behavior: 'smooth' })), 900);
+      await dialog.getByRole('link', { name: /PostgreSQL/ }).first().hover();
+      await step(page, info, 'site chip hover', async () => {});
+      const input = dialog.getByRole('combobox', { name: 'Search the site map' });
+      await t.run('palette results while typing', () => input.pressSequentially('git', { delay: 60 }), 600);
+      await expect(dialog.getByRole('option').first()).toContainText('GitHub');
+      await auditOpen(page, info, 'site map results', '[role="dialog"][aria-label="Site Map & Hierarchy"]');
+      await input.press('ArrowDown');
+      await input.press('ArrowDown');
+      await step(page, info, 'third result highlighted', async () => {});
+      await expect(dialog.getByRole('option').nth(2)).toHaveAttribute('aria-selected', 'true');
+      await t.run('Esc clears the search', () => input.press('Escape'), 400);
+      await expect(input).toHaveValue('');
+      await t.run('Esc closes the map', () => input.press('Escape'));
+      await expect(dialog).toHaveCount(0);
+      await t.done();
+    });
+
+    test('search — Gemini mode, voice button, back to Google', async ({ page }, info) => {
+      const t = transitions(page, info);
+      const toggle = page.getByRole('button', { name: 'Gemini mode' });
+      await t.run('Gemini mode on', () => toggle.click(), 500);
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      const input = page.getByRole('combobox', { name: 'Search' });
+      await input.pressSequentially('explain react server components', { delay: 30 });
+      await expect(page.getByRole('option').first()).toContainText('Ask Gemini');
+      await step(page, info, 'Gemini prompt in the dropdown', async () => {});
+      await auditOpen(page, info, 'Gemini dropdown', '#search-suggestions');
+      await page.getByRole('button', { name: 'Search by voice' }).hover();
+      await step(page, info, 'voice button hover', async () => {});
+      await input.fill('');
+      await t.run('Gemini mode off', () => toggle.click(), 500);
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      await t.done();
+    });
+
+    test('git widget — hover a day for its count', async ({ page }, info) => {
+      const git = page.getByTestId('git-widget');
+      await expect(git).toBeVisible();
+      const cell = git.locator('[aria-label="Contribution graph"] span').last();
+      await expect(cell).toBeVisible({ timeout: 15_000 });
+      await cell.hover();
+      await step(page, info, 'git day hover readout', async () => {});
+      await expect(git.getByTestId('git-activity')).toContainText(/contribution/);
+    });
+
     test('cards — pin, unpin, subcategory pills, list view, links strip', async ({ page }, info) => {
       const t = transitions(page, info);
       const names = () => page.locator('[data-category-id] h2').allTextContents();
@@ -198,6 +251,13 @@ for (const theme of THEMES) {
       const other = theme === 'light' ? 'dark' : 'light';
       await t.run(`switch to ${other}`, () => modal.getByRole('radio', { name: other === 'light' ? 'Light' : 'Dark', exact: true }).click(), 800);
       await expect(page.locator('html')).toHaveAttribute('data-theme', other);
+      await t.run('accent Purple', () => modal.getByRole('radio', { name: 'Purple', exact: true }).click(), 500);
+      await t.run('filter dark themes', () => modal.getByRole('tab', { name: /^dark/i }).click(), 400);
+      await t.run('filter all themes', () => modal.getByRole('tab', { name: /^all/i }).click(), 400);
+      await t.run('reduce transparency on', () => modal.getByRole('switch', { name: 'Reduce transparency' }).click(), 500);
+      await expect(page.locator('html')).toHaveAttribute('data-reduce-transparency', '');
+      await auditOpen(page, info, 'appearance after changes', '[role="dialog"][aria-label="DevDeck Settings"]');
+      await t.run('reduce transparency off', () => modal.getByRole('switch', { name: 'Reduce transparency' }).click(), 500);
       await t.run('settings closes', () => modal.getByRole('button', { name: 'Close Settings' }).click());
       await expect(modal).toHaveCount(0);
       await step(page, info, `dashboard in ${other}`, async () => {});

@@ -178,7 +178,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   const goIndex = items.findIndex((i) => i.kind === 'go');
 
   return (
-    <div ref={rootRef} className="relative min-w-0 flex-1">
+    <div ref={rootRef} className="relative min-w-0 flex-1 max-sm:basis-full">
       <div
         data-gemini={geminiMode || undefined}
         className={`glass-raised flex h-12 items-center gap-3 rounded-2xl pr-1.5 pl-4 transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
@@ -265,10 +265,10 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
           type="button"
           onClick={() => (q ? go(undefined, false) : inputRef.current?.focus())}
           aria-label={geminiMode ? 'Ask Gemini now' : 'Search the web'}
-          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
+          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 sm:px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
         >
           <SearchIcon className="size-4" />
-          SEARCH
+          <span className="hidden sm:inline">SEARCH</span>
         </button>
       </div>
 

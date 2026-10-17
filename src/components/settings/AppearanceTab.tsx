@@ -172,7 +172,7 @@ export function AppearanceTab() {
               className="absolute inset-0 cursor-pointer opacity-0"
             />
           </label>
-          <span className="ml-1 font-mono text-[11px] text-white/45 uppercase">{settings.accentColor}</span>
+          <span className="ml-1 font-mono text-[11px] text-white/55 uppercase">{settings.accentColor}</span>
         </div>
         {lowContrast && (
           <p role="note" className="mt-2.5 text-[11px] text-amber-300">
@@ -219,9 +219,9 @@ export function AppearanceTab() {
                 <ThemeThumb preset={preset} />
                 <span className="flex items-center gap-2 px-2.5 pt-2">
                   <span className="truncate text-xs font-semibold text-white">{preset.name}</span>
-                  <span className="ml-auto shrink-0 rounded px-1 font-mono text-[9px] text-white/45 uppercase">{preset.mode}</span>
+                  <span className="ml-auto shrink-0 rounded px-1 font-mono text-[9px] text-white/60 uppercase">{preset.mode}</span>
                 </span>
-                <span className="block truncate px-2.5 pt-0.5 pb-2.5 text-[10px] text-white/45">{preset.description}</span>
+                <span className="block truncate px-2.5 pt-0.5 pb-2.5 text-[10px] text-white/60">{preset.description}</span>
               </button>
             );
           })}
@@ -344,7 +344,7 @@ function Section({ title, hint, aside, children }: { title: string; hint?: strin
       <div className="mb-3.5 flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h4 className="text-xs font-semibold tracking-wider text-white/85 uppercase">{title}</h4>
-          {hint && <p className="mt-0.5 text-[11px] text-white/45">{hint}</p>}
+          {hint && <p className="mt-0.5 text-[11px] text-white/55">{hint}</p>}
         </div>
         {aside}
       </div>
@@ -366,7 +366,7 @@ function Slider(props: {
     <label className="block space-y-1.5">
       <span className="flex justify-between text-xs">
         <span className="text-white/70">{props.label}</span>
-        <span className="font-mono text-white/45 tabular-nums">
+        <span className="font-mono text-white/55 tabular-nums">
           {props.value}
           {props.unit}
         </span>
@@ -401,7 +401,7 @@ function Toggle({
     <div className={`flex items-center gap-3 ${inline ? '' : 'mt-4 border-t border-white/[0.07] pt-4'}`}>
       <div className={inline ? '' : 'min-w-0 flex-1'}>
         <span className="text-xs text-white/80">{label}</span>
-        {hint && <p className="text-[11px] text-white/45">{hint}</p>}
+        {hint && <p className="text-[11px] text-white/55">{hint}</p>}
       </div>
       <button
         type="button"
@@ -577,8 +577,8 @@ function ClockFaces({
             className={`clock-card flex flex-col items-center gap-2 rounded-xl border px-2 pt-4 pb-2.5 ${checked ? 'is-active' : ''}`}
           >
             <span
-              className={`${CLOCK_FONT[id]} text-[26px] leading-none`}
-              style={{ color: id === 'macos' ? undefined : accent, textShadow: id === 'cyberpunk' ? `0 0 12px ${accent}` : undefined }}
+              className={`${CLOCK_FONT[id]} text-[26px] leading-none ${id === 'macos' ? '' : 'clock-time'}`}
+              style={{ textShadow: id === 'cyberpunk' ? `0 0 12px ${accent}` : undefined }}
             >
               {time}
             </span>

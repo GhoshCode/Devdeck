@@ -232,11 +232,13 @@ async function fetchActivity(user: string, token: string, fetcher: Fetch): Promi
     get<{ public_repos?: number }>(`https://api.github.com/users/${enc}`),
     get<GhEvent[]>(`https://api.github.com/users/${enc}/events/public?per_page=50`),
   ]);
-  const summary = summarizeEvents(Array.isArray(events) ? events : []);
+  // Rate-limited or blocked: report "unknown" rather than "no activity".
+  if (!Array.isArray(events)) throw new Error('GitHub events unavailable');
+  const summary = summarizeEvents(events);
   // Push events no longer carry commit messages, so look the head commit up.
   let commitMessage: string | null = null;
   if (summary.repo && summary.commitSha) {
-    const full = (Array.isArray(events) ? events : []).find((e) => e.payload.head?.startsWith(summary.commitSha!))?.payload.head;
+    const full = events.find((e) => e.payload.head?.startsWith(summary.commitSha!))?.payload.head;
     const commit = full ? await get<{ commit?: { message?: string } }>(`https://api.github.com/repos/${summary.repo}/commits/${full}`) : null;
     commitMessage = commit?.commit?.message?.split('\n')[0] ?? null;
   }

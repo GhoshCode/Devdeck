@@ -1287,3 +1287,10 @@ html[data-theme='light'] .btn-secondary {
 html[data-theme='light'] .btn-secondary:hover {
   background: #f5f5f7;
 }
+/* Accent digits on the clock-face cards, tinted to stay readable on the accent-tinted active card. */
+.clock-time {
+  color: color-mix(in srgb, var(--color-accent) 60%, #fff);
+}
+html[data-theme='light'] .clock-time {
+  color: color-mix(in srgb, var(--color-accent) 80%, #000);
+}

@@ -75,7 +75,7 @@ export const GitWidget = memo(function GitWidget() {
   const now = Date.now();
 
   return (
-    <div data-testid="git-widget" className="glass flex h-full min-w-0 flex-col gap-1.5 px-3 pt-2.5 pb-2">
+    <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1.5 px-3 pt-2.5 pb-2">
       {/* Header: who, how many repos, latest branch */}
       <div className="flex min-w-0 items-center gap-1.5">
         <GitHubMark />
@@ -113,11 +113,13 @@ export const GitWidget = memo(function GitWidget() {
         </button>
       </div>
 
-      <div data-git-stats className="flex items-baseline gap-4 font-mono">
+      <div data-git-stats className="flex items-baseline gap-3 font-mono whitespace-nowrap @min-[300px]:gap-4">
         <Stat value={stats?.currentStreak} unit="d" label="streak" accent />
-        <Stat value={stats?.longestStreak} unit="d" label="longest" />
+        <span className="hidden @min-[250px]:contents">
+          <Stat value={stats?.longestStreak} unit="d" label="longest" />
+        </span>
         <Stat value={stats?.totalYear} label={`in ${new Date().getFullYear()}`} />
-        <span aria-hidden className="ml-auto flex shrink-0 items-center gap-0.5 self-center text-[9px] text-white/30">
+        <span aria-hidden className="ml-auto hidden shrink-0 items-center gap-0.5 self-center text-[9px] text-white/30 @min-[360px]:flex">
           Less
           {([0, 1, 2, 3, 4] as const).map((l) => (
             <span key={l} className="inline-block size-[7px] rounded-[1.5px]" style={{ background: LEVEL_BG[l] }} />
@@ -164,7 +166,8 @@ export const GitWidget = memo(function GitWidget() {
                   {activity.commitAt && <span className="shrink-0 text-white/35">{ago(activity.commitAt, now)}</span>}
                 </a>
               )}
-              {!activity?.mergedPr && !activity?.commitSha && stats && (
+              {stats && !activity && <span className="text-white/35">Activity unavailable · retry ↻</span>}
+              {activity && !activity.mergedPr && !activity.commitSha && (
                 <span className="text-white/35">No recent public activity</span>
               )}
             </>

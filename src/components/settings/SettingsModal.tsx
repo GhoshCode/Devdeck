@@ -97,7 +97,7 @@ export default function SettingsModal({
                       DevDeck
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[10px] text-white/40">Configuration & Tools</p>
+                  <p className="mt-0.5 text-[10px] text-white/55">Configuration & Tools</p>
                 </div>
 
                 {TABS.map((tab) => {

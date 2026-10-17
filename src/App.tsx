@@ -161,7 +161,7 @@ export default function App() {
           />
         }
         searchRow={
-          <div className="mx-auto flex w-full max-w-5xl items-center gap-3">
+          <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3 sm:flex-nowrap">
             <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
             <SiteMapButton />
             <BookmarkButton />

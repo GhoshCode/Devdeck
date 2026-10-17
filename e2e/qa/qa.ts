@@ -223,6 +223,7 @@ export async function seedDeck(page: Page, opts: { theme: 'dark' | 'light' }): P
       useGeolocation: false,
       themeMode: theme,
       presetTheme: theme === 'light' ? 'default-light' : 'default-dark',
+      accentColor: theme === 'light' ? '#007aff' : '#ff2e9a',
       backgroundImage: null,
     };
     localStorage.setItem('devdeck', JSON.stringify(raw));

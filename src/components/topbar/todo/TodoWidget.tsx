@@ -104,7 +104,7 @@ export const TodoWidget = memo(function TodoWidget() {
         animate={{ height: open ? 'auto' : slotHeight }}
         style={{ maxHeight: open ? expandedHeight : undefined, minHeight: open ? slotHeight : undefined }}
         transition={{ type: 'spring', stiffness: 360, damping: 38, mass: 0.9 }}
-        className={`absolute top-0 right-0 left-0 flex flex-col overflow-hidden px-2.5 pt-2 pb-1 ${
+        className={`@container absolute top-0 right-0 left-0 flex flex-col overflow-hidden px-2.5 pt-2 pb-1 ${
           open
             ? 'glass-raised z-40 rounded-[var(--radius-card)] bg-[var(--color-base-elevated)]/95 shadow-2xl'
             : 'glass z-0'
@@ -112,15 +112,16 @@ export const TodoWidget = memo(function TodoWidget() {
       >
         {/* Header */}
         <div className="flex shrink-0 items-center gap-2 px-1">
-          <h2 className="font-display text-[11px] font-semibold tracking-[0.2em] text-white/60">
+          <h2 className="font-display text-[11px] font-semibold tracking-[0.2em] whitespace-nowrap text-white/60">
             {mode === 'archive' ? 'ARCHIVE' : 'TO DO'}
           </h2>
           <span className="rounded-full bg-white/10 px-1.5 font-mono text-[10px] text-white/60">
             {mode === 'archive' ? archived.length : active.length}
           </span>
           {overdueCount > 0 && mode !== 'archive' && (
-            <span className="rounded-md bg-red-500/30 px-1.5 font-mono text-[10px] font-bold text-red-200">
-              {overdueCount} overdue
+            <span className="rounded-md bg-red-500/30 px-1.5 font-mono text-[10px] font-bold whitespace-nowrap text-red-200" title={`${overdueCount} overdue`}>
+              {overdueCount}
+              <span className="hidden @min-[230px]:inline"> overdue</span>
             </span>
           )}
           {mode !== 'archive' && (
