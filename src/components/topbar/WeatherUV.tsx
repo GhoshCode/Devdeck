@@ -91,15 +91,14 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => void (clickTimer.current && clearTimeout(clickTimer.current)), []);
 
-  if (!enabled) return <div aria-hidden className="h-full w-[170px] opacity-40" />;
+  if (!enabled) return null;
 
   const { data } = state;
   const error = state.status === 'error' ? state.error : null;
 
   // First run with location denied and no city: say what to do instead of
   // showing a bare warning and "--°C".
-  const column =
-    'flex h-full w-[170px] shrink-0 flex-col items-end justify-center gap-1.5 border-l border-white/[0.08] pr-2 pl-3 text-right';
+  const column = 'flex max-w-full min-w-0 shrink-0 flex-col items-start gap-1 rounded-lg px-1 -mx-1 py-0.5 text-left';
 
   if (!data && error && !manualCity.trim() && onSetup) {
     return (
@@ -121,7 +120,12 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
   }
 
   const where = data ? [data.area, data.place].filter(Boolean).join(', ') : '';
-  const updated = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const updated = data
+    ? new Date(data.fetchedAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
   const site = !error && data?.siteUrl ? data.siteUrl : null;
   const title = error
     ? `${error} — click to retry`
@@ -156,30 +160,32 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
           : 'Weather'
       }
       data-testid="weather-uv"
-      className={`${column} cursor-pointer rounded-r-xl transition-colors select-none hover:bg-white/[0.03] ${
+      className={`${column} cursor-pointer transition-colors select-none hover:bg-white/[0.04] ${
         state.status === 'loading' ? (data ? 'opacity-70' : 'animate-pulse') : ''
       }`}
     >
-      {/* A — condition + temperature */}
-      <span className="flex items-center gap-1.5 text-white/90">
-        <span aria-hidden className="text-base leading-none">
-          {data ? ICON[data.icon] : error ? '⚠️' : '·'}
+      {/* A — condition + temperature, with B (UV) beside it */}
+      <span className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5 text-white/90">
+          <span aria-hidden className="text-base leading-none">
+            {data ? ICON[data.icon] : error ? '⚠️' : '·'}
+          </span>
+          <span className="font-mac text-[1.05rem] leading-none font-light tracking-tight tabular-nums">
+            {data ? `${Math.round(data.temperature)}°` : '--°'}
+            <span className="text-[0.7rem] text-white/55">C</span>
+          </span>
         </span>
-        <span className="font-mac text-[1.3rem] leading-none font-light tracking-tight tabular-nums">
-          {data ? `${Math.round(data.temperature)}°` : '--°'}
-          <span className="text-[0.8rem] text-white/55">C</span>
+        {/* B — UV index */}
+        <span
+          className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
+            data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
+          }`}
+        >
+          UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
         </span>
-      </span>
-      {/* B — UV index */}
-      <span
-        className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
-          data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
-        }`}
-      >
-        UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
       </span>
       {/* Location: area, then city and pincode */}
-      <span className="flex max-w-full flex-col items-end leading-tight">
+      <span className="flex max-w-full flex-col items-start leading-tight">
         <span className="flex max-w-full items-center gap-1 text-[10.5px] text-white/80">
           <span aria-hidden className="text-[9px]">
             📍
@@ -187,7 +193,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
           <span className="truncate font-medium">{data ? (data.area ?? data.place) : error ? 'Unavailable' : 'Locating…'}</span>
         </span>
         {data && (data.area || data.postcode) && (
-          <span className="max-w-full truncate text-[9.5px] text-white/50">
+          <span className="max-w-full truncate pl-[15px] text-[9.5px] text-white/50">
             {data.area ? data.place : ''}
             {data.area && data.postcode ? ' · ' : ''}
             {data.postcode && <span className="font-mono">{data.postcode}</span>}
