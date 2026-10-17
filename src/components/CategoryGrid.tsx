@@ -166,6 +166,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
         <div className="flex flex-1 min-h-0 w-full flex-col overflow-hidden">
           <motion.div
             ref={scrollRef}
+            data-cards-track
             variants={containerVariants}
             initial="hidden"
             animate="show"
@@ -203,6 +204,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
           {/* Horizontal scroll track with cards */}
           <motion.div
             ref={scrollRef}
+            data-cards-track
             variants={containerVariants}
             initial="hidden"
             animate="show"

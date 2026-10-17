@@ -14,7 +14,6 @@ const G3 = A;
 const TINY = 'text-[max(7px,min(8.5cqh,3.1cqw))]';
 const SMALL = 'text-[max(9px,min(12cqh,4.2cqw))]';
 const DIAL = 'aspect-square h-[min(86cqh,42cqw)] shrink-0';
-const dayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
 // The concept sheet's tile: a dark card with a soft top highlight and thin edge.
 function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -89,7 +88,6 @@ function AnalogFace({ parts, now }: FaceProps) {
           {parts.hours}:{parts.minutes}
           {parts.meridiem && <span className="text-white/60"> {parts.meridiem}</span>}
         </span>
-        <span className={`${TINY} text-white/60`}>{dayFmt.format(now)}</span>
       </div>
     </Card>
   );

@@ -216,16 +216,6 @@ function Matrix({ text, dot, gap, square = false, dim }: { text: string; dot: st
   );
 }
 
-function DotMatrixFace({ parts, showSeconds }: FaceProps) {
-  return (
-    <div className="h-full w-full p-[3cqh]">
-      <div className="face-led flex h-full items-center justify-center gap-[3cqw] rounded-[4cqh] border" style={{ borderColor: mix(25) }}>
-        <Matrix text={`${parts.hours}:${parts.minutes}`} dot="min(5.2cqh,1.5cqw)" gap="min(2.2cqh,0.65cqw)" dim={mix(10)} />
-        {showSeconds && <Matrix text={parts.seconds} dot="min(2.8cqh,0.8cqw)" gap="min(1.2cqh,0.35cqw)" dim={mix(10)} />}
-      </div>
-    </div>
-  );
-}
 
 function MicroPixelFace({ parts, showSeconds }: FaceProps) {
   return (
@@ -240,64 +230,7 @@ function MicroPixelFace({ parts, showSeconds }: FaceProps) {
 
 // ---- Futuristic ------------------------------------------------------------------------
 
-function HolographicFace({ parts, showSeconds }: FaceProps) {
-  return (
-    <div className="h-full w-full p-[3cqh]">
-      <div
-        className="relative flex h-full items-center justify-center overflow-hidden rounded-[5cqh] border"
-        style={{ borderColor: mix(30), background: `radial-gradient(circle at 50% 50%, ${mix(18)}, transparent 70%), linear-gradient(135deg, ${mix(12, '#0b1020')}, #0b1020)` }}
-      >
-        <span aria-hidden className="holo-ring absolute aspect-square h-[88%] rounded-full border-2 border-dashed" style={{ borderColor: mix(45) }} />
-        <span aria-hidden className="absolute aspect-square h-[70%] rounded-full border" style={{ borderColor: mix(30) }} />
-        <span aria-hidden className="holo-ring-rev absolute aspect-square h-[100%] rounded-full border-t-2 border-b-2" style={{ borderColor: mix(55) }} />
-        <span
-          className={`relative font-display ${MAIN} leading-none font-semibold tabular-nums`}
-          style={{
-            backgroundImage: `linear-gradient(180deg, #fff, ${mix(80, '#9ff')})`,
-            WebkitBackgroundClip: 'text',
-            color: 'transparent',
-            filter: `drop-shadow(0 0 10px ${mix(60)})`,
-          }}
-        >
-          {parts.hours}:{parts.minutes}
-        </span>
-        {showSeconds && (
-          <span className={`absolute right-[5cqw] bottom-[6cqh] font-mono ${TINY}`} style={{ color: mix(80, '#fff') }}>
-            {parts.seconds}s
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
 
-function CyberpunkHudFace({ parts, showSeconds }: FaceProps) {
-  return (
-    <div className="h-full w-full p-[3cqh]">
-      <div
-        className="face-hud relative flex h-full flex-col justify-center px-[6cqw]"
-        style={{ background: `linear-gradient(${mix(85)}, ${mix(85)}) top left / 22% 2px no-repeat, #0b0b0d`, borderColor: mix(70) }}
-      >
-        <span className={`absolute top-[4cqh] left-1/2 -translate-x-1/2 font-mono text-[max(7px,min(7cqh,2.6cqw))] tracking-[0.25em] whitespace-nowrap`} style={{ color: mix(80, '#fff') }}>
-          TECHNICAL TELEMETRY
-        </span>
-        <div className="flex items-end justify-center gap-[2cqw] pt-[8cqh] leading-none" style={{ color: A, textShadow: `0 0 10px ${mix(50)}` }}>
-          <span className="flex items-center text-[min(44cqh,18cqw)]">
-            <Segments value={parts.hours} ghostClass="face-hud-ghost" />
-            <span className="clock-colon mx-[1cqw] font-clock">:</span>
-            <Segments value={parts.minutes} ghostClass="face-hud-ghost" />
-          </span>
-          {showSeconds && <Segments value={parts.seconds} className={SEC} ghostClass="face-hud-ghost" />}
-        </div>
-        <span aria-hidden className="absolute top-[22%] bottom-[22%] left-[2cqw] w-[3px]" style={{ background: mix(70) }} />
-        <span aria-hidden className="absolute top-[22%] right-[2cqw] bottom-[22%] w-[3px]" style={{ background: mix(70) }} />
-        <span aria-hidden className={`absolute bottom-[5cqh] left-[5cqw] font-mono ${TINY} text-white/40`}>
-          LOC·SYNC
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function SplitGeometricFace({ parts, showSeconds }: FaceProps) {
   return (
@@ -358,9 +291,8 @@ function DiffusedGlowFace({ parts, showSeconds }: FaceProps) {
 
 // ---- Gradient & glass ------------------------------------------------------------------
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
-function GradientFrostFace({ parts, showSeconds, now }: FaceProps) {
+function GradientFrostFace({ parts, showSeconds }: FaceProps) {
   return (
     <div className="h-full w-full p-[3cqh]">
       <div
@@ -374,7 +306,6 @@ function GradientFrostFace({ parts, showSeconds, now }: FaceProps) {
           {parts.hours}:{parts.minutes}
           {showSeconds && <span className={`${SEC} font-medium opacity-70`}>:{parts.seconds}</span>}
         </span>
-        <span className={`${TINY} mt-[2cqh] font-mac font-medium tracking-[0.25em] text-white/65 uppercase`}>{dateFmt.format(now)}</span>
       </div>
     </div>
   );
@@ -486,12 +417,12 @@ function CliChronoFace({ parts, showSeconds }: FaceProps) {
   );
 }
 
-function CliSophisticatedFace({ parts, showSeconds, now }: FaceProps) {
+function CliSophisticatedFace({ parts, showSeconds }: FaceProps) {
   return (
     <div className="h-full w-full p-[3cqh]">
       <div className="face-terminal relative flex h-full flex-col justify-center rounded-[4cqh] border px-[5cqw]" style={{ background: `linear-gradient(${mix(8, '#04110d')}, #050a0a)` }}>
         <span className={`absolute top-[6cqh] left-[5cqw] font-mono ${TINY} leading-tight text-white/45`}>
-          sys.clock — {now.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()} · tz synced
+          sys.clock · tz synced
           <span className="clock-colon">..</span>
         </span>
         <span className="font-mono text-[min(38cqh,13cqw)] leading-none font-semibold tabular-nums" style={{ color: mix(70, '#fff'), textShadow: `0 0 10px ${mix(40)}` }}>
@@ -511,10 +442,7 @@ const FACES1 = {
   macos: MacFace,
   neumorphic: NeumorphicFace,
   'ambient-neumorphic': AmbientNeumorphicFace,
-  'dot-matrix': DotMatrixFace,
   'micro-pixel': MicroPixelFace,
-  holographic: HolographicFace,
-  'cyberpunk-hud': CyberpunkHudFace,
   'split-geometric': SplitGeometricFace,
   'scifi-segmented': ScifiSegmentedFace,
   'diffused-glow': DiffusedGlowFace,

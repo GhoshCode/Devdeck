@@ -39,7 +39,7 @@ import {
 // Everything refreshes every 30 minutes (↻ forces it). With no username it
 // shows an inline setup field.
 
-const CELL = 9; // largest tile size (px) — leaves room for the stats beside the tiles
+const CELL = 12; // largest tile size (px) — leaves room for the stats beside the tiles
 const MIN_CELL = 6;
 const GAP = 2;
 const MONTHS_BACK = 6;
@@ -150,7 +150,7 @@ export const GitWidget = memo(function GitWidget() {
   const updatedAt = stats.data?.fetchedAt;
 
   return (
-    <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1.5 px-3 pt-2.5 pb-2.5">
+    <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1 px-3 pt-2.5 pb-2">
       {/* Profile */}
       <div className="flex min-w-0 items-center gap-2">
         <a href={profile.data?.url ?? `https://github.com/${username}`} className="shrink-0" title={`@${username} on GitHub`}>
@@ -202,7 +202,7 @@ export const GitWidget = memo(function GitWidget() {
       </div>
 
       {/* Six months of tiles, stats beside them */}
-      <div className="flex min-h-0 flex-1 gap-3">
+      <div className="flex min-h-0 flex-1 gap-4">
         {stats.status === 'error' && !stats.data ? (
           <p className="flex-1 text-[11px] text-red-300/80" role="alert">
             {stats.error}
@@ -373,8 +373,8 @@ function StatsColumn({ stats, hovered }: { stats: GitStats | null; hovered: Cont
   const total = inWindow.reduce((sum, d) => sum + d.count, 0);
   const active = inWindow.filter((d) => d.count > 0).length;
   return (
-    <div data-git-stats className="flex min-w-0 flex-1 flex-col justify-between font-mono">
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+    <div data-git-stats className="flex min-w-0 shrink-0 flex-col justify-between font-mono">
+      <div className="grid w-max grid-cols-[auto_auto] gap-x-3.5 gap-y-0.5">
         <Stat value={stats?.currentStreak} unit="d" label="streak" accent />
         <Stat value={stats?.longestStreak} unit="d" label="best" />
         <Stat value={stats ? total : undefined} label="6 months" />
@@ -421,7 +421,7 @@ function Heatmap({
     const el = ref.current;
     if (!el) return;
     const measure = () => {
-      const byHeight = Math.floor((el.clientHeight - 12 + GAP) / 7) - GAP; // 12px for month labels
+      const byHeight = Math.floor((el.clientHeight - 10 + GAP) / 7) - GAP; // 10px for month labels
       setCell(Math.max(MIN_CELL, Math.min(CELL, byHeight || CELL)));
     };
     measure();
@@ -457,7 +457,7 @@ function Heatmap({
       aria-label={`Contribution graph, ${dayFmt.format(start)} – ${dayFmt.format(today)}`}
       title={`${dayFmt.format(start)} – ${dayFmt.format(today)}`}
     >
-      <div className="relative h-3 shrink-0 font-mono text-[8.5px] leading-none text-white/45">
+      <div className="relative h-2.5 shrink-0 font-mono text-[8.5px] leading-none text-white/45">
         {labels.map((label, i) =>
           label ? (
             <span key={i} className="absolute top-0" style={{ left: i * (cell + GAP) }}>

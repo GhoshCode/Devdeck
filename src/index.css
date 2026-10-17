@@ -1025,13 +1025,18 @@ html[data-theme='light'] #search-suggestions [role='option']:hover {
   [data-topbar-grid] {
     height: 188px;
   }
+  /* The clock shrinks a step so the date, weather and place still fit under it. */
+  [data-widget-card='clock-weather'] {
+    height: 92px;
+    width: 280px;
+  }
   /* Tighter rows so the collapsed to-do still shows its first tasks. */
   [data-testid='todo-widget'] li[data-todo-id] > div {
     padding-top: 1px;
     padding-bottom: 1px;
   }
   [data-testid='git-widget'] {
-    gap: 6px;
+    gap: 4px;
     padding-top: 8px;
     padding-bottom: 8px;
   }
@@ -1602,3 +1607,39 @@ html[data-theme='light'] .face-dark [class*='text-white/'] {
 .dial { --dial-ink-1: rgba(255, 255, 255, 0.7); --dial-ink-2: rgba(255, 255, 255, 0.25); }
 html[data-theme='light'] .dial { --dial-ink-1: rgba(15, 23, 42, 0.75); --dial-ink-2: rgba(15, 23, 42, 0.22); }
 html[data-theme='light'] .organic-dim { display: none; }
+
+/* Greeting: a soft spotlight sweeps across the name, left to right. */
+.greet-spotlight {
+  --spot: color-mix(in srgb, var(--color-accent) 40%, #fff);
+  background: linear-gradient(100deg, currentColor 0 38%, var(--spot) 47%, #fff 50%, var(--spot) 53%, currentColor 62% 100%);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: greet-spotlight 2.4s cubic-bezier(0.45, 0, 0.25, 1) both;
+}
+html[data-theme='light'] .greet-spotlight {
+  --spot: var(--color-accent);
+  background-image: linear-gradient(
+    100deg,
+    currentColor 0 38%,
+    var(--spot) 46%,
+    color-mix(in srgb, var(--color-accent) 55%, #fff) 50%,
+    var(--spot) 54%,
+    currentColor 62% 100%
+  );
+}
+@keyframes greet-spotlight {
+  0% {
+    background-position: 100% 0;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent));
+  }
+  100% {
+    background-position: 0% 0;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}

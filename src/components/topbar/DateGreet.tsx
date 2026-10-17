@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
@@ -8,12 +8,39 @@ import { quoteFor } from '../../lib/greeting';
 // The uppercase date line, under the clock.
 export const DateLine = memo(function DateLine() {
   const now = useNow(60_000);
-  return <p className="text-gradient font-display text-[11px] font-semibold tracking-[0.22em]">{formatDateLine(now)}</p>;
+  return <p className="text-gradient font-display text-[13px] font-semibold tracking-[0.22em]">{formatDateLine(now)}</p>;
 });
 
-// GREET (middle of the top bar, above the search): the time-of-day greeting
-// with your name and a daily motivational quote (Appearance → Greeting can
-// turn it off; hover it for another).
+// Every 10 minutes a soft spotlight sweeps across your name, left to right
+// (only the name — not the greeting or the quote). Skipped with reduced motion.
+const SPOTLIGHT_EVERY_MS = 10 * 60_000;
+
+function SpotlightName({ name }: { name: string }) {
+  const [sweep, setSweep] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const first = setTimeout(() => setSweep((n) => n + 1), 1200); // once shortly after opening
+    const timer = setInterval(() => setSweep((n) => n + 1), SPOTLIGHT_EVERY_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, []);
+  return (
+    <span
+      key={sweep}
+      data-testid="greet-name"
+      className={sweep ? 'greet-spotlight' : undefined}
+      onAnimationEnd={(e) => e.currentTarget.classList.remove('greet-spotlight')}
+    >
+      {name}
+    </span>
+  );
+}
+
+// GREET (top-centre of the top bar, above the search): the time-of-day
+// greeting with your name and a daily motivational quote (Appearance →
+// Greeting can turn it off; hover it for another).
 export const DateGreet = memo(function DateGreet() {
   // Minute resolution is plenty for a date and a greeting.
   const now = useNow(60_000);
@@ -23,8 +50,15 @@ export const DateGreet = memo(function DateGreet() {
   const quote = quoteFor(now, shuffle);
 
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1 text-left">
-      <h1 className="truncate font-display text-[1.6rem] leading-tight font-bold tracking-tight text-white/95">{greetingFor(now, name)}</h1>
+    <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+      <h1 className="max-w-full truncate font-display text-[1.85rem] leading-tight font-bold tracking-tight text-white/95">
+        {greetingFor(now)}
+        {name.trim() && (
+          <>
+            , <SpotlightName name={name.trim().toUpperCase()} />
+          </>
+        )}
+      </h1>
       {showQuote && (
         <figure className="group/quote relative max-w-[calc(100%-1.75rem)]">
           <AnimatePresence mode="wait" initial={false}>

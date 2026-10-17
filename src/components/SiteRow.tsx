@@ -49,7 +49,7 @@ export const SiteRow = memo(function SiteRow({
       ref={setNodeRef}
       style={style}
       data-site-id={site.id}
-      className={`group/site flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-left transition-colors duration-150 ${
+      className={`group/site flex items-center justify-between gap-3 rounded-xl px-3 py-1.5 text-left transition-colors duration-150 ${
         isOverlay
           ? 'glass-inner bg-white/10 shadow-2xl border-white/20'
           : 'hover:bg-white/[0.07] hover:border-white/10'

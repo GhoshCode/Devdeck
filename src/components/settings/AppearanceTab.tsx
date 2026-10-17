@@ -1003,23 +1003,17 @@ function ThemeThumb({ preset }: { preset: PresetTheme }) {
   );
 }
 
-// Every clock face as a live preview, in one horizontal row. The scrollbar is
-// hair-thin and only shows while you scroll; a vertical wheel scrolls sideways.
+// Every clock face as a live preview, in one horizontal row. The thin
+// scrollbar stays visible; a vertical wheel anywhere over the row (faces
+// included) scrolls it sideways.
 function ClockFaces({ style, h24, showSeconds, onPick }: { style: ClockStyle; h24: boolean; showSeconds: boolean; onPick: (id: ClockStyle) => void }) {
   const now = useNow(1000);
   const parts = clockParts(now, h24);
   const ref = useRef<HTMLDivElement>(null);
-  const [scrolling, setScrolling] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const show = () => {
-      setScrolling(true);
-      clearTimeout(timer);
-      timer = setTimeout(() => setScrolling(false), 900);
-    };
     const onWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
       const max = el.scrollWidth - el.clientWidth;
@@ -1027,11 +1021,8 @@ function ClockFaces({ style, h24, showSeconds, onPick }: { style: ClockStyle; h2
       e.preventDefault();
       el.scrollLeft += e.deltaY;
     };
-    el.addEventListener('scroll', show, { passive: true });
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => {
-      clearTimeout(timer);
-      el.removeEventListener('scroll', show);
       el.removeEventListener('wheel', onWheel);
     };
   }, []);
@@ -1046,7 +1037,7 @@ function ClockFaces({ style, h24, showSeconds, onPick }: { style: ClockStyle; h2
       ref={ref}
       role="radiogroup"
       aria-label="Clock style"
-      className={`thin-autohide-scroll -mx-1 flex snap-x gap-3 overflow-x-auto px-1 pt-1 pb-2.5 ${scrolling ? 'is-scrolling' : ''}`}
+      className="thin-autohide-scroll is-scrolling -mx-1 flex snap-x gap-3 overflow-x-auto px-1 pt-1 pb-2.5"
     >
       {CLOCK_STYLE_INFO.map(({ id, name, desc }) => {
         const checked = style === id;

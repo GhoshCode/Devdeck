@@ -112,7 +112,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
   return (
     <section
       aria-label="Primary sites"
-      className="group/primary relative shrink-0 border-b border-white/[0.04] px-4 py-2 select-none"
+      className="group/primary relative shrink-0 border-b border-white/[0.04] px-3 py-1.5 select-none"
     >
       <div className="relative">
         {/* Left Fade Mask & Chevron */}
@@ -144,7 +144,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="flex items-center gap-3 overflow-x-auto py-1 scrollbar-none cursor-grab active:cursor-grabbing"
+          className="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none cursor-grab active:cursor-grabbing"
           tabIndex={0}
           role="region"
           aria-label="Primary sites rail"
@@ -154,7 +154,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
               key={site.id}
               href={site.url}
               onClick={(e) => handleTileClick(e, site.id)}
-              className="glass-inner group/tile flex size-20 sm:size-22 shrink-0 flex-col items-center justify-center gap-1.5 p-2 text-center transition-all duration-200 hover:scale-105 hover:bg-[var(--color-glass-strong)] hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              className="glass-inner group/tile flex size-[70px] sm:size-[76px] shrink-0 flex-col items-center justify-center gap-1 p-1.5 text-center transition-all duration-200 hover:scale-105 hover:bg-[var(--color-glass-strong)] hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               title={site.name}
             >
               <Favicon

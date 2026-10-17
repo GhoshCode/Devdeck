@@ -1,6 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useStore } from '../../store';
+import { clampTaken, maxTaken, snapColumns, type SnapGeometry } from '../../lib/cardSnap';
+import { CardSnapHandle } from './CardSnapHandle';
 
 // The v2 page shell (plan §1, §4 Phase 0): Top Bar, Search Row, then the
 // 3-column cockpit — D on the left, the E/F + cards frame in the centre, I/J on
@@ -9,7 +12,8 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 //   1024–1439px left column inline (narrower), right column in a drawer
 //   <1024px     both side columns become slide-out drawers
 // Each side slot is rendered exactly once — inline or in its drawer — so
-// widget state is never duplicated.
+// widget state is never duplicated. With all three inline, a handle on each
+// side of the centre resizes by whole category cards (1–3 stay in the centre).
 
 interface DashboardLayoutProps {
   topBar: ReactNode;
@@ -49,8 +53,10 @@ export function DashboardLayout({
     return () => window.removeEventListener('keydown', onKey);
   }, [drawer]);
 
+  const snap = useCardSnap(rightInline);
+
   const columns = rightInline
-    ? 'grid-cols-[minmax(220px,250px)_minmax(0,1fr)_minmax(260px,300px)]'
+    ? 'transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none'
     : leftInline
       ? 'grid-cols-[200px_minmax(0,1fr)]'
       : 'grid-cols-1';
@@ -78,15 +84,22 @@ export function DashboardLayout({
 
       {/* Below 1024px the dashboard scrolls inside itself (never the page) so the
           cockpit keeps a usable height instead of being squeezed. */}
-      <div data-zone="cockpit" className={`grid min-h-0 flex-1 gap-3 max-lg:min-h-[600px] ${columns}`}>
+      <div
+        ref={snap.cockpitRef}
+        data-zone="cockpit"
+        className={`grid min-h-0 flex-1 max-lg:min-h-[600px] ${rightInline ? '' : 'gap-3'} ${columns}`}
+        style={rightInline ? snap.style : undefined}
+      >
         {leftInline && (
           <aside data-zone="left" aria-label="Currently processing" className="min-h-0">
             {leftColumn}
           </aside>
         )}
-        <section data-zone="center" className="flex min-h-0 min-w-0 flex-col">
+        {rightInline && <CardSnapHandle side="left" {...snap.handle('left')} />}
+        <section ref={snap.centerRef} data-zone="center" className="flex min-h-0 min-w-0 flex-col">
           {center}
         </section>
+        {rightInline && <CardSnapHandle side="right" {...snap.handle('right')} />}
         {rightInline && (
           <aside data-zone="right" aria-label="Tech news and topics" className="min-h-0">
             {right}
@@ -137,6 +150,67 @@ export function DashboardLayout({
       </AnimatePresence>
     </div>
   );
+}
+
+const HANDLE = 12; // each resize handle stands in for the old column gap
+const LEFT_BASE = 250;
+const RIGHT_BASE = 300;
+
+// Measures the cockpit and the category cards, and turns the saved "cards
+// taken" per side into column widths.
+function useCardSnap(enabled: boolean) {
+  const cockpitRef = useRef<HTMLDivElement>(null);
+  const centerRef = useRef<HTMLElement>(null);
+  const left = useStore((s) => s.settings.cockpitLeftCards ?? 0);
+  const right = useStore((s) => s.settings.cockpitRightCards ?? 0);
+  const categoryCount = useStore((s) => s.categories.length);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const [geo, setGeo] = useState<SnapGeometry | null>(null);
+
+  useLayoutEffect(() => {
+    const cockpit = cockpitRef.current;
+    const centre = centerRef.current;
+    if (!enabled || !cockpit || !centre) return;
+    const measure = () => {
+      const track = centre.querySelector<HTMLElement>('[data-cards-track]');
+      const card = track?.firstElementChild as HTMLElement | null;
+      if (!track || !card) return setGeo(null);
+      const cs = getComputedStyle(track);
+      const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      setGeo({
+        width: cockpit.clientWidth,
+        handle: HANDLE,
+        leftBase: LEFT_BASE,
+        rightBase: RIGHT_BASE,
+        chrome: centre.offsetWidth - track.clientWidth + pad,
+        card: card.offsetWidth,
+        gap: parseFloat(cs.columnGap) || 0,
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(cockpit);
+    ro.observe(centre);
+    const t = setTimeout(measure, 400); // cards mount after their entrance animation starts
+    return () => {
+      ro.disconnect();
+      clearTimeout(t);
+    };
+  }, [enabled, categoryCount]);
+
+  const cols = geo ? snapColumns(geo, left, right) : null;
+  const taken = geo ? clampTaken(geo, left, right) : { left: 0, right: 0 };
+  const max = geo ? maxTaken(geo) : 0;
+  const style: CSSProperties = {
+    gridTemplateColumns: `${cols?.left ?? LEFT_BASE}px ${HANDLE}px minmax(0,1fr) ${HANDLE}px ${cols?.right ?? RIGHT_BASE}px`,
+  };
+  const handle = (side: 'left' | 'right') => ({
+    taken: taken[side],
+    max: max - (side === 'left' ? taken.right : taken.left),
+    unit: geo ? geo.card + geo.gap : 420,
+    onChange: (n: number) => updateSettings(side === 'left' ? { cockpitLeftCards: n } : { cockpitRightCards: n }),
+  });
+  return { cockpitRef, centerRef, style, handle };
 }
 
 function DrawerToggle({ side, label, onClick }: { side: Side; label: string; onClick: () => void }) {

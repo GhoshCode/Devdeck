@@ -249,7 +249,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
       className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 transition-all duration-300 hover:border-white/20 shadow-lg select-none"
     >
       {/* 1. Header Region: colored label + site count + segmented view switcher */}
-      <header className="flex items-center justify-between px-4 pt-2 pb-1.5 border-b border-white/[0.06] select-none shrink-0">
+      <header className="flex items-center justify-between px-4 py-1 border-b border-white/[0.06] select-none shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <span
             className="size-2.5 rounded-full shrink-0"
@@ -418,7 +418,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
                 onWheel={handleBottomWheel}
                 role="toolbar"
                 aria-label={`Subcategory navigation for ${category.name}`}
-                className="flex items-center justify-between px-3.5 py-2 border-t border-white/[0.06] shrink-0 select-none bg-black/10"
+                className="flex items-center justify-between px-3.5 py-1 border-t border-white/[0.06] shrink-0 select-none bg-black/10"
               >
                 {/* Left: < > Navigation buttons */}
                 <div className="flex items-center gap-1.5">

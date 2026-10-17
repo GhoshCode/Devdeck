@@ -43,13 +43,8 @@ function normalizeSettings(raw: unknown): Settings {
   const s = { ...DEFAULT_SETTINGS, ...(asRecord(raw) as Partial<Settings>) };
   return {
     ...s,
-    // 'glass-pro' was replaced by 'glass-classic'.
-    clockStyle:
-      (s.clockStyle as string) === 'glass-pro'
-        ? 'glass-classic'
-        : CLOCK_STYLES.includes(s.clockStyle)
-          ? s.clockStyle
-          : DEFAULT_SETTINGS.clockStyle,
+    // Retired faces (glass-pro, glass-classic, organic…) fall back to the default.
+    clockStyle: CLOCK_STYLES.includes(s.clockStyle) ? s.clockStyle : DEFAULT_SETTINGS.clockStyle,
     autoQuickLinkCount: clamp(s.autoQuickLinkCount, 2, 12, DEFAULT_SETTINGS.autoQuickLinkCount),
     recentLinkCount: clamp(s.recentLinkCount, 0, 24, DEFAULT_SETTINGS.recentLinkCount),
     githubUsername: typeof s.githubUsername === 'string' ? s.githubUsername.trim() : '',

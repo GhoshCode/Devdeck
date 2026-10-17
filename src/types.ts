@@ -65,6 +65,8 @@ export interface Settings {
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
   leftSplit?: number; // 0–1: share of the left column given to Focus (rest: Queue / To-do)
   feedSplit?: number; // 0–1: share of the right column given to Tech news (rest: Dev jobs)
+  cockpitLeftCards?: number; // category cards' width the left column has taken from the centre (0–2)
+  cockpitRightCards?: number; // …and the right column
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
   gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
