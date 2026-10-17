@@ -49,13 +49,14 @@ for (const theme of THEMES) {
         await step(page, info, `clock face ${face}`, async () => {});
       }
 
+      const search = page.getByRole('combobox', { name: 'Search' });
+      await search.fill('calc 12*(3+4)');
+      await t.run('command calc result', () => search.press('Enter'), 300);
+      await expect(page.getByTestId('search-hint')).toHaveText('12*(3+4) = 84');
+      await search.fill('> help');
+      await search.press('Enter');
+      await expect(page.getByTestId('search-hint')).toContainText('gh <owner/repo');
       const prompt = page.getByRole('textbox', { name: 'Command prompt' });
-      await prompt.fill('calc 12*(3+4)');
-      await t.run('command calc result', () => prompt.press('Enter'), 300);
-      await expect(page.getByTestId('command-result')).toHaveText('12*(3+4) = 84');
-      await prompt.fill('help');
-      await prompt.press('Enter');
-      await expect(page.getByTestId('command-result')).toContainText('gh <owner/repo');
       await page.getByRole('button', { name: 'Administrator mode' }).click();
       await step(page, info, 'admin mode on', async () => {});
       await expect(page.getByRole('button', { name: 'Administrator mode' })).toHaveAttribute('aria-pressed', 'true');

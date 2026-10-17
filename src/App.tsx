@@ -173,7 +173,7 @@ export default function App() {
               </div>
             }
             git={<GitWidget />}
-            command={<CommandPrompt />}
+            command={<CommandPrompt onSetup={() => openSettings('profile')} />}
           />
         }
         left={<ProcessingPanel />}

@@ -1,28 +1,34 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { useStore } from '../../store';
-import { COMMANDS, complete, detectPlatform, parseCommand, runCommand, type CommandResult } from '../../services/commands';
+import { detectPlatform } from '../../services/commands';
+import { runInTerminal, type TerminalResult } from '../../services/terminal';
 
-// C — slim CLI bar under TIME + A/B (spec §3.3). Enter runs, Ctrl+Enter opens
-// links in a new tab, Tab completes, ↑/↓ walk history. The admin toggle is
+// C — the terminal box under the Git widget. Enter runs the command in a new
+// terminal window on this computer (PowerShell on Windows, the default
+// terminal on Linux / macOS) through the DevDeck desktop helper; the admin
+// toggle runs it elevated (UAC / sudo). ↑/↓ walk history. The admin toggle is
 // per-session on purpose: elevated mode should never be sticky across tabs.
+// Built-in commands (calc, open, gh…) live in the search bar.
 
 const HISTORY_LIMIT = 30;
+const SHELL = { windows: 'PowerShell', mac: 'Terminal', linux: 'the terminal' } as const;
 
-export const CommandPrompt = memo(function CommandPrompt() {
-  const sites = useStore((s) => s.sites);
+type Notice = { kind: 'ok' | 'error' | 'setup'; message: string };
+
+export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?: () => void }) {
   const [value, setValue] = useState('');
   const [admin, setAdmin] = useState(false);
-  const [result, setResult] = useState<CommandResult | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<Notice | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<string[]>([]);
   const cursorRef = useRef(-1);
   const platform = useMemo(() => detectPlatform(), []);
+  const shell = SHELL[platform];
 
-  // Results fade after a few seconds; errors and output linger a little longer.
+  // Results fade after a few seconds; errors linger a little longer.
   useEffect(() => {
     if (!result) return;
-    const t = setTimeout(() => setResult(null), result.kind === 'open' ? 2500 : 8000);
+    const t = setTimeout(() => setResult(null), result.kind === 'ok' ? 3000 : 9000);
     return () => clearTimeout(t);
   }, [result]);
 
@@ -36,39 +42,26 @@ export const CommandPrompt = memo(function CommandPrompt() {
     return () => document.removeEventListener('pointerdown', onDown);
   }, [result]);
 
-  const execute = async (newTab: boolean) => {
+  const execute = async () => {
     const input = value.trim();
-    if (!input) return;
+    if (!input || busy) return;
     historyRef.current = [input, ...historyRef.current.filter((h) => h !== input)].slice(0, HISTORY_LIMIT);
     cursorRef.current = -1;
-    const res = runCommand(input, { admin, platform, sites });
-    const { name } = parseCommand(input);
-    setShowHelp(name === 'help' || name === '?');
-    if (res.kind === 'open') {
-      if (newTab) window.open(res.url, '_blank', 'noopener');
-      else window.location.assign(res.url);
-    } else if (res.kind === 'copy') {
-      try {
-        await navigator.clipboard.writeText(res.text);
-      } catch {
-        setResult({ kind: 'output', message: res.text });
-        return;
-      }
+    setBusy(true);
+    const res: TerminalResult = await runInTerminal(input, admin);
+    setBusy(false);
+    if (res.ok) {
+      setResult({ kind: 'ok', message: `Running in ${shell}${admin ? ' as administrator' : ''} — see the new window` });
+      setValue('');
+    } else {
+      setResult({ kind: res.reason === 'no-helper' || res.reason === 'not-extension' ? 'setup' : 'error', message: res.message });
     }
-    setResult(res);
-    if (res.kind !== 'error') setValue('');
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      void execute(e.ctrlKey || e.metaKey);
-    } else if (e.key === 'Tab' && value) {
-      const next = complete(value, sites);
-      if (next) {
-        e.preventDefault();
-        setValue(next);
-      }
+      void execute();
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       const h = historyRef.current;
       if (!h.length) return;
@@ -89,8 +82,8 @@ export const CommandPrompt = memo(function CommandPrompt() {
           admin ? 'border-amber-400/60 shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_0_18px_rgba(251,191,36,0.15)]' : ''
         }`}
       >
-        <span aria-hidden className={admin ? 'font-bold text-amber-300' : 'text-[var(--color-accent)]'}>
-          {admin ? '#' : '>'}
+        <span aria-hidden className={`${busy ? 'animate-pulse' : ''} ${admin ? 'font-bold text-amber-300' : 'text-[var(--color-accent)]'}`}>
+          {admin ? '#' : platform === 'windows' ? 'PS>' : '$'}
         </span>
         <input
           value={value}
@@ -102,7 +95,7 @@ export const CommandPrompt = memo(function CommandPrompt() {
           spellCheck={false}
           autoComplete="off"
           aria-label="Command prompt"
-          placeholder={admin ? 'elevated command…' : 'enter command or shortcut… (help)'}
+          placeholder={admin ? `run in ${shell} as administrator…` : `run a command in ${shell}…`}
           className="min-w-0 flex-1 bg-transparent text-white/90 outline-none placeholder:text-white/30"
         />
         <button
@@ -110,11 +103,9 @@ export const CommandPrompt = memo(function CommandPrompt() {
           onClick={() => setAdmin((a) => !a)}
           aria-pressed={admin}
           aria-label="Administrator mode"
-          title={admin ? 'Administrator mode ON — unknown commands become an elevated terminal launcher' : 'Administrator mode'}
+          title={admin ? `Administrator mode ON — commands run in an elevated ${shell}` : 'Administrator mode'}
           className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
-            admin
-              ? 'bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/70'
-              : 'text-white/40 hover:bg-white/10 hover:text-white/80'
+            admin ? 'bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/70' : 'text-white/40 hover:bg-white/10 hover:text-white/80'
           }`}
         >
           <AdminIcon />
@@ -125,21 +116,15 @@ export const CommandPrompt = memo(function CommandPrompt() {
         <div
           role="status"
           data-testid="command-result"
-          className={`glass-raised absolute top-full right-0 z-40 mt-1.5 min-w-full rounded-xl px-3 py-2 font-mono text-[11px] leading-snug break-words select-text ${showHelp ? 'w-max max-w-[480px]' : 'left-0'} ${
-            result.kind === 'error' ? 'text-red-300' : result.kind === 'copy' ? 'text-amber-200' : 'text-white/85'
+          className={`glass-raised absolute top-full right-0 left-0 z-40 mt-1.5 rounded-xl px-3 py-2 font-mono text-[11px] leading-snug break-words select-text ${
+            result.kind === 'ok' ? 'text-emerald-300' : result.kind === 'setup' ? 'text-amber-200' : 'text-red-300'
           }`}
         >
-          {showHelp && result.kind === 'output' ? (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-              {COMMANDS.map((c) => (
-                <div key={c.name} className="contents">
-                  <dt className="whitespace-nowrap text-[var(--color-accent)]">{c.usage}</dt>
-                  <dd className="font-sans text-white/60">{c.help}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            result.message
+          {result.message}
+          {result.kind === 'setup' && onSetup && (
+            <button type="button" onClick={onSetup} className="ml-2 font-sans font-semibold text-[var(--color-accent)] hover:underline">
+              Set up →
+            </button>
           )}
         </div>
       )}

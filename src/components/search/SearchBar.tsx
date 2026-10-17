@@ -3,6 +3,7 @@ import { useStore } from '../../store';
 import { searchSites, getHostname } from '../../utils';
 import { destinationFor, fetchSuggestions, googleSearchUrl, looksLikeUrl } from '../../services/search';
 import { aiProvider, askAi, type AiProvider } from '../../services/ai';
+import { COMMANDS, detectPlatform, parseCommand, runCommand, type CommandResult } from '../../services/commands';
 import { useSpeechInput } from '../../hooks/useSpeechInput';
 import { Favicon } from '../Favicon';
 
@@ -27,6 +28,7 @@ type Item =
   | { kind: 'web'; key: string; text: string; url: string }
   | { kind: 'go'; key: string; text: string; url: string; isUrl: boolean }
   | { kind: 'gemini'; key: string; text: string; url: string }
+  | { kind: 'command'; key: string; text: string; url: string; result: CommandResult }
   | { kind: 'add'; key: string; text: string; url: string };
 
 interface SearchBarProps {
@@ -91,6 +93,17 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
+  // Built-in commands (calc, open, gh, npm, g, b64e, b64d, help) run right
+  // here: ">" forces command mode, otherwise the first word must be a command.
+  const command = useMemo<Item | null>(() => {
+    if (!q) return null;
+    const { name } = parseCommand(q);
+    const known = COMMANDS.some((c) => c.name === name) || name === '?' || name === '=' || name === 'google';
+    if (!q.startsWith('>') && !(known && (q.includes(' ') || name === 'help'))) return null;
+    const result = runCommand(q, { admin: false, platform: detectPlatform(), sites });
+    return { kind: 'command', key: 'cmd', text: q.replace(/^>s*/, ''), url: result.kind === 'open' ? result.url : '', result };
+  }, [q, sites]);
+
   const items = useMemo<Item[]>(() => {
     if (!q) return [];
     const siteItems: Item[] = searchSites(q, sites, categories, subcategories)
@@ -115,13 +128,14 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     // A URL that isn't in the library yet can be saved straight from here.
     const known = isUrl && sites.some((s) => getHostname(s.url) === getHostname(direct.url));
     const add: Item[] = isUrl && !known ? [{ kind: 'add', key: 'add', text: q, url: direct.url }] : [];
+    if (command) return [command, ...siteItems];
     if (geminiMode) {
       // Asking the AI is what Enter does, so it leads; a typed URL can still be opened.
       const ask: Item = { kind: 'gemini', key: 'gemini', text: q, url: '' };
       return [ask, ...siteItems, ...(isUrl ? [direct, ...add] : [])];
     }
     return [...siteItems, ...webItems, direct, ...add];
-  }, [q, sites, categories, subcategories, web, geminiMode]);
+  }, [q, sites, categories, subcategories, web, geminiMode, command]);
 
   const toGemini = (text: string, newTab: boolean) => {
     setOpen(false);
@@ -132,7 +146,31 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     });
   };
 
+  const runBuiltin = async (res: CommandResult, newTab: boolean) => {
+    if (res.kind === 'open') {
+      setOpen(false);
+      setQuery('');
+      if (newTab) window.open(res.url, '_blank', 'noopener');
+      else window.location.assign(res.url);
+      return;
+    }
+    if (res.kind === 'copy') {
+      try {
+        await navigator.clipboard.writeText(res.text);
+      } catch {
+        // shown below instead
+      }
+    }
+    // Output and errors stay on screen; the query stays so it can be tweaked.
+    setOpen(false);
+    setNotice(res.message);
+  };
+
   const go = (item: Item | undefined, newTab: boolean) => {
+    if (item?.kind === 'command' || (!item && command)) {
+      void runBuiltin((item?.kind === 'command' ? item : (command as Extract<Item, { kind: 'command' }>)).result, newTab);
+      return;
+    }
     if (item?.kind === 'gemini' || (!item && geminiMode && q)) {
       toGemini(q, newTab);
       return;
@@ -321,6 +359,17 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
                     <SearchIcon className="size-4 shrink-0 text-white/35" />
                     <span className="truncate">{item.text}</span>
                     <span className="ml-auto shrink-0 font-mono text-[10px] text-white/35">Google</span>
+                  </>
+                ) : item.kind === 'command' ? (
+                  <>
+                    <span className="flex size-5 shrink-0 items-center justify-center font-mono text-xs font-bold text-[var(--color-accent)]">&gt;_</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-mono font-semibold text-white">{item.text}</span>
+                      <span className={`ml-2 font-mono text-xs ${item.result.kind === 'error' ? 'text-red-300' : 'text-white/55'}`}>
+                        {item.result.kind === 'output' ? `→ ${item.result.message}` : item.result.message}
+                      </span>
+                    </span>
+                    <kbd className="ml-auto shrink-0 font-mono text-[10px] text-white/35">Run ↵</kbd>
                   </>
                 ) : item.kind === 'gemini' ? (
                   <>
