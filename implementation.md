@@ -10,6 +10,31 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19e — zone list, count box, feed reload, switch border, name fit
+
+- **Time-zone search** (`faces2.tsx` `ZoneSearch`):
+  - the popover is `min(560px, viewport − 16)` wide; the input is 13 px; rows are 13.5 px with 11.5 px detail;
+  - the city and the full "(UTC…) Country — Zone (cities)" line wrap instead of truncating, so every city is readable;
+  - the list is 360 px tall.
+- **Items-per-section slider** (`ScrapingTab.tsx`):
+  - the number labels under the points are removed; the 11 dots stay, and each is clickable with a tooltip;
+  - the value shows in `.count-value`: an accent-tinted bordered box with a bold 15 px number plus "items".
+- **Feed reload after Settings:**
+  - `App.tsx` dispatches `devdeck:settings-closed` when Settings closes;
+  - `FeedColumn` remembers the counts it last fetched for;
+  - if News/Jobs counts differ when Settings closes, it calls `refresh(true)` (a forced fetch with the progress bar).
+- **Queue / To-do switch:**
+  - the active tile has a 1 px border in the theme accent (70%), and the track a faint accent border (22%);
+  - the bottom accent underline is removed (the border replaces it);
+  - in light theme, the same accent borders sit on white.
+- **Greeting name fit** (`DateGreet.tsx`, `.greet-name-face`):
+  - the h1 no longer truncates: `leading-[1.2]`, `text-balance`, `break-words`, so a wide name wraps and pushes the quote down;
+  - the name is an inline-block with padding (balanced by negative margins), so script swashes and tall letters aren't clipped, including by the spotlight's `background-clip:text`.
+- **Roman caps removed:** dropped from `NameFont` and `NAME_FONTS`, along with the Cinzel font and its CSS. A saved `'roman'` falls back to Grotesk.
+- **Verification:** `tsc -b` is clean, Vitest passes 207/207, and `build:demo` succeeds. None of this round is tested yet (testing policy).
+
+---
+
 ## Round 2026-10-19d (phase 4) — greeting name, paging fix, flip plate, calm switch
 
 ### Greeting (`topbar/DateGreet.tsx`, `TopBar.tsx`, `types.ts`, `settings/AppearanceTab.tsx`, `index.css`)

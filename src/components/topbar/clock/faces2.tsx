@@ -371,7 +371,7 @@ function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now
     return all.filter((z) => words.every((w) => z.keys.includes(w) || z.city.toLowerCase().includes(w)));
   }, [q, world]);
   return (
-    <AnchoredPopover anchor={anchor} onClose={onClose} label="Choose a city" width={340}>
+    <AnchoredPopover anchor={anchor} onClose={onClose} label="Choose a city" width={Math.min(560, window.innerWidth - 16)}>
       {/* The popover is a portal, so React would bubble clicks to the clock button (style switch). */}
       <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.stopPropagation()}>
       <input
@@ -388,9 +388,9 @@ function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now
         }}
         placeholder="Search a city, country or time zone…"
         aria-label="Search time zones"
-        className="dtp-stepper mb-2 h-8 w-full rounded-lg border px-2.5 text-[12px] text-white outline-none placeholder:text-white/35"
+        className="dtp-stepper mb-2 h-9 w-full rounded-lg border px-3 text-[13px] text-white outline-none placeholder:text-white/35"
       />
-      <ul role="listbox" aria-label="Time zones" className="ultra-thin-scrollbar max-h-[280px] overflow-y-auto">
+      <ul role="listbox" aria-label="Time zones" className="ultra-thin-scrollbar max-h-[360px] overflow-y-auto">
         {list.map((z, i) => (
           <li
             key={z.tz}
@@ -399,13 +399,13 @@ function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now
             onMouseEnter={() => setActive(i)}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(z.tz)}
-            className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-white/85 ${i === active ? 'dropdown-active text-white' : ''}`}
+            className={`flex cursor-pointer items-start gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-white/85 ${i === active ? 'dropdown-active text-white' : ''}`}
           >
             <span className="min-w-0 flex-1" title={z.detail}>
-              <span className="block truncate">{z.city}</span>
-              <span className="block truncate text-[10px] text-white/40">{z.detail}</span>
+              <span className="block font-medium">{z.city}</span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-white/50">{z.detail}</span>
             </span>
-            <span className="shrink-0 font-mono text-[10px] text-white/45">{zoneTime(now, z.tz, true).offset}</span>
+            <span className="shrink-0 pt-0.5 font-mono text-[11.5px] text-white/55">{zoneTime(now, z.tz, true).offset}</span>
           </li>
         ))}
         {list.length === 0 && <li className="px-2 py-2 text-[11px] text-white/40">No match</li>}

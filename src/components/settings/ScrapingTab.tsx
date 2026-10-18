@@ -40,6 +40,7 @@ export function ScrapingTab() {
 }
 
 // How many items each feed section shows: 0–100, a point at every 10.
+// The panels reload with the new amounts when Settings closes.
 const TICKS = Array.from({ length: 11 }, (_, i) => i * 10);
 
 function SectionCounts() {
@@ -65,7 +66,10 @@ function CountSlider({ id, label, value, onChange }: { id: string; label: string
         <label htmlFor={id} className="text-xs font-medium text-white/80">
           {label}
         </label>
-        <span className="rounded-md bg-white/[0.08] px-2 py-0.5 font-mono text-[11px] text-white tabular-nums">{value}</span>
+        <span className="count-value flex items-baseline gap-1 rounded-lg border px-2.5 py-1">
+          <span className="font-mono text-[15px] leading-none font-bold text-white tabular-nums">{value}</span>
+          <span className="text-[10px] leading-none font-medium text-white/50">{value === 1 ? 'item' : 'items'}</span>
+        </span>
       </div>
       {/* The thumb is 14 px wide, so the ticks sit 7 px in from each end to line up with it. */}
       <input
@@ -79,18 +83,18 @@ function CountSlider({ id, label, value, onChange }: { id: string; label: string
         className="count-slider w-full"
         style={{ '--fill': `${value}%` } as CSSProperties}
       />
-      <div aria-hidden className="pointer-events-none relative mx-[7px] mt-1 h-6">
+      <div aria-hidden className="pointer-events-none relative mx-[7px] mt-1 h-3">
         {TICKS.map((t) => (
           <button
             key={t}
             type="button"
             tabIndex={-1}
             onClick={() => onChange(t)}
-            className="pointer-events-auto absolute top-0 flex -translate-x-1/2 flex-col items-center gap-1"
+            title={String(t)}
+            className="pointer-events-auto absolute top-0 flex size-3 -translate-x-1/2 items-center justify-center"
             style={{ left: `${t}%` }}
           >
             <span className={`size-1.5 rounded-full ${t <= value ? 'bg-[var(--color-accent)]' : 'bg-white/25'}`} />
-            <span className="font-mono text-[9px] text-white/40">{t}</span>
           </button>
         ))}
       </div>

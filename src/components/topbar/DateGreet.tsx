@@ -31,7 +31,7 @@ function SpotlightName({ name, font }: { name: string; font: NameFont }) {
     <span
       key={sweep}
       data-testid="greet-name"
-      className={`name-font-${font} ${sweep ? 'greet-spotlight' : ''}`}
+      className={`greet-name-face name-font-${font} ${sweep ? 'greet-spotlight' : ''}`}
       onAnimationEnd={(e) => e.currentTarget.classList.remove('greet-spotlight')}
     >
       {name}
@@ -116,7 +116,7 @@ export const DateGreet = memo(function DateGreet() {
           step(-1);
         }}
         title={`Greeting style: ${GREET_STYLES[at].name} — click: next · right-click: previous`}
-        className="max-w-full truncate font-display text-[2.15rem] leading-tight font-bold tracking-tight text-white/95 cursor-pointer select-none"
+        className="max-w-full font-display text-[2.15rem] leading-[1.2] font-bold tracking-tight text-balance break-words text-white/95 cursor-pointer select-none"
       >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}
         <span data-testid="greet-words" className={`greet-words greet-${greetStyle}`}>

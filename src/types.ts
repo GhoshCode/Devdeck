@@ -245,13 +245,12 @@ export interface CustomWeatherSource {
 }
 
 // Typefaces for your name in the greeting (click the name to cycle them).
-export type NameFont = 'grotesk' | 'script' | 'italic' | 'hand' | 'roman' | 'condensed' | 'mono';
+export type NameFont = 'grotesk' | 'script' | 'italic' | 'hand' | 'condensed' | 'mono';
 export const NAME_FONTS: Array<{ id: NameFont; name: string; upper: boolean }> = [
   { id: 'grotesk', name: 'Grotesk', upper: true },
   { id: 'script', name: 'Script', upper: false },
   { id: 'italic', name: 'Italic serif', upper: false },
   { id: 'hand', name: 'Handwritten', upper: false },
-  { id: 'roman', name: 'Roman caps', upper: true },
   { id: 'condensed', name: 'Condensed', upper: true },
   { id: 'mono', name: 'Mono', upper: true },
 ];

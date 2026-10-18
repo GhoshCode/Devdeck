@@ -17,6 +17,28 @@ wide where layout is involved.
 
 ---
 
+## 0000. Round 2026-10-19e — latest changes
+
+- **Time-zone search:** a much wider dropdown with bigger text. Each result shows the city and the full line of country, zone name and main cities, wrapping if needed.
+- **Items per section:**
+  - the number labels under the dots are gone;
+  - the chosen amount shows in a highlighted box ("25 items");
+  - when you close Settings after changing an amount, Tech news and Dev jobs reload (the progress bar shows) and fill up to the new number.
+- **Queue / To-do switch:** the active tab has a thin border in your theme colour.
+- **Greeting:**
+  - a long or decorative name is never cut off; the greeting wraps and the quote moves down;
+  - Roman caps is removed from the name fonts.
+
+**Manual test checklist**
+- [ ] Time zones: search "india"; the whole cities list is readable; text is larger; the dropdown stays on screen at 1280 px.
+- [ ] Slider: no 0/10/…/100 labels; dots still jump to values; the value box reads "N items".
+- [ ] Change Tech news from 4 to 40, close Settings: the progress bar runs and the panel lists up to 40. Close Settings without changes: no reload.
+- [ ] Switch border follows the accent in several themes (dark and light).
+- [ ] Name in Script / Handwritten / Italic: fully visible with no clipped swash; with a long name, the greeting wraps and the quote sits below it.
+- [ ] Roman caps no longer appears in Appearance → Name font.
+
+---
+
 ## 000. Round 2026-10-19d (phase 4) — latest changes
 
 ### Greeting
@@ -24,7 +46,7 @@ wide where layout is involved.
 - **Your name:**
   - **click** it to try the next typeface; **right-click** goes back;
   - **double-click** it to rename it right there (Enter saves, Esc cancels).
-- **Typefaces:** Grotesk, Script, Italic serif, Handwritten, Roman caps,
+- **Typefaces:** Grotesk, Script, Italic serif, Handwritten,
   Condensed and Mono. You can also pick one in Settings → Appearance → Greeting
   → Name font.
 

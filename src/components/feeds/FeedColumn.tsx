@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { SplitPanes } from '../layout/SplitPanes';
 import { useStore } from '../../store';
 import type { Topic } from '../../types';
@@ -44,6 +44,20 @@ export const FeedColumn = memo(function FeedColumn({ onManage }: { onManage: () 
     const t = setInterval(() => refresh(false), FEED_TTL_MS);
     return () => clearInterval(t);
   }, [refresh]);
+
+  // Items-per-section changed in Settings → Scraping: fetch afresh once
+  // Settings closes, so the panels fill up to the new amounts.
+  const shownCounts = useRef(`${newsCount}/${jobsCount}`);
+  useEffect(() => {
+    const onClosed = () => {
+      const now = `${newsCount}/${jobsCount}`;
+      if (now === shownCounts.current) return;
+      shownCounts.current = now;
+      refresh(true);
+    };
+    window.addEventListener('devdeck:settings-closed', onClosed);
+    return () => window.removeEventListener('devdeck:settings-closed', onClosed);
+  }, [newsCount, jobsCount, refresh]);
 
   // A deleted topic simply drops out of the selection.
   const selected: Topic[] = useMemo(() => feeds.topics.filter((t) => topicIds.includes(t.id)), [feeds.topics, topicIds]);

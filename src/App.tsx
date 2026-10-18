@@ -199,7 +199,10 @@ export default function App() {
       {/* Settings Overlay */}
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => {
+          setIsSettingsOpen(false);
+          window.dispatchEvent(new Event('devdeck:settings-closed'));
+        }}
         initialTab={settingsTab}
         prefillUrl={settingsPrefill}
         onClearPrefill={() => setSettingsPrefill('')}
