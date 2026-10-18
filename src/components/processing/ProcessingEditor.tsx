@@ -5,6 +5,8 @@ import { deriveNameFromUrl, normalizeUrl, searchSites } from '../../utils';
 import { looksLikeUrl } from '../../services/search';
 import { DAY_LABELS, describeSchedule, nextFireTime } from '../../lib/schedule';
 import { Favicon } from '../Favicon';
+import { Countdown } from '../ui/Countdown';
+import { TimerPanel } from '../ui/TimerPanel';
 
 // Full editor for Currently Processing (plan Phase 4): add from the library or
 // by URL, group into sections, and set each item's reminder schedule. Used by
@@ -265,6 +267,21 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
           <p className="font-mono text-[10px] text-white/40">
             {next ? `Next reminder: ${next.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'No upcoming reminder'}
           </p>
+
+          <fieldset className="space-y-2 border-t border-white/[0.06] pt-2">
+            <legend className="flex items-center gap-2 text-[11px] font-semibold text-white/75">
+              Countdown timer
+              {item.timer && <Countdown timer={item.timer} />}
+            </legend>
+            <TimerPanel
+              value={item.timer ? { amount: item.timer.amount, unit: item.timer.unit } : null}
+              start={item.timer?.start ?? Date.now()}
+              onChange={(t) => {
+                const start = item.timer?.start ?? Date.now();
+                update(item.id, { timer: t ? { ...t, start } : null, createdAt: item.createdAt ?? start });
+              }}
+            />
+          </fieldset>
         </div>
       )}
     </li>

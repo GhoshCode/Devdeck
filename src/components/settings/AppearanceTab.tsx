@@ -11,6 +11,8 @@ import { clockParts } from '../../lib/time';
 import { ClockFace } from '../topbar/clock/faces';
 import { DEFAULT_ZONES, ZONE_CHOICES, zoneCity, zoneTime } from '../../lib/zones';
 import type { ClockStyle, GradientStudio, Settings, ThemeMode } from '../../types';
+import { Select } from '../ui/Select';
+import { GREET_STYLES } from '../../types';
 
 // Settings → Appearance & Display, ordered the way people tune a look:
 //   live preview → Light / Dark / Auto → accent → Gradient Studio →
@@ -389,6 +391,25 @@ export function AppearanceTab() {
           aria-label="Greeting name"
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
         />
+        <div role="radiogroup" aria-label="Greeting style" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {GREET_STYLES.map((g) => {
+            const on = (settings.greetStyle ?? 'classic') === g.id;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`${g.name} greeting`}
+                onClick={() => updateSettings({ greetStyle: g.id })}
+                className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
+              >
+                <span className={`greet-words greet-${g.id} font-display text-[15px] leading-tight font-bold tracking-tight`}>GOOD MORNING,</span>
+                <span className="text-[10.5px] text-white/55">{g.name}</span>
+              </button>
+            );
+          })}
+        </div>
         <Toggle
           label="Daily motivational quote"
           hint="A new quote every day under the greeting — hover it and press ↻ for another."
@@ -1096,19 +1117,16 @@ function ZonePicker({ zones, onChange }: { zones: string[]; onChange: (z: string
           );
         })}
         {zones.length < 3 && (
-          <select
+          <Select
             value=""
-            onChange={(e) => e.target.value && onChange([...zones, e.target.value])}
-            aria-label="Add a time zone"
-            className="dtp-select rounded-lg border px-2 py-1 text-[11px]"
-          >
-            <option value="">+ Add city…</option>
-            {available.map((z) => (
-              <option key={z.tz} value={z.tz}>
-                {z.city} ({zoneTime(now, z.tz, false).offset})
-              </option>
-            ))}
-          </select>
+            onChange={(tz) => onChange([...zones, tz])}
+            ariaLabel="Add a time zone"
+            placeholder="+ Add city…"
+            size="sm"
+            className="w-[150px]"
+            menuWidth={220}
+            options={available.map((z) => ({ value: z.tz, label: z.city, hint: zoneTime(now, z.tz, false).offset }))}
+          />
         )}
       </div>
     </div>

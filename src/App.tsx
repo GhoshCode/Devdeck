@@ -6,6 +6,8 @@ import { switchModePatch } from './lib/appearance';
 import { withThemeTransition } from './lib/themeTransition';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
+import { CategoryOverview } from './components/CategoryOverview';
+import { AnimatePresence } from 'motion/react';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
 import { DateLine } from './components/topbar/DateGreet';
@@ -25,6 +27,7 @@ export default function App() {
 
   const searchRef = useRef<HTMLInputElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [overview, setOverview] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTabId>('library');
   const [settingsPrefill, setSettingsPrefill] = useState('');
 
@@ -167,7 +170,7 @@ export default function App() {
           <TopBar
             weather={<WeatherUV onSetup={() => openSettings('profile')} lead={<DateLine />} />}
             search={
-              <div className="relative mx-auto flex w-full max-w-[860px] items-center gap-2 lg:right-6">
+              <div className="relative mx-auto flex w-full max-w-[940px] items-center gap-2 lg:right-6">
                 <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
                 <SiteMapButton />
                 <BookmarkButton />
@@ -181,9 +184,11 @@ export default function App() {
         leftFooter={settingsButton}
         center={
           <div data-testid="center-frame" className="glass flex h-full min-h-0 flex-col overflow-hidden">
-            <LinksStrip />
-            <div data-center-body className="flex min-h-0 flex-1 p-3">
+            <LinksStrip menuOpen={overview} onMenu={() => setOverview((o) => !o)} />
+            <div data-center-body className="relative flex min-h-0 flex-1 p-3">
               <CategoryGrid onOpenSettings={() => openSettings('library')} />
+              {/* The grid stays mounted underneath so a pick can scroll straight to its card. */}
+              <AnimatePresence>{overview && <CategoryOverview onClose={() => setOverview(false)} />}</AnimatePresence>
             </div>
           </div>
         }

@@ -38,7 +38,7 @@ export const BookmarkButton = memo(function BookmarkButton() {
         aria-expanded={open}
         className="glass-raised flex h-[52px] min-w-[56px] shrink-0 items-center justify-center gap-1.5 rounded-2xl px-3.5 text-xs font-semibold tracking-wide text-white/80 transition-colors hover:bg-white/10 hover:text-white max-sm:flex-1"
       >
-        <svg className="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+        <svg className="size-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
           <path d="M5 2.5A1.5 1.5 0 003.5 4v13.2a.5.5 0 00.8.4L10 13.5l5.7 4.1a.5.5 0 00.8-.4V4A1.5 1.5 0 0015 2.5H5z" />
         </svg>
       </button>

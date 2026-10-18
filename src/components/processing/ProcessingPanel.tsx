@@ -10,6 +10,9 @@ import { Favicon } from '../Favicon';
 import { DEFAULT_SECTIONS, ProcessingEditor } from './ProcessingEditor';
 import { TodoWidget } from '../topbar/todo/TodoWidget';
 import { SplitPanes } from '../layout/SplitPanes';
+import { Countdown } from '../ui/Countdown';
+import { TimerPanel } from '../ui/TimerPanel';
+import { AnchoredPopover } from '../ui/AnchoredPopover';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
 // the first section ("Focus" by default). The lower card scrolls sideways
@@ -96,21 +99,27 @@ function ItemList({ items, now, empty }: { items: ProcessingItem[]; now: Date; e
 
 function ItemRow({ item, now }: { item: ProcessingItem; now: Date }) {
   const recordVisit = useStore((s) => s.recordVisit);
+  const updateProcessingItem = useStore((s) => s.updateProcessingItem);
+  const [timerOpen, setTimerOpen] = useState(false);
+  const timerRef = useRef<HTMLButtonElement>(null);
   const next = nextFireTime(item.schedule, now);
+  // A timer counts from the moment it is set (kept when its length changes).
+  const start = item.timer?.start ?? Date.now();
   return (
-    <li data-processing-item={item.id}>
+    <li data-processing-item={item.id} className="group/proc relative flex items-center rounded-xl transition-colors hover:bg-white/[0.07]">
       <a
         href={item.url}
         onClick={() => item.siteId && recordVisit(item.siteId)}
         title={`${item.url}\n${describeSchedule(item.schedule)}`}
-        className="group/proc flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/[0.07]"
+        className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-1.5"
       >
         <Favicon url={item.url} name={item.name} className="size-[18px] shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-semibold text-white/90">{item.name}</span>
           {/* The countdown leads the subtitle so the name keeps the full width. */}
           <span className="flex min-w-0 items-center gap-1.5 text-[10px] text-white/45">
-            {next && (
+            {item.timer && <Countdown timer={item.timer} />}
+            {next && !item.timer && (
               <span className="shrink-0 font-mono" title={next.toLocaleString()}>
                 ⏰ in {relativeAge(now.getTime(), next.getTime()).replace('now', '<1m')}
               </span>
@@ -121,6 +130,36 @@ function ItemRow({ item, now }: { item: ProcessingItem; now: Date }) {
           </span>
         </span>
       </a>
+      <button
+        ref={timerRef}
+        type="button"
+        onClick={() => setTimerOpen((o) => !o)}
+        aria-label={item.timer ? `Change timer for ${item.name}` : `Set a timer for ${item.name}`}
+        title={item.timer ? 'Change timer' : 'Set a countdown timer'}
+        className={`mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-white/45 transition-opacity hover:bg-white/10 hover:text-white ${
+          timerOpen ? 'opacity-100' : 'opacity-0 group-hover/proc:opacity-100 focus-visible:opacity-100'
+        }`}
+      >
+        <svg viewBox="0 0 12 12" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+          <circle cx="6" cy="6.8" r="4.2" />
+          <path d="M6 4.6v2.3l1.4 1M4.8 1.2h2.4" strokeLinecap="round" />
+        </svg>
+      </button>
+      {timerOpen && timerRef.current && (
+        <AnchoredPopover anchor={timerRef.current} onClose={() => setTimerOpen(false)} label={`Timer for ${item.name}`} width={300}>
+          <p className="mb-2 truncate text-[12px] font-semibold text-white">⏳ {item.name}</p>
+          <TimerPanel
+            value={item.timer ? { amount: item.timer.amount, unit: item.timer.unit } : null}
+            start={start}
+            onChange={(t) => updateProcessingItem(item.id, { timer: t ? { ...t, start } : null, createdAt: item.createdAt ?? start })}
+          />
+          <div className="mt-3 flex justify-end">
+            <button type="button" onClick={() => setTimerOpen(false)} className="accent-gradient rounded-lg px-3.5 py-1 text-[11px] font-semibold text-white">
+              Done
+            </button>
+          </div>
+        </AnchoredPopover>
+      )}
     </li>
   );
 }

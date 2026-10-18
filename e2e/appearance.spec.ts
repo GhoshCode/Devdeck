@@ -121,7 +121,8 @@ test('Multi-Timezone shows zone options under the gallery and adds a city', asyn
   const picker = modal.getByTestId('zone-picker');
   await expect(picker).toBeVisible();
   await expect(picker).toContainText('New York');
-  await picker.getByRole('combobox', { name: 'Add a time zone' }).selectOption('Europe/London');
+  await picker.getByRole('combobox', { name: 'Add a time zone' }).click();
+  await page.getByRole('option', { name: /London/ }).click();
   await expect(picker).toContainText('London');
   await expect(picker.getByRole('combobox', { name: 'Add a time zone' })).toHaveCount(0); // 3 of 3
   await page.keyboard.press('Escape');

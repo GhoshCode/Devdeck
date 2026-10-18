@@ -4,6 +4,9 @@ import type { FeedCategory, FeedKind } from '../../types';
 import { normalizeUrl } from '../../utils';
 import { requestHostAccess } from '../../lib/env';
 import { clearCache } from '../../lib/cache';
+import { Select } from '../ui/Select';
+
+const FEED_PANELS = [{ value: 'news', label: 'News' }, { value: 'jobs', label: 'Jobs' }] as const;
 
 // Settings → Scraping (plan Phase 6, §7 Q13): topic chips (J) and the sources
 // feeding the news and jobs panels (I).
@@ -149,15 +152,14 @@ function Sources() {
                 {KIND_LABEL[s.kind]} · {s.url}
               </span>
             </span>
-            <select
+            <Select
               value={s.category}
-              onChange={(e) => updateFeedSource(s.id, { category: e.target.value as FeedCategory })}
-              aria-label={`Panel for ${s.name}`}
-              className="rounded-lg bg-white/5 px-2 py-1 text-[11px] text-white/80 [color-scheme:dark]"
-            >
-              <option value="news">News</option>
-              <option value="jobs">Jobs</option>
-            </select>
+              onChange={(v) => updateFeedSource(s.id, { category: v as FeedCategory })}
+              ariaLabel={`Panel for ${s.name}`}
+              size="sm"
+              className="w-[84px]"
+              options={FEED_PANELS}
+            />
             <button
               type="button"
               onClick={() => deleteFeedSource(s.id)}
@@ -179,15 +181,13 @@ function Sources() {
             aria-label="Feed URL"
             className={`${field} font-mono`}
           />
-          <select
+          <Select
             value={category}
-            onChange={(e) => setCategory(e.target.value as FeedCategory)}
-            aria-label="Feed panel"
-            className={`${field} [color-scheme:dark]`}
-          >
-            <option value="news">News</option>
-            <option value="jobs">Jobs</option>
-          </select>
+            onChange={(v) => setCategory(v as FeedCategory)}
+            ariaLabel="Feed panel"
+            className="w-[96px]"
+            options={FEED_PANELS}
+          />
           <button type="submit" className="rounded-xl bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15">
             Add RSS
           </button>

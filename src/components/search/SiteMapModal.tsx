@@ -17,6 +17,7 @@ import { useStore } from '../../store';
 import type { Category } from '../../types';
 import { deriveNameFromUrl, getCategoryDisplayColor, getHostname, normalizeUrl, searchSites } from '../../utils';
 import { Favicon } from '../Favicon';
+import { Select } from '../ui/Select';
 
 // Site Map & Hierarchy: every site in the library at a glance.
 //   no query → a grid of category cards; each lists its General sites, then
@@ -48,7 +49,7 @@ export const SiteMapButton = memo(function SiteMapButton() {
         className="glass-raised flex h-[52px] shrink-0 items-center justify-center gap-1.5 rounded-2xl px-2.5 text-xs font-semibold tracking-wide text-white/80 transition-colors hover:bg-white/10 hover:text-white max-sm:flex-1"
       >
         <HierarchyIcon className="size-4" />
-        <span className="max-md:hidden">SITE MAP</span>
+        <span className="hidden min-[1700px]:inline">SITE MAP</span>
       </button>
       {createPortal(<AnimatePresence>{open && <SiteMapModal onClose={() => setOpen(false)} />}</AnimatePresence>, document.body)}
     </>
@@ -554,18 +555,14 @@ function AddSiteForm({ categoryId, groups, onDone }: { categoryId: string; group
           aria-label="Site name"
           className="sitemap-input min-w-0 flex-1 rounded-md border px-2 py-1 text-[12px] outline-none"
         />
-        <select
+        <Select
           value={group}
-          onChange={(e) => setGroup(e.target.value)}
-          aria-label="Subcategory"
-          className="sitemap-input max-w-[46%] rounded-md border px-1.5 py-1 text-[12px] outline-none"
-        >
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
+          onChange={setGroup}
+          ariaLabel="Subcategory"
+          size="sm"
+          className="w-[46%]"
+          options={groups.map((g) => ({ value: g.id, label: g.name, hint: String(g.sites.length) }))}
+        />
       </div>
       {error && <p className="text-[11px] text-red-300">{error}</p>}
       <div className="flex justify-end gap-1.5">

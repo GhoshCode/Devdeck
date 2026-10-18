@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { REPEAT_LABEL, nextRepeatDate } from '../lib/todos';
+import { normalizeTimer, type TimerUnit } from '../lib/timer';
 import { persist } from 'zustand/middleware';
 import type {
   Category,
@@ -76,6 +77,7 @@ const normalizeTodo = (raw: unknown, i: number): Todo | null => {
       .filter((x) => typeof x.id === 'string' && typeof x.text === 'string')
       .map((x) => ({ id: x.id as string, text: x.text as string, done: x.done === true })),
     repeat: dueDate && typeof t.repeat === 'string' && t.repeat in REPEAT_LABEL ? (t.repeat as Repeat) : null,
+    timer: normalizeTimer(t.timer, typeof t.createdAt === 'number' ? t.createdAt : Date.now()),
   };
 };
 
@@ -101,6 +103,8 @@ const normalizeProcessing = (raw: unknown, i: number): ProcessingItem | null => 
     section: typeof p.section === 'string' && p.section ? p.section : 'Focus',
     order: typeof p.order === 'number' ? p.order : i,
     schedule: { ...defaultSchedule(), ...(asRecord(p.schedule) as Partial<Schedule>) },
+    createdAt: typeof p.createdAt === 'number' ? p.createdAt : undefined,
+    timer: normalizeTimer(p.timer, typeof p.createdAt === 'number' ? p.createdAt : Date.now()),
   };
 };
 
@@ -172,6 +176,7 @@ export type NewTodo = {
   priority?: Priority;
   tags?: string[];
   repeat?: Repeat | null;
+  timer?: { amount: number; unit: TimerUnit } | null; // starts when the task is created
 };
 export type NewProcessingItem = {
   name: string;
@@ -215,7 +220,7 @@ export interface StoreActions {
   addTodo: (input: NewTodo) => Todo;
   updateTodo: (
     id: string,
-    patch: Partial<Pick<Todo, 'text' | 'dueDate' | 'dueTime' | 'priority' | 'tags' | 'notes' | 'subtasks'>>,
+    patch: Partial<Pick<Todo, 'text' | 'dueDate' | 'dueTime' | 'priority' | 'tags' | 'notes' | 'subtasks' | 'timer'>>,
   ) => void;
   completeTodo: (id: string) => void; // bullet click → archived
   restoreTodo: (id: string) => void;
@@ -450,13 +455,14 @@ export const useStore = create<Store>()(
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
 
       // ---- To-dos --------------------------------------------------------
-      addTodo: ({ text, dueDate = null, dueTime = null, priority = 0, tags = [], repeat = null }) => {
+      addTodo: ({ text, dueDate = null, dueTime = null, priority = 0, tags = [], repeat = null, timer = null }) => {
+        const createdAt = Date.now();
         const todo: Todo = {
           id: newId(),
           text,
           dueDate: dueDate || null,
           dueTime: dueDate && dueTime ? dueTime : null,
-          createdAt: Date.now(),
+          createdAt,
           order: nextOrder(get().todos),
           archivedAt: null,
           priority,
@@ -464,6 +470,7 @@ export const useStore = create<Store>()(
           notes: '',
           subtasks: [],
           repeat: dueDate ? repeat : null,
+          timer: timer ? { ...timer, start: createdAt } : null,
         };
         set((s) => ({ todos: [...s.todos, todo] }));
         return todo;
@@ -510,6 +517,8 @@ export const useStore = create<Store>()(
           section,
           order: nextOrder(get().processing),
           schedule: { ...defaultSchedule(), ...schedule },
+          createdAt: Date.now(),
+          timer: null,
         };
         set((s) => ({ processing: [...s.processing, item] }));
         return item;

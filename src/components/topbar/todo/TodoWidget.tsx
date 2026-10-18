@@ -19,6 +19,8 @@ import { isOverdue, matchesView, sortActive, sortArchived, type TodoView } from 
 import { localDateKey } from '../../../lib/time';
 import { parseQuickAdd } from '../../../lib/todoParse';
 import { REPEAT_LABEL } from '../../../lib/todos';
+import { describeTimer } from '../../../lib/timer';
+import type { TimerChoice } from '../../ui/TimerPanel';
 import type { Priority } from '../../../types';
 import { PRIORITY_LABEL, TodoRow } from './TodoRow';
 import { DateTimePicker, describeDue, type DueValue } from './DateTimePicker';
@@ -339,6 +341,7 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
   const [due, setDue] = useState<DueValue | null>(null); // explicit pick wins over parsed
   const [priority, setPriority] = useState<Priority | null>(null);
   const [picker, setPicker] = useState(false);
+  const [timer, setTimer] = useState<TimerChoice>(null);
   const dateRef = useRef<HTMLButtonElement>(null);
   const parsed = useMemo(() => (text.trim() ? parseQuickAdd(text) : null), [text]);
 
@@ -349,13 +352,14 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!parsed) return;
-    addTodo({ text: parsed.text, ...finalDue, priority: finalPriority, tags, repeat: parsed.repeat });
+    addTodo({ text: parsed.text, ...finalDue, priority: finalPriority, tags, repeat: parsed.repeat, timer });
     setText('');
     setDue(null);
     setPriority(null);
+    setTimer(null);
   };
   const cyclePriority = () => setPriority((((finalPriority + 1) % 4) as Priority));
-  const showChips = !!parsed && (finalDue.dueDate || finalPriority || tags.length > 0);
+  const showChips = !!parsed && (finalDue.dueDate || finalPriority || tags.length > 0 || timer);
 
   return (
     <form onSubmit={submit} className="flex flex-col">
@@ -386,7 +390,7 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
           aria-label="Attach due date"
           aria-pressed={picker}
           title="Pick a due date and time"
-          className={`text-xs ${picker || finalDue.dueDate ? 'text-[var(--color-accent)]' : 'text-white/35 hover:text-white/70'}`}
+          className={`text-xs ${picker || finalDue.dueDate || timer ? 'text-[var(--color-accent)]' : 'text-white/35 hover:text-white/70'}`}
         >
           📅
         </button>
@@ -395,6 +399,9 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
         <div data-testid="todo-parse" className="mt-1 flex flex-wrap items-center gap-1 px-1 font-mono text-[10px]">
           {finalDue.dueDate && (
             <span className="rounded bg-[var(--color-accent)]/15 px-1.5 py-px text-[var(--color-accent)]">📅 {describeDue(finalDue)}</span>
+          )}
+          {timer && (
+            <span className="countdown countdown-run rounded px-1.5 py-px">⏳ {describeTimer(timer)}</span>
           )}
           {parsed?.repeat && finalDue.dueDate && (
             <span className="rounded bg-[var(--color-accent)]/15 px-1.5 py-px text-[var(--color-accent)]">↻ {REPEAT_LABEL[parsed.repeat]}</span>
@@ -413,7 +420,15 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
         </div>
       )}
       {picker && dateRef.current && (
-        <DateTimePicker anchor={dateRef.current} value={finalDue} onChange={setDue} onClose={() => setPicker(false)} />
+        <DateTimePicker
+          anchor={dateRef.current}
+          value={finalDue}
+          onChange={setDue}
+          onClose={() => setPicker(false)}
+          timer={timer}
+          timerStart={Date.now()}
+          onTimer={setTimer}
+        />
       )}
     </form>
   );

@@ -1093,13 +1093,45 @@ html.theme-switching *::after {
 }
 
 /* Search bar — Gemini mode outlines the bar in Gemini's gradient hues. */
+/* AI mode: the search bar takes on the chosen AI's colours — Gemini violet,
+   Claude orange, ChatGPT white, Perplexity teal, custom = the theme accent —
+   with a soft breathing halo behind it. */
 .gemini-ring {
-  border-color: rgba(155, 114, 203, 0.55) !important;
+  --ai: #9b72cb;
+  --ai2: #4285f4;
+  border-color: color-mix(in srgb, var(--ai) 60%, transparent) !important;
   box-shadow:
-    0 0 0 1px rgba(66, 133, 244, 0.25),
-    0 8px 28px -10px rgba(155, 114, 203, 0.55),
-    0 0 22px -8px rgba(217, 101, 112, 0.45);
+    0 0 0 1px color-mix(in srgb, var(--ai2) 30%, transparent),
+    0 10px 34px -10px color-mix(in srgb, var(--ai) 65%, transparent),
+    0 0 26px -8px color-mix(in srgb, var(--ai2) 45%, transparent);
 }
+.gemini-ring::before {
+  content: '';
+  position: absolute;
+  inset: -14px -10px;
+  z-index: -1;
+  border-radius: 28px;
+  background:
+    radial-gradient(55% 140% at 20% 50%, color-mix(in srgb, var(--ai) 30%, transparent), transparent 70%),
+    radial-gradient(55% 140% at 80% 50%, color-mix(in srgb, var(--ai2) 26%, transparent), transparent 70%);
+  filter: blur(16px);
+  pointer-events: none;
+  animation: ai-breathe 4.5s ease-in-out infinite;
+}
+@keyframes ai-breathe {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gemini-ring::before { animation: none; }
+}
+.gemini-ring[data-ai='gemini'] { --ai: #a78bfa; --ai2: #4285f4; }
+.gemini-ring[data-ai='claude'] { --ai: #d97757; --ai2: #f2a65a; }
+.gemini-ring[data-ai='chatgpt'] { --ai: #ffffff; --ai2: #d4d4d8; }
+.gemini-ring[data-ai='perplexity'] { --ai: #20b8cd; --ai2: #38bdf8; }
+.gemini-ring[data-ai='custom'] { --ai: var(--color-accent); --ai2: var(--color-accent); }
+/* White glows vanish on a light page: ChatGPT goes graphite there. */
+html[data-theme='light'] .gemini-ring[data-ai='chatgpt'] { --ai: #18181b; --ai2: #52525b; }
 /* Live microphone: a soft pulsing halo. */
 .mic-live::after {
   content: '';
@@ -1715,4 +1747,168 @@ html[data-theme='light'] .sitemap-add {
 html[data-theme='light'] .sitemap-drop-over {
   background: color-mix(in srgb, var(--cat-light) 12%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat-light) 55%, transparent);
+}
+
+/* Countdown chips (to-dos, Focus / Queue): accent while running, amber in
+   the last hour, red when time is up. */
+.countdown-run {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--color-accent) 80%, #fff);
+}
+.countdown-soon {
+  background: rgba(251, 191, 36, 0.18);
+  color: #fcd34d;
+}
+.countdown-done {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+}
+html[data-theme='light'] .countdown-run {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--color-accent) 75%, #000);
+}
+html[data-theme='light'] .countdown-soon {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+html[data-theme='light'] .countdown-done {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+.dtp-stepper {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-theme='light'] .dtp-stepper {
+  background: #fff;
+  border-color: rgba(60, 60, 67, 0.16);
+}
+
+/* Category overview (menu left of the quick links). */
+.category-menu-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.category-menu-btn:hover,
+.category-menu-btn.is-open {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+.category-overview {
+  background: color-mix(in srgb, var(--color-base) 92%, var(--color-base-elevated));
+  border-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.overview-tile {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.overview-tile:hover,
+.overview-tile:focus-visible {
+  border-color: color-mix(in srgb, var(--cat) 55%, transparent);
+  background: color-mix(in srgb, var(--cat) 8%, rgba(255, 255, 255, 0.04));
+}
+.overview-site:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+html[data-theme='light'] .category-menu-btn {
+  background: #fff;
+  border-color: rgba(60, 60, 67, 0.14);
+}
+html[data-theme='light'] .category-overview {
+  background: rgba(248, 248, 252, 0.97);
+  border-color: rgba(60, 60, 67, 0.12);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.16);
+}
+html[data-theme='light'] .overview-tile {
+  background: #fff;
+  border-color: rgba(60, 60, 67, 0.1);
+}
+html[data-theme='light'] .overview-site:hover {
+  background: rgba(118, 118, 128, 0.12);
+}
+@keyframes card-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 0 2px var(--color-accent), 0 0 24px color-mix(in srgb, var(--color-accent) 40%, transparent); }
+}
+.card-flash {
+  animation: card-flash 1.3s ease-out;
+}
+
+/* Site pins: filled accent pin in the lists, a small unpin badge on top-row tiles. */
+.site-pinned {
+  color: var(--color-accent);
+}
+.tile-unpin {
+  background: var(--color-base-elevated);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color: var(--color-accent);
+}
+.tile-unpin:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+html[data-theme='light'] .tile-unpin {
+  background: #fff;
+}
+
+/* Greeting styles (Appearance → Greeting). They colour the greeting words
+   only; the name keeps its white + spotlight. */
+.greet-accent {
+  color: var(--color-accent);
+}
+.greet-gradient,
+.greet-aurora {
+  background-image: linear-gradient(100deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 35%, #60a5fa) 55%, color-mix(in srgb, var(--color-accent) 30%, #a78bfa));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.greet-aurora {
+  background-image: linear-gradient(100deg, var(--color-accent), #a78bfa, #22d3ee, #34d399, var(--color-accent));
+  background-size: 300% 100%;
+  animation: greet-aurora 9s ease-in-out infinite alternate;
+}
+@keyframes greet-aurora {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+.greet-neon {
+  color: color-mix(in srgb, var(--color-accent) 35%, #fff);
+  text-shadow:
+    0 0 6px color-mix(in srgb, var(--color-accent) 70%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+.greet-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.2px color-mix(in srgb, var(--color-accent) 85%, #fff);
+}
+html[data-theme='light'] .greet-accent {
+  color: color-mix(in srgb, var(--color-accent) 85%, #000);
+}
+html[data-theme='light'] .greet-neon {
+  color: color-mix(in srgb, var(--color-accent) 80%, #000);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+html[data-theme='light'] .greet-outline {
+  -webkit-text-stroke-color: color-mix(in srgb, var(--color-accent) 85%, #000);
+}
+@media (prefers-reduced-motion: reduce) {
+  .greet-aurora { animation: none; }
+}
+.greet-option {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.greet-option:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.greet-option.is-on {
+  border-color: color-mix(in srgb, var(--color-accent) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+html[data-theme='light'] .greet-option {
+  background: #fff;
+  border-color: rgba(60, 60, 67, 0.12);
 }

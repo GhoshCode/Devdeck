@@ -46,16 +46,22 @@ export const DateGreet = memo(function DateGreet() {
   const now = useNow(60_000);
   const name = useStore((s) => s.settings.greetingName);
   const showQuote = useStore((s) => s.settings.showQuote ?? true);
+  const greetStyle = useStore((s) => s.settings.greetStyle ?? 'classic');
   const [shuffle, setShuffle] = useState(0);
   const quote = quoteFor(now, shuffle);
 
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 text-center">
       <h1 className="max-w-full truncate font-display text-[1.85rem] leading-tight font-bold tracking-tight text-white/95">
-        {greetingFor(now)}
+        {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}
+        <span data-testid="greet-words" className={`greet-words greet-${greetStyle}`}>
+          {greetingFor(now)}
+          {name.trim() && ','}
+        </span>
         {name.trim() && (
           <>
-            , <SpotlightName name={name.trim().toUpperCase()} />
+            {' '}
+            <SpotlightName name={name.trim().toUpperCase()} />
           </>
         )}
       </h1>

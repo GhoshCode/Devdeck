@@ -103,7 +103,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
 
   if (!data && error && !manualCity.trim() && onSetup) {
     return (
-      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1">
         {lead}
         <button
           type="button"
@@ -155,7 +155,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
   const handlers = { onClick, onDoubleClick, title };
   return (
     <div className="flex max-w-full min-w-0 flex-col items-start gap-1">
-      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1.5">
         {lead}
         <button
           type="button"

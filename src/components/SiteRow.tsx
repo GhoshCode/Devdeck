@@ -18,10 +18,9 @@ export const SiteRow = memo(function SiteRow({
   isOverlay = false,
 }: SiteRowProps) {
   const recordVisit = useStore((s) => s.recordVisit);
+  const togglePrimary = useStore((s) => s.togglePrimary);
 
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
@@ -82,43 +81,30 @@ export const SiteRow = memo(function SiteRow({
         </div>
       </a>
 
-      {/* Hover actions: open in new tab & drag handle */}
-      <div className="hidden items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/site:flex group-hover/site:opacity-100 focus-within:flex focus-within:opacity-100 @min-[240px]:flex">
-        <a
-          href={site.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleClick}
-          title="Open in new tab"
-          aria-label={`Open ${site.name} in new tab`}
-          className="flex size-7 items-center justify-center rounded-lg text-white/40 hover:bg-white/10 hover:text-white transition-colors"
-        >
-          <svg className="size-4" viewBox="0 0 20 20" fill="currentColor">
-            <path
-              fillRule="evenodd"
-              d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h4a.75.75 0 010 1.5h-4z"
-              clipRule="evenodd"
-            />
-            <path
-              fillRule="evenodd"
-              d="M6.19 13.81a.75.75 0 001.06 0l7.25-7.25v2.69a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.69L6.19 12.75a.75.75 0 000 1.06z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </a>
-
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag to reorder ${site.name}`}
-          className="flex size-7 cursor-grab active:cursor-grabbing items-center justify-center rounded-lg text-white/30 hover:text-white/70"
-        >
-          <svg className="size-4" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M7 2a2 2 0 100 4 2 2 0 000-4zM7 8a2 2 0 100 4 2 2 0 000-4zM7 14a2 2 0 100 4 2 2 0 000-4zM13 2a2 2 0 100 4 2 2 0 000-4zM13 8a2 2 0 100 4 2 2 0 000-4zM13 14a2 2 0 100 4 2 2 0 000-4z" />
-          </svg>
-        </button>
-      </div>
+      {/* Pin: puts the site in the card's top row (it stays here too, marked pinned). */}
+      <button
+        type="button"
+        onClick={() => togglePrimary(site.id)}
+        aria-pressed={site.primary}
+        aria-label={site.primary ? `Remove ${site.name} from the top row` : `Add ${site.name} to the top row`}
+        title={site.primary ? 'Pinned to the top row — click to unpin' : 'Pin to the top row'}
+        className={`flex size-7 shrink-0 items-center justify-center rounded-lg transition-[opacity,color,background-color] duration-150 hover:bg-white/10 ${
+          site.primary
+            ? 'site-pinned opacity-100'
+            : 'text-white/40 opacity-0 group-hover/site:opacity-100 focus-visible:opacity-100 hover:text-white'
+        }`}
+      >
+        <PinIcon filled={site.primary} />
+      </button>
     </div>
   );
 });
+
+// Outline pin = not in the top row; filled pin = pinned there.
+export function PinIcon({ filled, className = 'size-3.5' }: { filled: boolean; className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
+      <path d="M10.2 1.8 14.2 5.8 12.4 6.4 9.9 8.9 10.3 12.1 8.9 13.5 6.4 11 2.6 14.8 1.2 13.4 5 9.6 2.5 7.1 3.9 5.7 7.1 6.1 9.6 3.6Z" />
+    </svg>
+  );
+}

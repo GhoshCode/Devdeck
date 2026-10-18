@@ -3,6 +3,9 @@ import { useStore } from '../../store';
 import type { Site } from '../../types';
 import { Favicon } from '../Favicon';
 import { deriveNameFromUrl, normalizeUrl } from '../../utils';
+import { Select } from '../ui/Select';
+
+const GENERAL_VALUE = '__general__'; // the Select needs a non-empty value for "no subcategory"
 
 interface LibraryTabProps {
   initialPrefillUrl?: string;
@@ -277,38 +280,35 @@ export function LibraryTab({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-white/70 uppercase">Category</label>
-                <select
+                <Select
                   value={siteCategoryId}
-                  onChange={(e) => {
-                    setSiteCategoryId(e.target.value);
+                  onChange={(v) => {
+                    setSiteCategoryId(v);
                     setSiteSubcategoryId(null);
                   }}
-                  className="w-full rounded-xl border border-white/10 bg-[#1e1533] px-3 py-2 text-xs text-white focus:outline-none"
-                  required
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="Category"
+                  className="w-full"
+                  options={categories.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                    icon: <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} />,
+                  }))}
+                />
               </div>
 
               {/* Subcategory Select */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-white/70 uppercase">Subcategory</label>
-                <select
-                  value={siteSubcategoryId || ''}
-                  onChange={(e) => setSiteSubcategoryId(e.target.value || null)}
-                  className="w-full rounded-xl border border-white/10 bg-[#1e1533] px-3 py-2 text-xs text-white focus:outline-none"
-                >
-                  <option value="">General (None)</option>
-                  {selectedCategorySubcategories.map((sc) => (
-                    <option key={sc.id} value={sc.id}>
-                      {sc.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={siteSubcategoryId || GENERAL_VALUE}
+                  onChange={(v) => setSiteSubcategoryId(v === GENERAL_VALUE ? null : v)}
+                  ariaLabel="Subcategory"
+                  className="w-full"
+                  options={[
+                    { value: GENERAL_VALUE, label: 'General (None)' },
+                    ...selectedCategorySubcategories.map((sc) => ({ value: sc.id, label: sc.name })),
+                  ]}
+                />
               </div>
             </div>
 

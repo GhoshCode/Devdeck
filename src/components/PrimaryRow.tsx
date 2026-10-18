@@ -11,6 +11,7 @@ import {
 import type { Site } from '../types';
 import { useStore } from '../store';
 import { Favicon } from './Favicon';
+import { PinIcon } from './SiteRow';
 
 interface PrimaryRowProps {
   sites: Site[];
@@ -19,6 +20,7 @@ interface PrimaryRowProps {
 
 export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: PrimaryRowProps) {
   const recordVisit = useStore((s) => s.recordVisit);
+  const togglePrimary = useStore((s) => s.togglePrimary);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -150,23 +152,33 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
           aria-label="Primary sites rail"
         >
           {sites.map((site) => (
-            <a
-              key={site.id}
-              href={site.url}
-              onClick={(e) => handleTileClick(e, site.id)}
-              className="glass-inner group/tile flex size-[70px] sm:size-[76px] shrink-0 flex-col items-center justify-center gap-1 p-1.5 text-center transition-all duration-200 hover:scale-105 hover:bg-[var(--color-glass-strong)] hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-              title={site.name}
-            >
-              <Favicon
-                url={site.url}
-                name={site.name}
-                categoryColor={categoryColor}
-                className="size-7 sm:size-8"
-              />
-              <span className="w-full truncate text-[12.5px] font-medium text-white/85 group-hover/tile:text-white">
-                {site.name}
-              </span>
-            </a>
+            <div key={site.id} className="group/pin relative shrink-0">
+              <a
+                href={site.url}
+                onClick={(e) => handleTileClick(e, site.id)}
+                className="glass-inner group/tile flex size-[70px] sm:size-[76px] shrink-0 flex-col items-center justify-center gap-1 p-1.5 text-center transition-all duration-200 hover:scale-105 hover:bg-[var(--color-glass-strong)] hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                title={site.name}
+              >
+                <Favicon
+                  url={site.url}
+                  name={site.name}
+                  categoryColor={categoryColor}
+                  className="size-7 sm:size-8"
+                />
+                <span className="w-full truncate text-[12.5px] font-medium text-white/85 group-hover/tile:text-white">
+                  {site.name}
+                </span>
+              </a>
+              <button
+                type="button"
+                onClick={() => togglePrimary(site.id)}
+                aria-label={`Remove ${site.name} from the top row`}
+                title="Unpin from the top row"
+                className="tile-unpin absolute -top-1 -right-1 z-10 flex size-5 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover/pin:opacity-100 focus-visible:opacity-100"
+              >
+                <PinIcon filled className="size-2.5" />
+              </button>
+            </div>
           ))}
         </div>
 

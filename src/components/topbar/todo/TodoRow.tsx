@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Priority, Todo } from '../../../types';
 import { useStore } from '../../../store';
 import { REPEAT_LABEL, formatDue, isDueToday, isOverdue } from '../../../lib/todos';
+import { Countdown } from '../../ui/Countdown';
 import { DateTimePicker } from './DateTimePicker';
 
 interface TodoRowProps {
@@ -30,7 +31,9 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
   const [draft, setDraft] = useState(todo.text);
   const [details, setDetails] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [pickerTab, setPickerTab] = useState<'due' | 'timer'>('due');
   const dueRef = useRef<HTMLButtonElement>(null);
+  const timerRef = useRef<HTMLSpanElement>(null);
 
   const overdue = isOverdue(todo, now);
   const today = isDueToday(todo, now);
@@ -138,10 +141,26 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
             P{priority}
           </span>
         )}
+        {todo.timer && (
+          <span ref={timerRef} className="flex shrink-0">
+            <Countdown
+              timer={todo.timer}
+              onClick={() => {
+                setPickerTab('timer');
+                setPicker(true);
+              }}
+            />
+          </span>
+        )}
+        {/* Compact list: a timer takes the due chip's place (the picker still has both). */}
         <button
           ref={dueRef}
           type="button"
-          onClick={() => setPicker((o) => !o)}
+          hidden={!!todo.timer && !expanded}
+          onClick={() => {
+            setPickerTab('due');
+            setPicker((o) => !o);
+          }}
           aria-label={due ? `Due ${due} — change` : 'Add due date'}
           className={`shrink-0 rounded-md px-1.5 py-px font-mono text-[10px] tabular-nums transition-colors ${
             overdue
@@ -167,12 +186,16 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
         )}
       </div>
 
-      {picker && dueRef.current && (
+      {picker && (timerRef.current ?? dueRef.current) && (
         <DateTimePicker
-          anchor={dueRef.current}
+          anchor={(todo.timer && !expanded ? timerRef.current : dueRef.current) ?? dueRef.current!}
           value={{ dueDate: todo.dueDate, dueTime: todo.dueTime }}
           onChange={(v) => updateTodo(todo.id, v)}
           onClose={() => setPicker(false)}
+          timer={todo.timer ? { amount: todo.timer.amount, unit: todo.timer.unit } : null}
+          timerStart={todo.timer?.start ?? Date.now()}
+          onTimer={(t) => updateTodo(todo.id, { timer: t ? { ...t, start: todo.timer?.start ?? Date.now() } : null })}
+          initialTab={pickerTab}
         />
       )}
 

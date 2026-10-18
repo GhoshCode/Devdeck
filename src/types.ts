@@ -1,3 +1,4 @@
+import type { Timer } from './lib/timer';
 // DevDeck domain model — SPEC §2. One level of nesting only:
 // Category → Subcategory → Site. All ordering is explicit via `order`.
 
@@ -65,6 +66,7 @@ export interface Settings {
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
   leftSplit?: number; // 0–1: share of the left column given to Focus (rest: Queue / To-do)
   feedSplit?: number; // 0–1: share of the right column given to Tech news (rest: Dev jobs)
+  greetStyle?: GreetStyle; // how the greeting words (not the name) are drawn
   cockpitLeftCards?: number; // category cards' width the left column has taken from the centre (0–2)
   cockpitRightCards?: number; // …and the right column
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
@@ -94,6 +96,7 @@ export interface Todo {
   notes?: string;
   subtasks?: Subtask[];
   repeat?: Repeat | null; // ticking a repeating task moves it to its next date
+  timer?: Timer | null; // countdown from createdAt
 }
 
 export type Repeat = 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
@@ -126,6 +129,8 @@ export interface ProcessingItem {
   section: string; // free-form group label inside panel D
   order: number;
   schedule: Schedule;
+  createdAt?: number; // epoch ms; timers count from here
+  timer?: Timer | null;
 }
 
 export interface Topic {
@@ -218,3 +223,13 @@ export interface CustomWeatherSource {
   apiUrl: string; // e.g. https://my-meteo.example/v1/forecast?latitude={lat}&longitude={lon}
   siteUrl: string; // opened when the weather is clicked; may use {lat}/{lon}
 }
+
+export type GreetStyle = 'classic' | 'accent' | 'gradient' | 'aurora' | 'neon' | 'outline';
+export const GREET_STYLES: Array<{ id: GreetStyle; name: string }> = [
+  { id: 'classic', name: 'Classic' },
+  { id: 'accent', name: 'Accent' },
+  { id: 'gradient', name: 'Gradient' },
+  { id: 'aurora', name: 'Aurora' },
+  { id: 'neon', name: 'Neon' },
+  { id: 'outline', name: 'Outline' },
+];

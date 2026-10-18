@@ -21,50 +21,6 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
     if (pinnedId) scrollRef.current?.scrollTo({ left: 0, behavior: shouldReduceMotion ? 'auto' : 'smooth' });
   }, [pinnedId, shouldReduceMotion]);
 
-  // Pointer drag-to-scroll on main container
-  const isPointerDownRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollStartRef = useRef(0);
-  const isDraggingRef = useRef(false);
-
-  const handleContainerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    // Don't drag if clicking inside links, buttons, inputs, or site rows
-    if (target.closest('a, button, input, [data-site-id]')) return;
-    if (e.button !== 0) return;
-
-    isPointerDownRef.current = true;
-    isDraggingRef.current = false;
-    startXRef.current = e.clientX;
-    scrollStartRef.current = scrollRef.current?.scrollLeft ?? 0;
-  };
-
-  const handleContainerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPointerDownRef.current) return;
-    const dx = e.clientX - startXRef.current;
-    if (!isDraggingRef.current && Math.abs(dx) > 6) {
-      isDraggingRef.current = true;
-      try {
-        scrollRef.current?.setPointerCapture(e.pointerId);
-      } catch {}
-    }
-    if (isDraggingRef.current && scrollRef.current) {
-      scrollRef.current.scrollLeft = scrollStartRef.current - dx;
-    }
-  };
-
-  const handleContainerPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDraggingRef.current) {
-      try {
-        scrollRef.current?.releasePointerCapture(e.pointerId);
-      } catch {}
-    }
-    isPointerDownRef.current = false;
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 50);
-  };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -121,10 +77,6 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            onPointerDown={handleContainerPointerDown}
-            onPointerMove={handleContainerPointerMove}
-            onPointerUp={handleContainerPointerUp}
-            onPointerCancel={handleContainerPointerUp}
             className="flex flex-1 min-h-0 w-full flex-row gap-5 lg:gap-6 items-stretch justify-start overflow-x-auto overflow-y-hidden scrollbar-none"
           >
             {sortedCategories.map((category) => (
@@ -159,14 +111,10 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            onPointerDown={handleContainerPointerDown}
-            onPointerMove={handleContainerPointerMove}
-            onPointerUp={handleContainerPointerUp}
-            onPointerCancel={handleContainerPointerUp}
             tabIndex={0}
             role="region"
             aria-label="Scrollable category cards"
-            className="flex flex-1 min-h-0 flex-row gap-5 overflow-x-auto overflow-y-hidden items-stretch py-1 px-1 scroll-smooth scrollbar-none focus-visible:outline-none select-none cursor-grab active:cursor-grabbing"
+            className="flex flex-1 min-h-0 flex-row gap-5 overflow-x-auto overflow-y-hidden items-stretch py-1 px-1 scroll-smooth scrollbar-none focus-visible:outline-none"
           >
             {sortedCategories.map((category) => (
               <motion.div
