@@ -146,7 +146,7 @@ function FlipFace({ parts }: FaceProps) {
         }}
       >
         {/* brand plate sitting on the top rim of the case */}
-        <span aria-hidden className="flip-plate absolute -top-[4.5cqh] left-1/2 -translate-x-1/2 rounded-[1.6cqh] border px-[2.2cqw] py-[1.1cqh] pl-[2.6cqw] font-mono text-[max(8px,min(9cqh,3cqw))] leading-none font-bold tracking-[0.45em]">DEVDECK</span>
+        <span aria-hidden className={`flip-plate absolute -top-[2.4cqh] left-1/2 -translate-x-1/2 rounded-[1.4cqh] px-[2.4cqw] pt-[0.9cqh] pb-[0.8cqh] pl-[2.8cqw] font-mono ${TINY} leading-none tracking-[0.4em] text-white/55`}>DEVDECK</span>
         {/* recessed window */}
         <div className="flex items-center gap-[0.9cqw] rounded-[5cqh] bg-black/55 p-[1.4cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
           <FlipCard value={parts.hours} />

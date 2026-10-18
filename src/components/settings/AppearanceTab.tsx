@@ -12,7 +12,7 @@ import { ClockFace } from '../topbar/clock/faces';
 import { DEFAULT_ZONES, ZONE_CHOICES, zoneCity, zoneTime } from '../../lib/zones';
 import type { ClockStyle, GradientStudio, Settings, ThemeMode } from '../../types';
 import { Select } from '../ui/Select';
-import { GREET_STYLES } from '../../types';
+import { GREET_STYLES, NAME_FONTS } from '../../types';
 
 // Settings → Appearance & Display, ordered the way people tune a look:
 //   live preview → Light / Dark / Auto → accent → Gradient Studio →
@@ -406,6 +406,27 @@ export function AppearanceTab() {
               >
                 <span className={`greet-words greet-${g.id} font-display text-[15px] leading-tight font-bold tracking-tight`}>GOOD MORNING,</span>
                 <span className="text-[10.5px] text-white/55">{g.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="pt-1 text-[11px] font-semibold tracking-wider text-white/60 uppercase">Name font</p>
+        <div role="radiogroup" aria-label="Name font" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {NAME_FONTS.map((f) => {
+            const on = (settings.nameFont ?? 'grotesk') === f.id;
+            const sample = settings.greetingName.trim() || 'Alex';
+            return (
+              <button
+                key={f.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`${f.name} name font`}
+                onClick={() => updateSettings({ nameFont: f.id })}
+                className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
+              >
+                <span className={`name-font-${f.id} max-w-full truncate text-[17px] leading-tight text-white`}>{f.upper ? sample.toUpperCase() : sample}</span>
+                <span className="text-[10.5px] text-white/55">{f.name}</span>
               </button>
             );
           })}

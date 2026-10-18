@@ -10,6 +10,63 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19d (phase 4) — greeting name, paging fix, flip plate, calm switch
+
+### Greeting (`topbar/DateGreet.tsx`, `TopBar.tsx`, `types.ts`, `settings/AppearanceTab.tsx`, `index.css`)
+- **Size and position:** the greeting is `text-[2.15rem]` (was 1.85rem). The
+  `date-greet` wrapper gets `md:pr-14`, which moves the centred greeting
+  about 28 px left.
+- **Name typefaces:** `settings.nameFont` (`NameFont`), defined in
+  `NAME_FONTS`. Each entry has an `upper` flag; script and italic faces keep
+  the name's own capitalisation.
+  - Grotesk (default; Space Grotesk, uppercase)
+  - Script (Great Vibes)
+  - Italic serif (Playfair Display italic)
+  - Handwritten (Dancing Script)
+  - Roman caps (Cinzel)
+  - Condensed (Bebas Neue)
+  - Mono (JetBrains Mono)
+  The fonts are added to the Google Fonts import, and the classes are `.name-font-*`.
+- **Name interactions:** the name is its own control, and `stopPropagation`
+  keeps it from changing the greeting style.
+  - **Click** → next font, delayed 240 ms so a double-click can cancel it.
+  - **Right-click** → previous font.
+  - **Double-click**, or Enter/F2 when focused → an inline input (`.name-edit-input`).
+  - In the input: Enter or blur saves (trimmed, at most 40 characters); Esc cancels.
+- **Appearance → Greeting:** a "Name font" picker with samples rendered in each face.
+
+### Category paging fix (`CardsPager.tsx`)
+- **Cause:** with the side columns at rest, the centre is about 10 px narrower
+  than 3 cards (`cardSnap` counts a sliver-cut card as shown). The pager
+  floored that to 2 per page, so each page started on the third, already-visible
+  card.
+- **Fix:** `perPage` now uses the same rule (`+ 0.15` before the floor), so a
+  page is the full visible set.
+- **Checked** at 1920 px with 13 categories: 3 per page, 5 dots, and every wheel
+  step lands on card 3, 6, 9 or 12.
+
+### Flip plate (`faces2.tsx`, `.flip-plate`)
+- Reverted to the round-19b plate: dark gradient, `text-white/55`, `TINY` mono text.
+- More inner padding: `px-[2.4cqw] pl-[2.8cqw] pt-[0.9cqh] pb-[0.8cqh]`
+  (was `px-[1.4cqw] py-[0.3cqh]`).
+- Set slightly higher, at `-top-[2.4cqh]`, so the taller plate stays on the edge.
+
+### Queue / To-do switch (`index.css`)
+- **No glow.** The track is dark glass. The active pill is a faintly lighter
+  glass tile with a 1 px border and a short 1.5 px accent line at its bottom
+  edge. There's no gradient fill and no coloured shadow.
+- **Active tab:** near-white label, accent icon, and a subtle count badge.
+- **Light theme:** a white tile on a grey track.
+
+### Verification
+- `tsc -b` clean.
+- Vitest 207/207.
+- `build:demo` succeeds, and `dist/` is rebuilt.
+- Only the paging fix was exercised in the preview. The rest is not tested yet,
+  per the testing policy.
+
+---
+
 ## Round 2026-10-19c — masonry Site Map, add-name, clocks, world zones, switch, scraping controls, loaders
 
 ### Site Map layout (`ui/Masonry.tsx` new, `search/SiteMapModal.tsx`)

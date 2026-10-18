@@ -69,6 +69,7 @@ export interface Settings {
   feedNewsCount?: number; // 0–100 stories shown in Tech news (default 4)
   feedJobsCount?: number; // 0–100 posts shown in Dev jobs (default 4)
   greetStyle?: GreetStyle; // how the greeting words (not the name) are drawn
+  nameFont?: NameFont; // typeface of your name in the greeting
   cockpitLeftCards?: number; // category cards' width the left column has taken from the centre (0–2)
   cockpitRightCards?: number; // …and the right column
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
@@ -242,6 +243,18 @@ export interface CustomWeatherSource {
   apiUrl: string; // e.g. https://my-meteo.example/v1/forecast?latitude={lat}&longitude={lon}
   siteUrl: string; // opened when the weather is clicked; may use {lat}/{lon}
 }
+
+// Typefaces for your name in the greeting (click the name to cycle them).
+export type NameFont = 'grotesk' | 'script' | 'italic' | 'hand' | 'roman' | 'condensed' | 'mono';
+export const NAME_FONTS: Array<{ id: NameFont; name: string; upper: boolean }> = [
+  { id: 'grotesk', name: 'Grotesk', upper: true },
+  { id: 'script', name: 'Script', upper: false },
+  { id: 'italic', name: 'Italic serif', upper: false },
+  { id: 'hand', name: 'Handwritten', upper: false },
+  { id: 'roman', name: 'Roman caps', upper: true },
+  { id: 'condensed', name: 'Condensed', upper: true },
+  { id: 'mono', name: 'Mono', upper: true },
+];
 
 export type GreetStyle = 'classic' | 'accent' | 'gradient' | 'aurora' | 'neon' | 'outline' | 'chrome' | 'synthwave' | 'holo' | 'terminal' | 'fire' | 'ice';
 export const GREET_STYLES: Array<{ id: GreetStyle; name: string }> = [

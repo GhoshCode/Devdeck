@@ -31,7 +31,9 @@ export function useCardPaging(target: RefObject<HTMLElement | null>, count: numb
       if (!list.length) return;
       const first = list[0];
       const step = list[1] ? list[1].offsetLeft - first.offsetLeft : first.offsetWidth;
-      const perPage = Math.max(1, Math.floor((el.clientWidth - first.offsetLeft * 2 + (step - first.offsetWidth)) / step));
+      // A card cut by only a sliver still counts as shown (same rule as the
+      // cockpit snapping, lib/cardSnap.ts), so a page is what you actually see.
+      const perPage = Math.max(1, Math.floor((el.clientWidth - first.offsetLeft * 2 + (step - first.offsetWidth)) / step + 0.15));
       const pages = Math.max(1, Math.ceil(list.length / perPage));
       // Room after the last card so the last page can start at the left edge.
       const lastStart = list[(pages - 1) * perPage].offsetLeft - first.offsetLeft;

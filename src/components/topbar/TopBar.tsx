@@ -31,7 +31,7 @@ export function TopBar({ weather, search, git, command }: TopBarProps) {
       </div>
       {/* Left and right columns are equal width, so this column — the greeting at the top and the search at the bottom — sits in the exact middle of the screen, just above the cockpit. */}
       <div data-widget="search" className="relative z-20 flex min-w-0 flex-col justify-between gap-3 pt-3 pb-5 sm:col-span-2 md:col-span-1">
-        <div data-widget="date-greet" className="mx-auto w-full max-w-[940px] min-w-0 px-1">
+        <div data-widget="date-greet" className="mx-auto w-full max-w-[940px] min-w-0 px-1 md:pr-14">
           <DateGreet />
         </div>
         {search}

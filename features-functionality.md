@@ -17,6 +17,46 @@ wide where layout is involved.
 
 ---
 
+## 000. Round 2026-10-19d (phase 4) — latest changes
+
+### Greeting
+- The greeting is a little bigger and sits a little left of centre.
+- **Your name:**
+  - **click** it to try the next typeface; **right-click** goes back;
+  - **double-click** it to rename it right there (Enter saves, Esc cancels).
+- **Typefaces:** Grotesk, Script, Italic serif, Handwritten, Roman caps,
+  Condensed and Mono. You can also pick one in Settings → Appearance → Greeting
+  → Name font.
+
+**Manual test checklist**
+- [ ] Clicking the name changes only its font (not the greeting style); clicking the greeting words still changes the style.
+- [ ] Double-click shows an input with the current name; Enter saves; Esc keeps the old name; clicking away saves.
+- [ ] Every font renders; nothing is clipped (Script and Handwritten have tall letters); dark and light themes.
+- [ ] The Appearance picker matches the greeting.
+
+### Category pages
+- Each wheel step or dot click on the strip under the cards moves a whole page.
+  The next page never repeats a card from the page you just left.
+
+**Manual test checklist**
+- [ ] At 1920 px with 7+ categories: page 2 starts with the 4th card; the last page shows the leftovers plus blanks.
+- [ ] After dragging a side column to take a card (2 per page), paging moves by 2.
+
+### Flip clock
+- The previous plate is back (subtle, dark), with more space around the DEVDECK letters.
+
+**Manual test checklist**
+- [ ] DEVDECK has visible padding on all sides and isn't cramped against the plate edges.
+
+### Queue / To-do switch
+- **Calmer style:** the active tab is a lightly raised glass tile with a thin
+  accent line at the bottom. There's no glow or bright fill.
+
+**Manual test checklist**
+- [ ] No pink/neon glow; the active tab is still clear; the accent icon and underline follow the theme accent; light theme looks clean.
+
+---
+
 ## 00. Round 2026-10-19c — latest changes
 
 ### Site Map

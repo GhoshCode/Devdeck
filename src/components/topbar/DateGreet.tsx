@@ -1,10 +1,10 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
 import { formatDateLine, greetingFor } from '../../lib/time';
 import { quoteFor } from '../../lib/greeting';
-import { GREET_STYLES } from '../../types';
+import { GREET_STYLES, NAME_FONTS, type NameFont } from '../../types';
 
 // The uppercase date line, under the clock.
 export const DateLine = memo(function DateLine() {
@@ -16,7 +16,7 @@ export const DateLine = memo(function DateLine() {
 // (only the name — not the greeting or the quote). Skipped with reduced motion.
 const SPOTLIGHT_EVERY_MS = 10 * 60_000;
 
-function SpotlightName({ name }: { name: string }) {
+function SpotlightName({ name, font }: { name: string; font: NameFont }) {
   const [sweep, setSweep] = useState(0);
   useEffect(() => {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
@@ -31,7 +31,7 @@ function SpotlightName({ name }: { name: string }) {
     <span
       key={sweep}
       data-testid="greet-name"
-      className={sweep ? 'greet-spotlight' : undefined}
+      className={`name-font-${font} ${sweep ? 'greet-spotlight' : ''}`}
       onAnimationEnd={(e) => e.currentTarget.classList.remove('greet-spotlight')}
     >
       {name}
@@ -92,6 +92,19 @@ export const DateGreet = memo(function DateGreet() {
   const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
   const [shuffle, setShuffle] = useState(0);
   const quote = quoteFor(now, shuffle);
+  // Your name: click for the next typeface, right-click for the previous one,
+  // double-click to rename it right here.
+  const nameFont = useStore((s) => s.settings.nameFont ?? 'grotesk');
+  const fontAt = Math.max(0, NAME_FONTS.findIndex((f) => f.id === nameFont));
+  const font = NAME_FONTS[fontAt];
+  const stepFont = (d: number) => updateSettings({ nameFont: NAME_FONTS[(fontAt + d + NAME_FONTS.length) % NAME_FONTS.length].id });
+  const [editing, setEditing] = useState<string | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (clickTimer.current && clearTimeout(clickTimer.current)), []);
+  const saveName = () => {
+    if (editing !== null && editing.trim()) updateSettings({ greetingName: editing.trim().slice(0, 40) });
+    setEditing(null);
+  };
 
   return (
     <div className="group/greet flex min-w-0 flex-col items-center gap-1 text-center">
@@ -103,7 +116,7 @@ export const DateGreet = memo(function DateGreet() {
           step(-1);
         }}
         title={`Greeting style: ${GREET_STYLES[at].name} — click: next · right-click: previous`}
-        className="max-w-full truncate font-display text-[1.85rem] leading-tight font-bold tracking-tight text-white/95 cursor-pointer select-none"
+        className="max-w-full truncate font-display text-[2.15rem] leading-tight font-bold tracking-tight text-white/95 cursor-pointer select-none"
       >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}
         <span data-testid="greet-words" className={`greet-words greet-${greetStyle}`}>
@@ -113,7 +126,52 @@ export const DateGreet = memo(function DateGreet() {
         {name.trim() && (
           <>
             {' '}
-            <SpotlightName name={name.trim().toUpperCase()} />
+            {editing !== null ? (
+              <input
+                autoFocus
+                value={editing}
+                maxLength={40}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setEditing(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveName();
+                  if (e.key === 'Escape') setEditing(null);
+                }}
+                aria-label="Your name"
+                size={Math.max(6, editing.length + 1)}
+                className="name-edit-input rounded-lg px-2 align-middle text-[0.8em] font-semibold outline-none"
+              />
+            ) : (
+              <span
+                role="button"
+                tabIndex={0}
+                title={`Name font: ${font.name} — click: next font · right-click: previous · double-click: rename`}
+                onClick={(e) => {
+                  e.stopPropagation(); // not a greeting-style change
+                  if (clickTimer.current) clearTimeout(clickTimer.current);
+                  clickTimer.current = setTimeout(() => stepFont(1), 240);
+                }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  if (clickTimer.current) clearTimeout(clickTimer.current);
+                  setEditing(name.trim());
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  stepFont(-1);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    setEditing(name.trim());
+                  }
+                }}
+              >
+                <SpotlightName name={font.upper ? name.trim().toUpperCase() : name.trim()} font={font.id} />
+              </span>
+            )}
           </>
         )}
       </h1>
