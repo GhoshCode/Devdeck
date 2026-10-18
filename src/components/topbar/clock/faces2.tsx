@@ -1,4 +1,5 @@
-import { useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import type { TimezoneOption } from '../../../lib/timezoneOptions';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 import { useStore } from '../../../store';
 import { cachedWeather } from '../../../services/weather';
 import { DEFAULT_ZONES, ZONE_CHOICES, zoneCity, zoneTime } from '../../../lib/zones';
@@ -145,7 +146,7 @@ function FlipFace({ parts }: FaceProps) {
         }}
       >
         {/* brand plate sitting on the top rim of the case */}
-        <span aria-hidden className={`flip-plate absolute -top-[1.6cqh] left-1/2 -translate-x-1/2 rounded-[1.2cqh] px-[1.4cqw] py-[0.3cqh] font-mono ${TINY} leading-none tracking-[0.4em] text-white/55`}>DEVDECK</span>
+        <span aria-hidden className="flip-plate absolute -top-[4.5cqh] left-1/2 -translate-x-1/2 rounded-[1.6cqh] border px-[2.2cqw] py-[1.1cqh] pl-[2.6cqw] font-mono text-[max(8px,min(9cqh,3cqw))] leading-none font-bold tracking-[0.45em]">DEVDECK</span>
         {/* recessed window */}
         <div className="flex items-center gap-[0.9cqw] rounded-[5cqh] bg-black/55 p-[1.4cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
           <FlipCard value={parts.hours} />
@@ -352,14 +353,25 @@ const ALL_ZONES: string[] = (() => {
 function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now: Date; onPick: (tz: string) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
+  // The full world list (@vvo/tzdb) loads when the search opens; until then
+  // the browser's own zone names stand in.
+  const [world, setWorld] = useState<TimezoneOption[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import('../../../lib/timezoneOptions').then((m) => alive && setWorld(m.timezoneOptions));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const list = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return ALL_ZONES.map((tz) => ({ tz, city: zoneCity(tz), region: tz.split('/')[0] }))
-      .filter((z) => !needle || z.city.toLowerCase().includes(needle) || z.tz.toLowerCase().includes(needle))
-      .slice(0, 60);
-  }, [q]);
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const all = world
+      ? world.map((o) => ({ tz: o.value, city: zoneCity(o.value), detail: o.label, keys: o.searchKeywords }))
+      : ALL_ZONES.map((tz) => ({ tz, city: zoneCity(tz), detail: tz.split('/')[0], keys: tz.toLowerCase() }));
+    return all.filter((z) => words.every((w) => z.keys.includes(w) || z.city.toLowerCase().includes(w)));
+  }, [q, world]);
   return (
-    <AnchoredPopover anchor={anchor} onClose={onClose} label="Choose a city" width={280}>
+    <AnchoredPopover anchor={anchor} onClose={onClose} label="Choose a city" width={340}>
       {/* The popover is a portal, so React would bubble clicks to the clock button (style switch). */}
       <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.stopPropagation()}>
       <input
@@ -374,11 +386,11 @@ function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now
           else if (e.key === 'ArrowUp') (e.preventDefault(), setActive((i) => Math.max(0, i - 1)));
           else if (e.key === 'Enter' && list[active]) onPick(list[active].tz);
         }}
-        placeholder="Search a city or time zone…"
+        placeholder="Search a city, country or time zone…"
         aria-label="Search time zones"
         className="dtp-stepper mb-2 h-8 w-full rounded-lg border px-2.5 text-[12px] text-white outline-none placeholder:text-white/35"
       />
-      <ul role="listbox" aria-label="Time zones" className="ultra-thin-scrollbar max-h-[240px] overflow-y-auto">
+      <ul role="listbox" aria-label="Time zones" className="ultra-thin-scrollbar max-h-[280px] overflow-y-auto">
         {list.map((z, i) => (
           <li
             key={z.tz}
@@ -389,8 +401,9 @@ function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now
             onClick={() => onPick(z.tz)}
             className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-white/85 ${i === active ? 'dropdown-active text-white' : ''}`}
           >
-            <span className="min-w-0 flex-1 truncate">
-              {z.city} <span className="text-[10.5px] text-white/40">{z.region}</span>
+            <span className="min-w-0 flex-1" title={z.detail}>
+              <span className="block truncate">{z.city}</span>
+              <span className="block truncate text-[10px] text-white/40">{z.detail}</span>
             </span>
             <span className="shrink-0 font-mono text-[10px] text-white/45">{zoneTime(now, z.tz, true).offset}</span>
           </li>

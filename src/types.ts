@@ -66,6 +66,8 @@ export interface Settings {
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
   leftSplit?: number; // 0–1: share of the left column given to Focus (rest: Queue / To-do)
   feedSplit?: number; // 0–1: share of the right column given to Tech news (rest: Dev jobs)
+  feedNewsCount?: number; // 0–100 stories shown in Tech news (default 4)
+  feedJobsCount?: number; // 0–100 posts shown in Dev jobs (default 4)
   greetStyle?: GreetStyle; // how the greeting words (not the name) are drawn
   cockpitLeftCards?: number; // category cards' width the left column has taken from the centre (0–2)
   cockpitRightCards?: number; // …and the right column

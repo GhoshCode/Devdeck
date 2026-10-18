@@ -10,6 +10,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { useStore } from '../../store';
+import { LoadingBar } from '../ui/LoadingBar';
 import { localDateKey } from '../../lib/time';
 import {
   GIT_TTL_MS,
@@ -150,7 +151,8 @@ export const GitWidget = memo(function GitWidget() {
   const updatedAt = stats.data?.fetchedAt;
 
   return (
-    <div data-testid="git-widget" className="glass @container flex h-full min-w-0 flex-col gap-1 px-3 pt-2.5 pb-2">
+    <div data-testid="git-widget" className="glass @container relative flex h-full min-w-0 flex-col gap-1 px-3 pt-2.5 pb-2">
+      <LoadingBar active={loading} label="Loading GitHub activity" className="absolute inset-x-3 top-0" />
       {/* Profile */}
       <div className="flex min-w-0 items-center gap-2">
         <a href={profile.data?.url ?? `https://github.com/${username}`} className="shrink-0" title={`@${username} on GitHub`}>

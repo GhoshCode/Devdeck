@@ -328,7 +328,8 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
       }}
       className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pb-5"
     >
-      {/* Two tab buttons; scrolling over them (or clicking) switches the pane. */}
+      {/* Segmented switch: a glowing pill slides under the active pane's tab.
+          Clicking a tab, or scrolling over the switch, changes the pane. */}
       <div
         role="tablist"
         aria-label="Queue or to-do"
@@ -336,8 +337,13 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
           const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
           if (Math.abs(d) > 4) go(d > 0 ? 1 : 0);
         }}
-        className="grid grid-cols-2 gap-1.5"
+        className="pane-switch relative grid shrink-0 grid-cols-2 rounded-2xl border p-1"
       >
+        <span
+          aria-hidden
+          className="pane-switch-pill absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-xl transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: pane ? 'translateX(100%)' : undefined }}
+        />
         {tabs.map((t, i) => (
           <button
             key={t.label}
@@ -345,12 +351,13 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
             role="tab"
             aria-selected={pane === i}
             onClick={() => go(i as 0 | 1)}
-            className={`pane-tab flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-display text-[11px] font-semibold tracking-[0.12em] uppercase transition-all ${
+            className={`pane-tab relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-1.5 font-display text-[11.5px] font-semibold tracking-[0.12em] uppercase transition-colors ${
               pane === i ? 'is-on' : ''
             }`}
           >
+            {i === 0 ? <WaveIcon /> : <CheckCircleIcon />}
             <span className="truncate">{t.label}</span>
-            <span className="pane-tab-count rounded-full px-1.5 font-mono text-[10px] tracking-normal">{t.count}</span>
+            <span className="pane-tab-count min-w-5 rounded-md px-1.5 py-px font-mono text-[10px] tracking-normal">{t.count}</span>
           </button>
         ))}
       </div>
@@ -370,5 +377,22 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
         ))}
       </span>
     </section>
+  );
+}
+
+function WaveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.2 2.4 2.4 4.8-5" />
+    </svg>
   );
 }

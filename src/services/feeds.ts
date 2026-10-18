@@ -130,8 +130,11 @@ export function parseFeedXml(xml: string, src: FeedSource): FeedItem[] {
 // A topic matches when any of its comma-separated keywords appears as a whole
 // word (or phrase) in the title or tags — so "ai" matches "AI agents" but not
 // "email".
-export function matchesTopic(item: Pick<FeedItem, 'title' | 'tags'>, topic: Topic | null): boolean {
+export function matchesTopic(item: Pick<FeedItem, 'title' | 'tags'>, topic: Topic | readonly Topic[] | null): boolean {
   if (!topic) return true;
+  // Several topics selected: an item matching any one of them is shown.
+  if (Array.isArray(topic)) return topic.length === 0 || topic.some((t) => matchesTopic(item, t));
+  if (!('query' in topic)) return true;
   const hay = `${item.title} ${item.tags.join(' ')}`.toLowerCase();
   return topic.query
     .split(',')
@@ -141,7 +144,7 @@ export function matchesTopic(item: Pick<FeedItem, 'title' | 'tags'>, topic: Topi
 }
 
 // Newest first, de-duplicated by URL, capped per panel.
-export function selectPanel(items: readonly FeedItem[], category: FeedCategory, topic: Topic | null, limit: number): FeedItem[] {
+export function selectPanel(items: readonly FeedItem[], category: FeedCategory, topic: Topic | readonly Topic[] | null, limit: number): FeedItem[] {
   const seen = new Set<string>();
   return items
     .filter((i) => i.category === category && i.title && i.url && matchesTopic(i, topic))
@@ -151,9 +154,14 @@ export function selectPanel(items: readonly FeedItem[], category: FeedCategory, 
 }
 
 // Promise.allSettled with at most `limit` tasks running at once.
-async function settleLimited<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<PromiseSettledResult<T>[]> {
+async function settleLimited<T>(
+  tasks: Array<() => Promise<T>>,
+  limit: number,
+  onSettle?: (done: number, total: number) => void,
+): Promise<PromiseSettledResult<T>[]> {
   const out: PromiseSettledResult<T>[] = new Array(tasks.length);
   let next = 0;
+  let done = 0;
   const worker = async () => {
     while (next < tasks.length) {
       const i = next++;
@@ -162,6 +170,7 @@ async function settleLimited<T>(tasks: Array<() => Promise<T>>, limit: number): 
       } catch (reason) {
         out[i] = { status: 'rejected', reason };
       }
+      onSettle?.(++done, tasks.length);
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
@@ -186,14 +195,15 @@ export function cachedFeeds(sources: readonly FeedSource[]): FeedResult | null {
 
 export async function loadFeeds(
   sources: readonly FeedSource[],
-  opts: { force?: boolean; fetcher?: Fetch } = {},
+  opts: { force?: boolean; fetcher?: Fetch; onProgress?: (done: number, total: number) => void } = {},
 ): Promise<FeedResult> {
   if (!opts.force) {
     const hit = cachedFeeds(sources);
     if (hit) return hit;
   }
   const enabled = sources.filter((s) => s.enabled);
-  const settled = await settleLimited(enabled.map((s) => () => fetchSource(s, opts.fetcher)), 8);
+  opts.onProgress?.(0, enabled.length);
+  const settled = await settleLimited(enabled.map((s) => () => fetchSource(s, opts.fetcher)), 8, opts.onProgress);
   const result: FeedResult = {
     items: settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])),
     errors: settled.flatMap((r, i) =>

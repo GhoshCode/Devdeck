@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../../store';
+import { LoadingBar } from '../ui/LoadingBar';
 import {
   UV_LABEL,
   WEATHER_TTL_MS,
@@ -154,7 +155,8 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
 
   const handlers = { onClick, onDoubleClick, title };
   return (
-    <div className="flex max-w-full min-w-0 flex-col items-start gap-1">
+    <div className="relative flex max-w-full min-w-0 flex-col items-start gap-1">
+      <LoadingBar active={state.status === 'loading'} label="Loading weather" className="absolute inset-x-0 -bottom-1" />
       <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1.5">
         {lead}
         <button

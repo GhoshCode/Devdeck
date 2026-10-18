@@ -39,6 +39,44 @@ function SpotlightName({ name }: { name: string }) {
   );
 }
 
+// No name yet: a quiet "+ Add your name" beside the greeting, shown only while
+// you hover the greeting. Enter saves, Esc or clicking away cancels.
+function AddName({ onSave }: { onSave: (name: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = () => {
+    if (draft?.trim()) onSave(draft.trim().slice(0, 40));
+    setDraft(null);
+  };
+  return (
+    <span className="absolute top-1/2 left-full ml-3 -translate-y-1/2">
+      {draft === null ? (
+        <button
+          type="button"
+          onClick={() => setDraft('')}
+          className="add-name-btn whitespace-nowrap rounded-lg border border-dashed px-2.5 py-1 text-[11.5px] font-medium opacity-0 transition-opacity group-hover/greet:opacity-100 focus-visible:opacity-100"
+        >
+          + Add your name
+        </button>
+      ) : (
+        <input
+          autoFocus
+          value={draft}
+          maxLength={40}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => setDraft(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') setDraft(null);
+          }}
+          placeholder="Your name, then Enter"
+          aria-label="Your name for the greeting"
+          className="add-name-input w-44 rounded-lg border px-2.5 py-1 text-[12px] outline-none"
+        />
+      )}
+    </span>
+  );
+}
+
 // GREET (top-centre of the top bar, above the search): the time-of-day
 // greeting with your name and a daily motivational quote (Appearance →
 // Greeting can turn it off; hover it for another).
@@ -56,7 +94,8 @@ export const DateGreet = memo(function DateGreet() {
   const quote = quoteFor(now, shuffle);
 
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+    <div className="group/greet flex min-w-0 flex-col items-center gap-1 text-center">
+      <div className="relative max-w-full">
       <h1
         onClick={() => step(1)}
         onContextMenu={(e) => {
@@ -78,6 +117,8 @@ export const DateGreet = memo(function DateGreet() {
           </>
         )}
       </h1>
+      {!name.trim() && <AddName onSave={(n) => updateSettings({ greetingName: n })} />}
+      </div>
       {showQuote && (
         <figure className="group/quote relative max-w-[calc(100%-1.75rem)]">
           <AnimatePresence mode="wait" initial={false}>

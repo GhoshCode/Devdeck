@@ -17,6 +17,89 @@ wide where layout is involved.
 
 ---
 
+## 00. Round 2026-10-19c — latest changes
+
+### Site Map
+- **Card layout:** cards pack into columns by height, so a short card no
+  longer leaves a gap beside a tall one. Order runs left to right, then into
+  the shortest column.
+- **Site chips:** they stretch so every row fills the section from wall to wall.
+
+**Manual test checklist**
+- [ ] With uneven categories, no big empty holes under short cards; resizing the window re-packs smoothly (1, 2 or 3 columns).
+- [ ] Renaming, adding a subcategory or site, or deleting with the bin doesn't reset the cards; they glide to new spots.
+- [ ] Drag a site between cards: still works.
+- [ ] Chips in every row reach both edges of the section.
+
+### Greeting: add your name
+- With no name set, hover the greeting: a faint **+ Add your name** button
+  appears beside it.
+- Click it, type, and press Enter: the greeting shows your name. Esc or
+  clicking away cancels.
+
+**Manual test checklist**
+- [ ] Hidden until hover; no layout jump when it appears.
+- [ ] Enter saves (also visible in Settings → Profile); Esc and blur cancel; the button is gone once a name is set.
+- [ ] Clicking the button does not change the greeting style.
+
+### Clocks
+- **Modern Analog:** back to the previous design (in a card, with the smaller readout).
+- **Typographic Word:** less space above and below, bigger words, slightly more space between lines.
+- **Flip:** the DEVDECK plate is larger, brighter and sits higher on the housing.
+
+**Manual test checklist**
+- [ ] Word clock fits its box at 1920, 1512 and 1280 px without clipping the last line.
+- [ ] Flip: DEVDECK is clearly readable in dark and light themes.
+- [ ] Analog looks as it did before the last round.
+
+### Multi-Timezone
+- The city search now covers every time zone in the world.
+- Each result shows the city plus the UTC offset, country, zone name and main
+  cities.
+- Search by city, country, zone name or abbreviation, for example "india",
+  "IST", "pacific" or "são paulo". Several words narrow the list.
+
+**Manual test checklist**
+- [ ] Type "japan" → Tokyo; "eastern" → New York; "nepal" → Kathmandu (+05:45).
+- [ ] Picking a result adds that clock; the offset shown matches.
+- [ ] The list scrolls through the whole world when the box is empty.
+
+### Queue / To-do switch
+- **New look:** a recessed track with a glossy accent pill that slides under
+  the active tab.
+- **Tabs:** each has an icon, label and count. The active tab's count is a
+  white badge.
+
+**Manual test checklist**
+- [ ] The pill slides smoothly; clicks and the wheel over the switch change panes.
+- [ ] Readable in the light theme (white text on the pill).
+
+### Scraping & News settings
+- **Items per section:** a slider for Tech news and one for Dev jobs.
+  - Range 0–100, with points at 0, 10, 20 … 100 (click a point to jump there).
+  - 0 hides that list.
+- **Topic chips:** turn on as many as you like; the panels show items that
+  match any of them. **All** clears the selection.
+
+**Manual test checklist**
+- [ ] Set Tech news to 25: the panel lists 25 (if available); Dev jobs numbering continues from 26.
+- [ ] Set a slider to 0: the list shows the "Hidden" hint.
+- [ ] Select 3 topics: all three chips glow; the header shows "3 topics"; deselect all → All is active.
+
+### Loading indicators
+- **Feeds:** while sources load, a thin accent bar fills along the top of Tech
+  news and Dev jobs, and the header shows "fetching 34/210".
+- **First load:** shimmer placeholders replace the blinking blocks.
+- **GitHub widget and weather:** a slim sweeping bar while they refresh.
+
+**Manual test checklist**
+- [ ] With demo data (210 sources), click ↻ in Tech news: the bar fills from left to right, and the count climbs and then fades.
+- [ ] Clear cache, then reload: shimmer rows show until the first items arrive.
+- [ ] Click the weather row or the GitHub refresh: a sweep shows briefly.
+- [ ] With reduced motion on, there is no sweep animation.
+
+---
+
 ## 0. Round 2026-10-19b — latest changes
 
 **Setup:** `dist/` is now a demo build (`npm run build:demo`).

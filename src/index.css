@@ -2175,28 +2175,37 @@ html[data-theme='light'] .greet-ice { background-image: linear-gradient(180deg, 
 @media (prefers-reduced-motion: reduce) { .greet-holo { animation: none; } }
 
 /* Queue / To-do tab buttons */
-.pane-tab {
-  color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.03);
+/* Queue / To-do segmented switch: a glossy accent pill slides under the active tab */
+.pane-switch {
+  background: rgba(0, 0, 0, 0.28);
   border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.pane-switch-pill {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 85%, #fff 0%), color-mix(in srgb, var(--color-accent) 55%, #1e1b4b));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 60%, rgba(255, 255, 255, 0.35));
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--color-accent) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.pane-tab {
+  color: rgba(255, 255, 255, 0.6);
 }
 .pane-tab:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
 }
 .pane-tab.is-on {
   color: #fff;
-  background: color-mix(in srgb, var(--color-accent) 18%, rgba(255, 255, 255, 0.04));
-  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
-  box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--color-accent) 60%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 .pane-tab-count {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
 }
 .pane-tab.is-on .pane-tab-count {
-  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  color: color-mix(in srgb, var(--color-accent) 70%, #0b1020);
+  font-weight: 700;
 }
 .manage-btn {
   color: rgba(255, 255, 255, 0.6);
@@ -2205,16 +2214,14 @@ html[data-theme='light'] .greet-ice { background-image: linear-gradient(180deg, 
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
 }
-html[data-theme='light'] .pane-tab {
-  color: rgba(60, 60, 67, 0.65);
-  background: #fff;
+html[data-theme='light'] .pane-switch {
+  background: rgba(118, 118, 128, 0.1);
   border-color: rgba(60, 60, 67, 0.12);
 }
-html[data-theme='light'] .pane-tab.is-on {
-  color: #1c1c1e;
-  background: color-mix(in srgb, var(--color-accent) 12%, #fff);
-}
-html[data-theme='light'] .pane-tab-count { background: rgba(118, 118, 128, 0.12); color: rgba(60, 60, 67, 0.7); }
+html[data-theme='light'] .pane-tab { color: rgba(60, 60, 67, 0.7); }
+html[data-theme='light'] .pane-tab:hover { color: #1c1c1e; }
+html[data-theme='light'] .pane-tab.is-on { color: #fff; }
+html[data-theme='light'] .pane-tab-count { background: rgba(118, 118, 128, 0.14); color: rgba(60, 60, 67, 0.75); }
 html[data-theme='light'] .manage-btn { color: rgba(60, 60, 67, 0.6); }
 
 /* To-do rows tinted by when they are due; a priority bar on the left */
@@ -2259,8 +2266,11 @@ html[data-theme='light'] .stat-warn { color: #b45309; }
 
 /* Flip clock brand plate on the case rim */
 .flip-plate {
-  background: linear-gradient(180deg, #2b2f38, #16181d);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 4px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, #3a3f4a, #1b1e24);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--color-accent) 55%, transparent), 0 1px 0 rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 3px 8px rgba(0, 0, 0, 0.65);
 }
 
 /* CLI face: commands type out */
@@ -2319,4 +2329,94 @@ html[data-theme='light'] .stat-warn { color: #b45309; }
 html[data-theme='light'] .panel-notch {
   background: rgba(118, 118, 128, 0.08);
   border-color: rgba(60, 60, 67, 0.14);
+}
+
+/* Greeting: "+ Add your name" (only when no name is set, shown on hover) */
+.add-name-btn {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.03);
+}
+.add-name-btn:hover {
+  color: #fff;
+  border-color: var(--color-accent);
+}
+.add-name-input {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  color: #fff;
+}
+html[data-theme='light'] .add-name-btn {
+  border-color: rgba(15, 23, 42, 0.25);
+  color: rgba(15, 23, 42, 0.6);
+  background: rgba(255, 255, 255, 0.5);
+}
+html[data-theme='light'] .add-name-input {
+  background: #fff;
+  color: #0f172a;
+}
+
+/* Loading: a thin accent bar (fills, or sweeps when the amount is unknown) */
+.loading-bar {
+  background: rgba(255, 255, 255, 0.06);
+}
+.loading-bar-fill,
+.loading-bar-sweep {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 40%, transparent), var(--color-accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+.loading-bar-sweep {
+  animation: loading-sweep 1.3s ease-in-out infinite;
+}
+@keyframes loading-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(330%); }
+}
+/* Skeleton rows: a soft light passes over the placeholders */
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.11) 40%, rgba(255, 255, 255, 0.04) 80%);
+  background-size: 250% 100%;
+  animation: skeleton-shine 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-shine {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+html[data-theme='light'] .loading-bar { background: rgba(15, 23, 42, 0.07); }
+html[data-theme='light'] .skeleton {
+  background-image: linear-gradient(90deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.11) 40%, rgba(15, 23, 42, 0.05) 80%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar-sweep { animation: none; width: 100%; opacity: 0.6; }
+  .skeleton { animation: none; }
+}
+
+/* Settings → Scraping: items-per-section slider */
+.count-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+.count-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent) var(--fill), rgba(255, 255, 255, 0.12) var(--fill));
+}
+.count-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+.count-slider:focus-visible { outline: none; }
+.count-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 40%, transparent); }
+html[data-theme='light'] .count-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--color-accent) var(--fill), rgba(15, 23, 42, 0.12) var(--fill));
 }

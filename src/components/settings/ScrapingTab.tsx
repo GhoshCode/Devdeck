@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { useStore } from '../../store';
 import type { FeedCategory, FeedKind } from '../../types';
 import { normalizeUrl } from '../../utils';
@@ -32,8 +32,68 @@ export function ScrapingTab() {
           Topic chips filter the news and jobs panels; sources decide what they show.
         </p>
       </div>
+      <SectionCounts />
       <Topics />
       <Sources />
+    </div>
+  );
+}
+
+// How many items each feed section shows: 0–100, a point at every 10.
+const TICKS = Array.from({ length: 11 }, (_, i) => i * 10);
+
+function SectionCounts() {
+  const news = useStore((s) => s.settings.feedNewsCount ?? 4);
+  const jobs = useStore((s) => s.settings.feedJobsCount ?? 4);
+  const updateSettings = useStore((s) => s.updateSettings);
+  return (
+    <section aria-label="Items per section" className="glass-inner space-y-4 rounded-xl p-4">
+      <div>
+        <h4 className="text-xs font-semibold tracking-wider text-white/80 uppercase">Items per section</h4>
+        <p className="mt-0.5 text-[11px] text-white/45">How many scraped items each panel lists (0 hides the list).</p>
+      </div>
+      <CountSlider id="count-news" label="Tech news" value={news} onChange={(v) => updateSettings({ feedNewsCount: v })} />
+      <CountSlider id="count-jobs" label="Dev jobs" value={jobs} onChange={(v) => updateSettings({ feedJobsCount: v })} />
+    </section>
+  );
+}
+
+function CountSlider({ id, label, value, onChange }: { id: string; label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <label htmlFor={id} className="text-xs font-medium text-white/80">
+          {label}
+        </label>
+        <span className="rounded-md bg-white/[0.08] px-2 py-0.5 font-mono text-[11px] text-white tabular-nums">{value}</span>
+      </div>
+      {/* The thumb is 14 px wide, so the ticks sit 7 px in from each end to line up with it. */}
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="count-slider w-full"
+        style={{ '--fill': `${value}%` } as CSSProperties}
+      />
+      <div aria-hidden className="pointer-events-none relative mx-[7px] mt-1 h-6">
+        {TICKS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            tabIndex={-1}
+            onClick={() => onChange(t)}
+            className="pointer-events-auto absolute top-0 flex -translate-x-1/2 flex-col items-center gap-1"
+            style={{ left: `${t}%` }}
+          >
+            <span className={`size-1.5 rounded-full ${t <= value ? 'bg-[var(--color-accent)]' : 'bg-white/25'}`} />
+            <span className="font-mono text-[9px] text-white/40">{t}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

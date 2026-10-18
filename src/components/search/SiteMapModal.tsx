@@ -18,6 +18,7 @@ import { getCategoryDisplayColor, getHostname, searchSites } from '../../utils';
 import { Favicon } from '../Favicon';
 import { BinGlyph, SiteFormDialog } from '../library/SiteFormDialog';
 import { showUndo } from '../ui/UndoToast';
+import { Masonry } from '../ui/Masonry';
 import { CATEGORY_PALETTE, nextFreeColor } from '../../lib/palette';
 import { AnchoredPopover } from '../ui/AnchoredPopover';
 
@@ -325,7 +326,7 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
                   Double-click a name to rename it · drag a site onto another section, another site, or a bin · changes show on your deck instantly
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Masonry gap={16} minColumn={300}>
                 <MapCard
                   title="Currently Processing"
                   color={PROCESSING_COLOR}
@@ -354,7 +355,7 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
                     onChipClick={onChipClick}
                   />
                 ))}
-              </div>
+              </Masonry>
             </div>
           )}
         </motion.div>
@@ -736,7 +737,7 @@ function MapCard({
       data-testid={testId}
       data-sitemap-category={categoryId}
       style={catVars(color)}
-      className="sitemap-card cat-scope relative flex flex-col gap-3 rounded-2xl border p-4 [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
+      className="sitemap-card cat-scope relative flex flex-col gap-3 rounded-2xl border p-4"
     >
       <header className="flex items-center gap-2">
         <span className="size-2 rounded-full" style={{ background: 'var(--cat)', boxShadow: '0 0 8px var(--cat)' }} />
@@ -857,7 +858,7 @@ function Chip({
       onDragLeave={(e) => e.currentTarget.classList.remove('chip-drop-before')}
       onDrop={(e) => e.currentTarget.classList.remove('chip-drop-before')}
       title={`${name} — ${getHostname(url)}`}
-      className="sitemap-chip flex max-w-full items-center gap-1.5 rounded-lg border py-1 pr-2.5 pl-1.5 text-[12px] font-medium text-white/85 transition-colors hover:text-white"
+      className="sitemap-chip flex max-w-full grow items-center gap-1.5 rounded-lg border py-1 pr-2.5 pl-1.5 text-[12px] font-medium text-white/85 transition-colors hover:text-white"
     >
       <Favicon url={url} name={name} categoryColor={color} className="size-4 shrink-0 rounded" />
       <span className="truncate">{name}</span>

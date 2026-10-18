@@ -10,6 +10,99 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19c — masonry Site Map, add-name, clocks, world zones, switch, scraping controls, loaders
+
+### Site Map layout (`ui/Masonry.tsx` new, `search/SiteMapModal.tsx`)
+- **`Masonry`** replaces the fixed 1/2/3-column grid. Each card is placed, in
+  order, into the shortest column.
+  - Columns: `floor((width + gap) / (minColumn + gap))`, capped at 3; Site Map uses `minColumn 300`, `gap 16`.
+  - Cards are absolutely positioned (`translate`) inside one parent, so they never remount when the layout changes. Open editors, popovers and drags survive.
+  - A `ResizeObserver` on the box and each card re-packs on the next frame; moves animate (300 ms, off with reduced motion).
+- **`content-visibility:auto`** was removed from `.sitemap-card`. Off-screen cards
+  would otherwise report the 220 px placeholder height and break the packing.
+- **Justified chips:** site chips get `grow`, so each row of chips fills the
+  section edge to edge.
+
+### Greeting: add your name (`topbar/DateGreet.tsx`)
+- **When it shows:** only when `settings.greetingName` is empty. An `AddName`
+  control sits absolutely to the right of the greeting, so it causes no layout
+  shift.
+- **Behaviour:**
+  - it's invisible (`opacity-0`) until the greeting block is hovered (`group/greet`) or focused;
+  - clicking it shows an input;
+  - **Enter** saves (trimmed, at most 40 characters) through `updateSettings({ greetingName })`;
+  - **Esc** or blur cancels.
+- **Styles:** `.add-name-btn` and `.add-name-input`, with light-theme variants.
+
+### Clocks
+- **Modern Analog:** `AnalogFace` is restored verbatim from `e32e656` (card,
+  dial, small readout). `.analog-ambient` CSS is left in place but unused.
+- **Typographic Word** (`faces3.tsx`):
+  - padding `px-[3.5cqw] py-[0.5cqh]` (Card `tight`);
+  - text `min(15cqh,4.7cqw)`;
+  - `leading-[1.22]` (a little more line spacing);
+  - `gap-x-[1.25cqw]` and `tracking-normal`, so the bigger words still fit five lines.
+- **Flip plate** (`faces2.tsx`, `.flip-plate`):
+  - bigger: text `max(8px,min(9cqh,3cqw))`, bold, `tracking-[0.45em]`;
+  - raised: `-top-[4.5cqh]`;
+  - lighter plate gradient with a border;
+  - near-white letters with an accent glow.
+
+### Multi-Timezone: every zone in the world (`lib/timezoneOptions.ts` new)
+- **Dependency:** `@vvo/tzdb`. `timezoneOptions` follows the snippet you supplied:
+  - `value` = the IANA name;
+  - `label` = `(UTC±hh:mm) Country — Zone name (cities)`;
+  - `searchKeywords` adds the grouped aliases and the abbreviation, lowercased.
+- **Loading:** `ZoneSearch` loads the module with a dynamic `import()` when the
+  search opens. It's a separate 46 kB chunk (17 kB gzipped), so it stays out of
+  the first paint. Until it loads, `Intl.supportedValuesOf` names stand in.
+- **Search:** every word typed must match the keywords or the city, and the
+  list is no longer cut off at 60. Rows show the city plus the full label;
+  the popover is 340 px wide.
+
+### Queue / To-do switch (`processing/ProcessingPanel.tsx`, `index.css`)
+- **Segmented control:** `.pane-switch` is a dark recessed track. A glossy
+  accent pill (`.pane-switch-pill`) slides under the active tab with
+  `translateX(100%)` over 300 ms.
+- **Tabs:** an icon (`WaveIcon` for Queue, `CheckCircleIcon` for To-do), the
+  label and a count badge. The active badge is white with accent text.
+- **Behaviour:** the wheel over the switch and clicks change panes, as before.
+- **Light theme:** a grey track; the active text stays white on the pill.
+
+### Scraping controls (`settings/ScrapingTab.tsx`, `feeds/FeedColumn.tsx`, `services/feeds.ts`, `types.ts`)
+- **Items per section:**
+  - `settings.feedNewsCount` and `settings.feedJobsCount` (0–100, default 4) replace `PER_PANEL`;
+  - a `CountSlider` (range 0–100, step 1, styled `.count-slider` with an accent fill through `--fill`);
+  - 11 clickable points at 0, 10, …, 100, labelled underneath;
+  - 0 hides the list with a hint.
+  - Jobs numbering starts at `newsCount + 1`.
+- **Several topics:**
+  - `topicIds: string[]` replaces the single `topicId`;
+  - chips are toggle buttons (`aria-pressed`), and **All** clears the selection;
+  - `matchesTopic` and `selectPanel` take `Topic | Topic[] | null`, and an item matching any selected topic is shown;
+  - the panel header shows `#label` for one topic or "N topics" for several.
+
+### Loading indicators (`ui/LoadingBar.tsx` new, `.skeleton`)
+- **`LoadingBar`:** a 2 px accent bar.
+  - Determinate (`value` 0–1, fills) or indeterminate (a sweep).
+  - Fades out when finished.
+  - Has `role="progressbar"` and a label.
+  - Reduced motion turns the sweep off.
+- **Feeds:**
+  - `loadFeeds` gets `onProgress(done, total)`, called by `settleLimited` after each source settles;
+  - both feed panels swap their top accent line for the progress bar while sources load, and the header shows "fetching 34/210";
+  - first-load skeletons are shimmer rows (number + two lines, `.skeleton`), replacing the pulse blocks.
+- **GitHub widget:** an indeterminate bar along the top edge while any request loads.
+- **Weather:** an indeterminate bar under the weather row while it refreshes.
+
+### Verification
+- `tsc -b` clean.
+- Vitest 207/207.
+- `npm run build:demo` succeeds, and `dist/` is rebuilt.
+- New UI not tested yet, per the testing policy.
+
+---
+
 ## Round 2026-10-19b — clock polish, icons, offline probe, Site Map bar, card paging, demo build
 
 ### Clocks (`topbar/clock/faces*.tsx`, `index.css`)

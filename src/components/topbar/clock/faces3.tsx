@@ -54,14 +54,8 @@ function AnalogFace({ parts, now }: FaceProps) {
   const m = now.getMinutes() + s / 60;
   const h = (now.getHours() % 12) + m / 60;
   return (
-    <div className="relative flex h-full w-full items-center justify-center gap-[5cqw] px-[3cqw]">
-      {/* soft ambient light behind the dial (no box around this face) */}
-      <span
-        aria-hidden
-        className="analog-ambient pointer-events-none absolute top-1/2 left-[30%] aspect-square h-[120cqh] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: `radial-gradient(circle, ${mix(38)} 0%, ${mix(14, 'rgba(129,140,248,0.25)')} 40%, transparent 68%)` }}
-      />
-      <svg viewBox="0 0 100 100" className="relative aspect-square h-[min(98cqh,50cqw)] shrink-0" aria-hidden>
+    <Card className="flex items-center justify-center gap-[5cqw] px-[4cqw]">
+      <svg viewBox="0 0 100 100" className={DIAL} aria-hidden>
         <defs>
           <radialGradient id="an-glass" cx="35%" cy="28%" r="85%">
             <stop offset="0" stopColor="rgba(255,255,255,0.20)" />
@@ -89,16 +83,13 @@ function AnalogFace({ parts, now }: FaceProps) {
         <line x1="50" y1="56" x2="50" y2="11" stroke={A} strokeWidth="0.7" strokeLinecap="round" transform={`rotate(${s * 6} 50 50)`} />
         <circle cx="50" cy="50" r="2.6" fill={G2} />
       </svg>
-      <div className="relative flex flex-col font-mac leading-none text-white">
-        <span className="text-[min(30cqh,11cqw)] font-light tracking-tight tabular-nums">
+      <div className="flex flex-col font-mac text-white">
+        <span className={`${SMALL} font-medium tabular-nums`}>
           {parts.hours}:{parts.minutes}
-        </span>
-        <span className="mt-[2cqh] flex items-baseline gap-[1cqw] text-[min(13cqh,4.6cqw)] tabular-nums" style={{ color: mix(70, '#fff') }}>
-          {parts.seconds}
-          {parts.meridiem && <span className="text-[0.75em] text-white/60">{parts.meridiem}</span>}
+          {parts.meridiem && <span className="text-white/60"> {parts.meridiem}</span>}
         </span>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -192,8 +183,8 @@ const WORD_GRID = [
 function WordClockFace({ now }: FaceProps) {
   const lit = useMemo(() => litWords(now), [now]);
   return (
-    <Card tight className="flex items-center px-[4cqw] py-[1cqh]">
-      <p className="flex flex-wrap content-center gap-x-[1.6cqw] gap-y-0 font-display text-[min(13cqh,4.3cqw)] leading-[1.12] font-bold tracking-wide">
+    <Card tight className="flex items-center px-[3.5cqw] py-[0.5cqh]">
+      <p className="flex flex-wrap content-center gap-x-[1.25cqw] gap-y-0 font-display text-[min(15cqh,4.7cqw)] leading-[1.22] font-bold tracking-normal">
         {WORD_GRID.map(({ key, label }) => (
           <span
             key={key}
