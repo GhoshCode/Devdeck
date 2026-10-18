@@ -1,9 +1,10 @@
 // Countdown timers on to-dos and Focus / Queue sites. A timer is a length
-// ("4 days", "2 months", "90 minutes") counted from when it was set — for a
-// task added with a timer, its creation — and is shown at the coarsest unit the user chose:
-//   months → "3 months left" until the last month, then days
-//   days   → "4 days left" until the last day, then hh:mm:ss
-//   hours / minutes → hh:mm:ss throughout
+// ("3 days", "2 months", "90 minutes") counted from when the item was created:
+// a task added on Sunday 19:33 with 2 days is due Tuesday 19:33.
+//   before the last day  → "3 days left" (months: "2 months left", then days)
+//   the last day         → "05:12 left"   (minute / hour timers: "00:24:59")
+//   past due, same day   → "01:05 over"
+//   after that day       → "2 days overdue"
 // Pure functions (no React) so the maths is unit-tested on its own.
 
 export type TimerUnit = 'minutes' | 'hours' | 'days' | 'months';
@@ -11,7 +12,7 @@ export type TimerUnit = 'minutes' | 'hours' | 'days' | 'months';
 export interface Timer {
   amount: number; // ≥ 1
   unit: TimerUnit;
-  start: number; // epoch ms — when the countdown began
+  start: number; // epoch ms — the item's creation
 }
 
 export const TIMER_UNITS: TimerUnit[] = ['minutes', 'hours', 'days', 'months'];
@@ -43,35 +44,51 @@ export function timerEnd(t: Timer): number {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-export function clock(ms: number): string {
+export function clock(ms: number, seconds = true): string {
   const s = Math.max(0, Math.floor(ms / 1000));
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+  const hm = `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}`;
+  return seconds ? `${hm}:${pad(s % 60)}` : hm;
 }
 
+const dayStart = (ms: number) => {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+
 export interface TimerView {
-  text: string; // "3 months left" · "4 days left" · "05:12:09" · "Time's up"
-  ticking: boolean; // showing seconds — redraw every second
-  state: 'running' | 'soon' | 'done'; // soon = under an hour
+  text: string; // "3 days left" · "05:12 left" · "00:24:59" · "01:05 over" · "2 days overdue"
+  refreshMs: number; // how often the label can change
+  state: 'running' | 'soon' | 'over'; // soon = under an hour left
   end: number;
 }
 
 export function viewTimer(t: Timer, now: number): TimerView {
   const end = timerEnd(t);
   const left = end - now;
-  if (left <= 0) return { text: "Time's up", ticking: false, state: 'done', end };
+  const seconds = t.unit === 'minutes' || t.unit === 'hours';
+
+  if (left <= 0) {
+    // Same calendar day as the due moment: how long ago, as a clock.
+    // Any later day: whole days overdue.
+    const days = Math.round((dayStart(now) - dayStart(end)) / DAY);
+    if (days < 1) return { text: `${clock(now - end, false)} over`, refreshMs: 15_000, state: 'over', end };
+    return { text: `${days} day${days === 1 ? '' : 's'} overdue`, refreshMs: 60_000, state: 'over', end };
+  }
+
   const state = left < HOUR ? 'soon' : 'running';
   if (t.unit === 'months') {
     // Whole months still to go, counting the one in progress ("2 months left"
     // right after setting 2); the last month switches to days.
     let months = 0;
     while (months < 1200 && addMonths(now, months) < end) months++;
-    if (months > 1) return { text: `${months} months left`, ticking: false, state, end };
+    if (months > 1) return { text: `${months} months left`, refreshMs: 60_000, state, end };
   }
-  if (t.unit === 'months' || t.unit === 'days') {
-    const days = Math.ceil(left / DAY);
-    if (days > 1) return { text: `${days} days left`, ticking: false, state, end };
+  if (!seconds && left >= DAY) {
+    const days = Math.max(1, Math.round(left / DAY));
+    return { text: `${days} day${days === 1 ? '' : 's'} left`, refreshMs: 60_000, state, end };
   }
-  return { text: clock(left), ticking: true, state, end };
+  if (seconds) return { text: clock(left), refreshMs: 1000, state, end };
+  return { text: `${clock(left, false)} left`, refreshMs: 15_000, state, end };
 }
 
 // Short label for pickers and chips: "4 days", "1 month", "90 min".

@@ -6,6 +6,7 @@ import type { Priority, Todo } from '../../../types';
 import { useStore } from '../../../store';
 import { REPEAT_LABEL, formatDue, isDueToday, isOverdue } from '../../../lib/todos';
 import { Countdown } from '../../ui/Countdown';
+import { showUndo } from '../../ui/UndoToast';
 import { DateTimePicker } from './DateTimePicker';
 
 interface TodoRowProps {
@@ -27,6 +28,7 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
   const completeTodo = useStore((s) => s.completeTodo);
   const updateTodo = useStore((s) => s.updateTodo);
   const deleteTodo = useStore((s) => s.deleteTodo);
+  const reinsertTodo = useStore((s) => s.reinsertTodo);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(todo.text);
   const [details, setDetails] = useState(false);
@@ -177,7 +179,10 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
         {expanded && (
           <button
             type="button"
-            onClick={() => deleteTodo(todo.id)}
+            onClick={() => {
+              deleteTodo(todo.id);
+              showUndo(`Deleted “${todo.text}”`, () => reinsertTodo(todo));
+            }}
             aria-label={`Delete "${todo.text}"`}
             className="shrink-0 text-xs text-white/30 opacity-0 group-hover/todo:opacity-100 hover:text-red-300"
           >
@@ -193,8 +198,8 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
           onChange={(v) => updateTodo(todo.id, v)}
           onClose={() => setPicker(false)}
           timer={todo.timer ? { amount: todo.timer.amount, unit: todo.timer.unit } : null}
-          timerStart={todo.timer?.start ?? Date.now()}
-          onTimer={(t) => updateTodo(todo.id, { timer: t ? { ...t, start: todo.timer?.start ?? Date.now() } : null })}
+          timerStart={todo.createdAt}
+          onTimer={(t) => updateTodo(todo.id, { timer: t ? { ...t, start: todo.createdAt } : null })}
           initialTab={pickerTab}
         />
       )}

@@ -117,3 +117,76 @@ test('dropdowns are themed comboboxes with keyboard support', async ({ page }) =
   await expect(combo).toHaveText('Jobs');
   await expect(modal).toBeVisible();
 });
+
+test('deleting a to-do shows an undo bar that brings it back', async ({ page }) => {
+  await page.getByRole('tab', { name: /^To-do/ }).click();
+  await page.getByRole('textbox', { name: 'New task' }).fill('Write the changelog');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Delete "Write the changelog"' }).last().click();
+  const bar = page.getByTestId('undo-bar');
+  await expect(bar).toContainText('Write the changelog');
+  await bar.getByRole('button', { name: 'Undo' }).click();
+  await expect(bar).toHaveCount(0);
+  await expect(page.locator('[data-todo-id]', { hasText: 'Write the changelog' }).first()).toBeVisible();
+});
+
+test('removing a Focus site can be undone; the bar times out on its own', async ({ page }) => {
+  await page.getByRole('button', { name: '+ Add a site' }).click();
+  await page.getByRole('textbox', { name: 'Add a site to Currently Processing' }).fill('https://react.dev');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: /^Remove (?!.* top row$)/ }).first().click();
+  const bar = page.getByTestId('undo-bar');
+  await expect(bar).toContainText(/Removed .* from Focus/);
+  await bar.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByRole('button', { name: /^Remove (?!.* top row$)/ })).toHaveCount(1);
+  await page.getByRole('button', { name: /^Remove (?!.* top row$)/ }).first().click();
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveCount(0, { timeout: 8000 }); // 5 s, then gone for good
+  await expect(page.getByRole('button', { name: /^Remove (?!.* top row$)/ })).toHaveCount(0);
+});
+
+test('Focus reminders can repeat weekly or monthly', async ({ page }) => {
+  await page.getByRole('button', { name: '+ Add a site' }).click();
+  await page.getByRole('textbox', { name: 'Add a site to Currently Processing' }).fill('https://react.dev');
+  await page.keyboard.press('Enter');
+  await page.getByRole('radio', { name: 'Weekly' }).click();
+  await page.getByRole('combobox', { name: 'Repeat every' }).click();
+  await page.getByRole('option', { name: 'Every 2 weeks' }).click();
+  await expect(page.getByText(/Every 2 weeks at/).first()).toBeVisible();
+  await page.getByRole('radio', { name: 'Monthly' }).click();
+  await page.getByRole('combobox', { name: 'Day of the month' }).click();
+  await page.getByRole('option', { name: 'Last day' }).click();
+  await expect(page.getByText(/Monthly on the last day at/).first()).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Days of the week' })).toHaveCount(0); // not used monthly
+});
+
+test('sites reorder in the Site Map by dropping onto another site', async ({ page }) => {
+  await page.getByRole('button', { name: 'Site Map & Hierarchy' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Site Map & Hierarchy' });
+  const section = dialog.locator('[data-sitemap-section$="/general"]').first(); // Frontend · General (10 sites)
+  const chips = section.locator('[data-sitemap-site]');
+  const before = await chips.allTextContents();
+  await chips.nth(2).dragTo(chips.nth(0));
+  const after = await chips.allTextContents();
+  expect(after[0]).toBe(before[2]);
+  expect(after.slice(1)).toEqual([before[0], before[1], ...before.slice(3)]);
+});
+
+test('sites reorder in the Bookmarks drawer by dropping onto another site', async ({ page }) => {
+  await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
+  await drawer.getByRole('textbox', { name: 'Filter bookmarks' }).fill('re');
+  const leaves = drawer.locator('[data-site-leaf]');
+  const names = async () => (await leaves.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))));
+  const before = await names();
+  // two leaves of the same folder section: drag the second onto the first
+  const from = (await leaves.nth(1).boundingBox())!;
+  const to = (await leaves.nth(0).boundingBox())!;
+  await page.mouse.move(from.x + 40, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 50, from.y - 4, { steps: 4 });
+  await page.mouse.move(to.x + 60, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)]);
+});

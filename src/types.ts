@@ -109,14 +109,16 @@ export interface Subtask {
   done: boolean;
 }
 
-export type ScheduleFrequency = 'minute' | 'hourly' | 'daily';
+export type ScheduleFrequency = 'minute' | 'hourly' | 'daily' | 'weekly' | 'monthly';
 
 // Cron-style reminder window for a Currently Processing item (Phase 4).
 export interface Schedule {
   enabled: boolean;
   frequency: ScheduleFrequency;
   daysOfWeek: number[]; // 0 = Sun … 6 = Sat
-  timeOfDay: string | null; // 'HH:mm' for daily reminders
+  timeOfDay: string | null; // 'HH:mm' for daily / weekly / monthly reminders
+  interval?: number; // weekly: every N weeks · monthly: every N months (default 1)
+  dayOfMonth?: number; // monthly: 1–31 (short months use their last day) or -1 = last day
   from: string; // 'YYYY-MM'
   to: string; // 'YYYY-MM'
 }

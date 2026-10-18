@@ -20,6 +20,7 @@ import { localDateKey } from '../../../lib/time';
 import { parseQuickAdd } from '../../../lib/todoParse';
 import { REPEAT_LABEL } from '../../../lib/todos';
 import { describeTimer } from '../../../lib/timer';
+import { showUndo } from '../../ui/UndoToast';
 import type { TimerChoice } from '../../ui/TimerPanel';
 import type { Priority } from '../../../types';
 import { PRIORITY_LABEL, TodoRow } from './TodoRow';
@@ -438,6 +439,7 @@ function ArchiveList() {
   const todos = useStore((s) => s.todos);
   const restoreTodo = useStore((s) => s.restoreTodo);
   const deleteTodo = useStore((s) => s.deleteTodo);
+  const reinsertTodo = useStore((s) => s.reinsertTodo);
   const purge = useStore((s) => s.purgeArchivedTodos);
   const archived = useMemo(() => sortArchived(todos), [todos]);
 
@@ -453,7 +455,7 @@ function ArchiveList() {
             <button type="button" onClick={() => restoreTodo(t.id)} aria-label={`Restore "${t.text}"`} className="text-xs text-white/40 hover:text-white">
               ↺
             </button>
-            <button type="button" onClick={() => deleteTodo(t.id)} aria-label={`Delete "${t.text}"`} className="text-xs text-white/30 hover:text-red-300">
+            <button type="button" onClick={() => { deleteTodo(t.id); showUndo(`Deleted “${t.text}”`, () => reinsertTodo(t)); }} aria-label={`Delete "${t.text}"`} className="text-xs text-white/30 hover:text-red-300">
               ✕
             </button>
           </li>

@@ -7,6 +7,7 @@ import { withThemeTransition } from './lib/themeTransition';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { CategoryOverview } from './components/CategoryOverview';
+import { UndoToast } from './components/ui/UndoToast';
 import { AnimatePresence } from 'motion/react';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
@@ -194,6 +195,8 @@ export default function App() {
         }
         right={<FeedColumn onManage={() => openSettings('scraping')} />}
       />
+
+      <UndoToast />
 
       {/* Settings Overlay */}
       <SettingsModal

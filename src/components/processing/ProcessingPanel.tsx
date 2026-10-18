@@ -103,8 +103,8 @@ function ItemRow({ item, now }: { item: ProcessingItem; now: Date }) {
   const [timerOpen, setTimerOpen] = useState(false);
   const timerRef = useRef<HTMLButtonElement>(null);
   const next = nextFireTime(item.schedule, now);
-  // A timer counts from the moment it is set (kept when its length changes).
-  const start = item.timer?.start ?? Date.now();
+  // A timer counts from when the site was added (older items without that date: from first use).
+  const start = item.createdAt ?? item.timer?.start ?? Date.now();
   return (
     <li data-processing-item={item.id} className="group/proc relative flex items-center rounded-xl transition-colors hover:bg-white/[0.07]">
       <a

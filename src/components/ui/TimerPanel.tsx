@@ -27,7 +27,7 @@ export function TimerPanel({ value, start, onChange }: { value: TimerChoice; sta
   return (
     <div className="space-y-2.5">
       <p className="text-[11px] leading-snug text-white/55">
-        Counts down from when it is set. Days and months show as “N left”, the last day as hh:mm:ss.
+        Counts from when this was added: “N days left”, hh:mm on the last day, then time over and days overdue.
       </p>
       <div className="flex items-center gap-1.5">
         <div className="dtp-stepper flex h-8 items-center overflow-hidden rounded-lg border">
@@ -80,7 +80,7 @@ export function TimerPanel({ value, start, onChange }: { value: TimerChoice; sta
       </div>
       <div className="flex items-center justify-between gap-2 text-[11px]">
         <span className={value ? (ended ? 'text-red-300' : 'text-white/70') : 'text-white/40'}>
-          {value ? `${ended ? 'Ended' : 'Ends'} ${endFmt.format(timerEnd({ ...value, start }))}` : 'No timer'}
+          {value ? `${ended ? 'Was due' : 'Due'} ${endFmt.format(timerEnd({ ...value, start }))}` : 'No timer'}
         </span>
         {value && (
           <button type="button" onClick={() => onChange(null)} className="text-white/55 hover:text-red-300">

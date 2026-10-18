@@ -47,13 +47,13 @@ export const BookmarkButton = memo(function BookmarkButton() {
   );
 });
 
-type DropTarget = { categoryId: string; subcategoryId: string | null };
+type DropTarget = { categoryId: string; subcategoryId: string | null; beforeSiteId?: string };
 
 function BookmarkDrawer({ onClose }: { onClose: () => void }) {
   const categories = useStore((s) => s.categories);
   const subcategories = useStore((s) => s.subcategories);
   const sites = useStore((s) => s.sites);
-  const moveSite = useStore((s) => s.moveSite);
+  const placeSite = useStore((s) => s.placeSite);
   const addCategory = useStore((s) => s.addCategory);
 
   const [filter, setFilter] = useState('');
@@ -90,9 +90,10 @@ function BookmarkDrawer({ onClose }: { onClose: () => void }) {
     setDragging(null);
     const target = over?.data.current as DropTarget | undefined;
     const site = sites.find((s) => s.id === active.id);
-    if (!target || !site) return;
-    if (site.categoryId === target.categoryId && site.subcategoryId === target.subcategoryId) return;
-    moveSite(site.id, target.categoryId, target.subcategoryId);
+    if (!target || !site || target.beforeSiteId === site.id) return;
+    // Onto a site: just before it (reorders within a folder too). Onto a folder: last in it.
+    if (!target.beforeSiteId && site.categoryId === target.categoryId && site.subcategoryId === target.subcategoryId) return;
+    placeSite(site.id, target.categoryId, target.subcategoryId, target.beforeSiteId ?? null);
     setCollapsed((c) => {
       const next = new Set(c);
       next.delete(target.categoryId);
@@ -374,8 +375,19 @@ function SiteLeaf({ site }: { site: Site }) {
   const recordVisit = useStore((s) => s.recordVisit);
   // dnd-kit's attributes include role="button"; drop it so the leaf stays a link.
   const { attributes: { role: _role, ...attributes }, listeners, setNodeRef, isDragging } = useDraggable({ id: site.id });
+  // Each leaf is also a drop target: a site dropped here lands just before it.
+  const drop = useDroppable({
+    id: `leaf:${site.id}`,
+    data: { categoryId: site.categoryId, subcategoryId: site.subcategoryId, beforeSiteId: site.id } satisfies DropTarget,
+  });
   return (
-    <li role="treeitem" aria-label={site.name} data-site-leaf={site.id}>
+    <li
+      ref={drop.setNodeRef}
+      role="treeitem"
+      aria-label={site.name}
+      data-site-leaf={site.id}
+      className={drop.isOver && !isDragging ? 'leaf-drop-before' : undefined}
+    >
       <a
         ref={setNodeRef}
         {...attributes}
@@ -459,7 +471,10 @@ function InlineName({
 
 // Folders are thin rows, so the pointer position is the honest drop signal;
 // fall back to rectangle overlap when the pointer is between rows.
+// A site under the pointer wins over the folder around it (drop = "before this site").
 const collision: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
-  return hits.length ? hits : rectIntersection(args);
+  if (!hits.length) return rectIntersection(args);
+  const leaf = hits.find((h) => String(h.id).startsWith('leaf:'));
+  return leaf ? [leaf] : hits;
 };

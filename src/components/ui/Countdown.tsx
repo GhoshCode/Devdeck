@@ -1,20 +1,20 @@
 import { memo, useEffect, useState } from 'react';
 import { viewTimer, type Timer } from '../../lib/timer';
 
-// A live countdown chip. It keeps its own clock — every second while it shows
-// hh:mm:ss, every 30 s otherwise — so a long list never re-renders to tick.
+// A live countdown chip. It keeps its own clock — every second for hh:mm:ss,
+// every 15 s for hh:mm, every minute for days — so a long list never
+// re-renders to tick.
 export const Countdown = memo(function Countdown({ timer, className = '', onClick }: { timer: Timer; className?: string; onClick?: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   const view = viewTimer(timer, now);
 
   useEffect(() => {
-    if (view.state === 'done') return;
-    const id = setInterval(() => setNow(Date.now()), view.ticking ? 1000 : 30_000);
+    const id = setInterval(() => setNow(Date.now()), view.refreshMs);
     return () => clearInterval(id);
-  }, [view.ticking, view.state]);
+  }, [view.refreshMs]);
 
   const tone =
-    view.state === 'done'
+    view.state === 'over'
       ? 'countdown-done'
       : view.state === 'soon'
         ? 'countdown-soon'

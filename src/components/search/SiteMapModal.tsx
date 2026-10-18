@@ -377,7 +377,7 @@ function CategoryMapCard({
 }) {
   const updateCategory = useStore((s) => s.updateCategory);
   const updateSubcategory = useStore((s) => s.updateSubcategory);
-  const moveSite = useStore((s) => s.moveSite);
+  const placeSite = useStore((s) => s.placeSite);
   const [adding, setAdding] = useState(false);
 
   return (
@@ -407,7 +407,7 @@ function CategoryMapCard({
                 <EditableName value={g.name} label={`Rename subcategory ${g.name}`} onSave={(name) => updateSubcategory(g.id, { name })} />
               )
             }
-            onDropSite={(siteId) => moveSite(siteId, category.id, g.id === GENERAL ? null : g.id)}
+            onDropSite={(siteId, before) => placeSite(siteId, category.id, g.id === GENERAL ? null : g.id, before ?? null)}
             dropId={`${category.id}/${g.id}`}
           >
             {g.sites.map((site) => (
@@ -627,7 +627,7 @@ function Section({
   name: string;
   count: number;
   nameNode?: ReactNode;
-  onDropSite?: (siteId: string) => void;
+  onDropSite?: (siteId: string, beforeSiteId?: string) => void;
   dropId?: string;
   children: ReactNode;
 }) {
@@ -650,7 +650,9 @@ function Section({
         if (!accepts(e)) return;
         e.preventDefault();
         const id = e.dataTransfer.getData(SITE_MIME);
-        if (id) onDropSite?.(id);
+        // Dropped on a chip: land just before it. Elsewhere in the section: last.
+        const before = (e.target as Element).closest?.('[data-sitemap-site]')?.getAttribute('data-sitemap-site') ?? undefined;
+        if (id && before !== id) onDropSite?.(id, before);
       }}
       className={`-mx-1.5 rounded-xl px-1.5 py-1 transition-colors ${over ? 'sitemap-drop-over' : ''}`}
     >
@@ -697,6 +699,10 @@ function Chip({
           : undefined
       }
       onDragEnd={siteId ? () => onDragState?.(false) : undefined}
+      // Mark the chip a dragged site would land in front of.
+      onDragOver={(e) => e.dataTransfer.types.includes(SITE_MIME) && e.currentTarget.classList.add('chip-drop-before')}
+      onDragLeave={(e) => e.currentTarget.classList.remove('chip-drop-before')}
+      onDrop={(e) => e.currentTarget.classList.remove('chip-drop-before')}
       title={`${name} — ${getHostname(url)}`}
       className="sitemap-chip flex max-w-full items-center gap-1.5 rounded-lg border py-1 pr-2.5 pl-1.5 text-[12px] font-medium text-white/85 transition-colors hover:text-white"
     >

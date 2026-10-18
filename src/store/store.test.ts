@@ -366,3 +366,28 @@ describe('feeds config', () => {
     expect(st().feeds).toEqual(DEFAULT_FEEDS);
   });
 });
+
+describe('placeSite (Site Map / Bookmarks reorder)', () => {
+  it('moves a site before another in the same section, and into another section', () => {
+    const s = useStore.getState();
+    const cat = s.addCategory({ name: 'Order test', color: '#ff0000' });
+    const a = s.addSite({ name: 'A', url: 'https://a.dev', categoryId: cat.id, subcategoryId: null });
+    const b = s.addSite({ name: 'B', url: 'https://b.dev', categoryId: cat.id, subcategoryId: null });
+    const c = s.addSite({ name: 'C', url: 'https://c.dev', categoryId: cat.id, subcategoryId: null });
+    const names = () =>
+      useStore
+        .getState()
+        .sites.filter((x) => x.categoryId === cat.id && x.subcategoryId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((x) => x.name)
+        .join('');
+    useStore.getState().placeSite(c.id, cat.id, null, a.id);
+    expect(names()).toBe('CAB');
+    useStore.getState().placeSite(c.id, cat.id, null, null);
+    expect(names()).toBe('ABC');
+    const sub = useStore.getState().addSubcategory({ name: 'Sub', categoryId: cat.id });
+    useStore.getState().placeSite(b.id, cat.id, sub.id, null);
+    expect(names()).toBe('AC');
+    expect(useStore.getState().sites.find((x) => x.id === b.id)?.subcategoryId).toBe(sub.id);
+  });
+});

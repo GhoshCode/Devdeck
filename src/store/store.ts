@@ -88,6 +88,8 @@ export const defaultSchedule = (): Schedule => ({
   frequency: 'daily',
   daysOfWeek: [1, 2, 3, 4, 5],
   timeOfDay: '09:00',
+  interval: 1,
+  dayOfMonth: new Date().getDate(),
   from: thisMonth(),
   to: thisMonth(),
 });
@@ -207,6 +209,8 @@ export interface StoreActions {
   deleteQuickLink: (id: string) => void;
   // Movement / ordering / flags
   moveSite: (siteId: string, categoryId: string, subcategoryId: string | null) => void;
+  // Site Map / Bookmarks: put a site into a section, just before another site (or last).
+  placeSite: (siteId: string, categoryId: string, subcategoryId: string | null, beforeSiteId: string | null) => void;
   reorder: (kind: ReorderKind, ids: string[]) => void;
   togglePrimary: (siteId: string) => void;
   recordVisit: (siteId: string) => void;
@@ -225,11 +229,13 @@ export interface StoreActions {
   completeTodo: (id: string) => void; // bullet click → archived
   restoreTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
+  reinsertTodo: (todo: Todo) => void; // undo a delete: back in its old place
   purgeArchivedTodos: () => void;
   // Currently Processing (D)
   addProcessingItem: (input: NewProcessingItem) => ProcessingItem;
   updateProcessingItem: (id: string, patch: Partial<Omit<ProcessingItem, 'id'>>) => void;
   deleteProcessingItem: (id: string) => void;
+  reinsertProcessingItem: (item: ProcessingItem) => void; // undo a delete
   // Feed topics (J)
   addTopic: (input: NewTopic) => Topic;
   updateTopic: (id: string, patch: Partial<Omit<Topic, 'id'>>) => void;
@@ -415,6 +421,27 @@ export const useStore = create<Store>()(
             ),
           };
         }),
+      placeSite: (siteId, categoryId, subcategoryId, beforeSiteId) =>
+        set((s) => {
+          const site = s.sites.find((x) => x.id === siteId);
+          if (!site || beforeSiteId === siteId) return s;
+          const section = s.sites
+            .filter((x) => x.categoryId === categoryId && x.subcategoryId === subcategoryId && x.id !== siteId)
+            .sort((a, b) => a.order - b.order);
+          const at = beforeSiteId ? section.findIndex((x) => x.id === beforeSiteId) : -1;
+          const ids = section.map((x) => x.id);
+          ids.splice(at < 0 ? ids.length : at, 0, siteId);
+          const rank = new Map(ids.map((id, i) => [id, i]));
+          return {
+            sites: s.sites.map((x) =>
+              x.id === siteId
+                ? { ...x, categoryId, subcategoryId, order: rank.get(x.id)! }
+                : rank.has(x.id)
+                  ? { ...x, order: rank.get(x.id)! }
+                  : x,
+            ),
+          };
+        }),
       reorder: (kind, ids) =>
         set((s) => {
           switch (kind) {
@@ -504,6 +531,8 @@ export const useStore = create<Store>()(
           };
         }),
       deleteTodo: (id) => set((s) => ({ todos: s.todos.filter((t) => t.id !== id) })),
+      // Lists sort by `order`, so putting the same object back restores its place.
+      reinsertTodo: (todo) => set((s) => (s.todos.some((t) => t.id === todo.id) ? s : { todos: [...s.todos, todo] })),
       purgeArchivedTodos: () =>
         set((s) => ({ todos: s.todos.filter((t) => t.archivedAt === null) })),
 
@@ -529,6 +558,8 @@ export const useStore = create<Store>()(
         })),
       deleteProcessingItem: (id) =>
         set((s) => ({ processing: s.processing.filter((p) => p.id !== id) })),
+      reinsertProcessingItem: (item) =>
+        set((s) => (s.processing.some((p) => p.id === item.id) ? s : { processing: [...s.processing, item] })),
 
       // ---- Feed topics ---------------------------------------------------
       addTopic: ({ label, query }) => {
