@@ -17,6 +17,111 @@ wide where layout is involved.
 
 ---
 
+## 0. Round 2026-10-19b — latest changes
+
+**Setup:** `dist/` is now a demo build (`npm run build:demo`).
+- On its first open it loads the demo data by itself: 104 Focus/Queue sites, 156 to-dos, 30 topics and 210 feed sources.
+- To start empty, use Settings → Data → **Remove demo data**, or build with `npm run build`.
+
+### Clocks
+- **Flip:** hours, minutes and seconds cards, bigger. A printed DEVDECK plate sits on top of the housing.
+- **HUD:** bigger readout, slightly lower.
+- **Modern Analog:** no box, a bigger dial with a soft accent glow behind it, and a bigger digital time (with seconds) beside it.
+- **Kinetic Orbital:** the digital time sits beside the ring, not inside it; the box stays.
+- **Typographic Word:** less top/bottom padding, bigger words.
+- **Diffused Glow:** bigger.
+- **CLI Sophisticated:** a line of code types itself in the bottom-right corner, then the next one.
+- **Cyberpunk 2077:**
+  - Each new minute, a tiny flicker at the far left and right edges.
+  - Every 5 minutes, a short old-TV channel-change distortion at the edges, in the theme colour.
+  - Neither ever covers the time.
+- **macOS minimal:** centred.
+
+**Manual test checklist**
+- [ ] Flip shows HH : MM : SS; the seconds card flips every second; DEVDECK sits on the top edge of the box.
+- [ ] HUD, Analog, Word and Glow are visibly larger; nothing is clipped at 1280 px.
+- [ ] Analog has no card, only the glow; the digital time is beside the dial.
+- [ ] Kinetic: no text inside the ring.
+- [ ] CLI: the typing line runs bottom-right and doesn't overlap the time.
+- [ ] Cyberpunk: watch a minute change (edge flicker) and a :00/:05 change (channel distortion); the time stays clear; nothing moves with reduced motion on.
+- [ ] macOS is centred.
+
+### Icons & settings
+- The feeds and Focus/Queue manage buttons use the **sliders** icon.
+- The main settings button is a calm cog on a glass tile. It only lights up on hover.
+
+**Manual test checklist**
+- [ ] Sliders icon on both buttons, in dark and light themes.
+- [ ] The settings cog doesn't glow at rest; on hover it gets an accent ring and turns slightly.
+
+### Offline banner
+- The banner appears when the network adapter is off, **and** when Wi-Fi is
+  connected but there is no internet.
+- It checks every 20 s, at once when you come back to the tab, and every 5 s
+  while offline.
+
+**Manual test checklist**
+- [ ] Turn Wi-Fi off: the banner shows within a second or two.
+- [ ] Turn it back on: the banner goes within about 5 s.
+- [ ] Keep Wi-Fi on but unplug the router's internet (or block gstatic.com): the banner shows within about 20 s, or at once after switching tabs and back.
+
+### Site Map
+- **+ New Category** sits at the top of the Site Map, as in Settings → Library.
+  Its colour is preset to one no other category uses, and only unused colours
+  are offered.
+- Each category card has a bottom bar, under a thin divider:
+  **+ Sub category**, **+ Add site** and the recycle bin.
+- In the new-subcategory field:
+  - **Enter** or **Add** creates it;
+  - clicking anywhere else or pressing **Esc** just closes the field, with nothing created.
+
+**Manual test checklist**
+- [ ] New Category: the preset colour isn't used by any category; the swatches show only unused colours; Add Category creates the category.
+- [ ] Each card's bottom bar: divider, then + Sub category, + Add site and the bin aligned on one line.
+- [ ] Type a name, then click outside: no subcategory is created and the field is gone. Same with an empty field.
+- [ ] Type a name, then click Add: it is created.
+
+### Queue / To-do card
+- No scrollbars anywhere in the card. Lists still scroll with the wheel.
+- Both panes end in the same bottom band under a divider:
+  - **To-do:** the chips ("Zero pending" etc.), archive and expand, centred vertically;
+  - **Queue:** "N queued" and the manage button.
+- Scrolling the wheel over that bottom band (or the dots) switches between Queue and To-do.
+- The **Focus** card shows its name and count in a small tab hanging from the
+  middle of the top border.
+- No emoji: "Zero pending", "All done — add the next one above."
+
+**Manual test checklist**
+- [ ] No scrollbar visible in Focus, Queue or To-do, even with demo data; lists still scroll.
+- [ ] Text, archive and expand line up vertically in the band; the Queue band matches the To-do band's height.
+- [ ] Wheel over the band: down/right → To-do, up/left → Queue. Wheel over the list scrolls the list, not the panes.
+- [ ] The Focus tab is centred and attached to the top border, with rounded bottom corners, in both themes.
+- [ ] No emojis anywhere in the card.
+
+### Category row paging
+- **The scrollbar is gone.** Dots under the cards show the pages; a page is as
+  many cards as fit side by side.
+- **Moving between pages:**
+  - click a dot;
+  - use ←/→ on the dots;
+  - one wheel notch or swipe over the dot strip moves one page.
+- **Last page:** its cards start at the left, and empty slots stay blank. For
+  example, 7 categories in a 3-wide row gives pages of 3, 3 and 1, with 1 card
+  and 2 blanks.
+- **Overview jump:** opens the page holding that category.
+- **Pinned card:** leads page 1. It no longer sticks to the left edge.
+
+**Manual test checklist**
+- [ ] With 7+ categories (demo data adds none, so add some via the Site Map): the dots count matches ceil(categories ÷ cards per row).
+- [ ] One wheel notch over the dots = exactly one page; the cards line up at the left edge.
+- [ ] The last page shows the leftover cards plus blank space.
+- [ ] Resize the window (1920 / 1512 / 1280): the pages recompute and the row snaps to a page.
+- [ ] Sideways trackpad swipes over the cards don't move the row.
+- [ ] Overview → pick a category on page 3: the row opens page 3 and the card flashes.
+- [ ] With ≤ 1 page of cards, there are no dots.
+
+---
+
 ## 1. Clock
 
 Click the clock to go to the **next** face; **right-click** goes back to the

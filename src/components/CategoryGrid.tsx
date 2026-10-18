@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useStore } from '../store';
 import { CategoryCard } from './CategoryCard';
-import { CardsScrollbar } from './CardsScrollbar';
+import { PagerDots, PagerSpacer, useCardPaging } from './CardsPager';
 import { orderWithPin } from '../lib/categories';
 
 interface CategoryGridProps {
@@ -15,6 +15,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
   const shouldReduceMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortedCategories = useMemo(() => orderWithPin(categories, pinnedId), [categories, pinnedId]);
+  const paging = useCardPaging(scrollRef, sortedCategories.length);
 
   // Bring the row back to the start when a card is pinned so it is seen landing first.
   useEffect(() => {
@@ -73,11 +74,12 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
           <motion.div
             ref={scrollRef}
             data-cards-track
+            data-per-page={paging.perPage}
             id="category-cards-track"
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="flex flex-1 min-h-0 w-full flex-row gap-5 lg:gap-6 items-stretch justify-start overflow-x-auto overflow-y-hidden scrollbar-none"
+            className="relative flex flex-1 min-h-0 w-full flex-row gap-5 lg:gap-6 items-stretch justify-start overflow-x-auto overflow-y-hidden scrollbar-none"
           >
             {sortedCategories.map((category) => (
               <motion.div
@@ -92,9 +94,10 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
                 <CategoryCard category={category} />
               </motion.div>
             ))}
+            <PagerSpacer width={paging.spacer} />
           </motion.div>
-          {/* The row ignores the wheel: drag its thin scrollbar (or the gaps between cards) to move it. */}
-          <CardsScrollbar target={scrollRef} />
+          {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
+          <PagerDots pages={paging.pages} page={paging.page} goTo={paging.goTo} />
         </div>
       ) : (
         /* Containerized when cards cross the limit (> 3 categories) */
@@ -107,6 +110,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
           <motion.div
             ref={scrollRef}
             data-cards-track
+            data-per-page={paging.perPage}
             id="category-cards-track"
             variants={containerVariants}
             initial="hidden"
@@ -114,7 +118,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
             tabIndex={0}
             role="region"
             aria-label="Scrollable category cards"
-            className="flex flex-1 min-h-0 flex-row gap-5 overflow-x-auto overflow-y-hidden items-stretch py-1 px-1 scroll-smooth scrollbar-none focus-visible:outline-none"
+            className="relative flex flex-1 min-h-0 flex-row gap-5 overflow-x-auto overflow-y-hidden items-stretch py-1 px-1 scrollbar-none focus-visible:outline-none"
           >
             {sortedCategories.map((category) => (
               <motion.div
@@ -129,17 +133,17 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
                 <CategoryCard category={category} />
               </motion.div>
             ))}
+            <PagerSpacer width={paging.spacer} />
           </motion.div>
 
-          {/* The row ignores the wheel: drag its thin scrollbar (or the gaps between cards) to move it. */}
-          <CardsScrollbar target={scrollRef} />
+          {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
+          <PagerDots pages={paging.pages} page={paging.page} goTo={paging.goTo} />
         </section>
       )}
     </main>
   );
 }
 
-// The pinned card stays anchored at the left edge while the others scroll
-// underneath; the solid backing and right-edge shadow keep it legible.
-const PINNED_CLASS =
-  'sticky left-0 z-10 rounded-2xl bg-[var(--color-base-elevated)] shadow-[12px_0_24px_-8px_rgba(0,0,0,0.55)]';
+// The pinned card leads the first page (rows move a page at a time, so it no
+// longer stays stuck to the left edge).
+const PINNED_CLASS = 'rounded-2xl';

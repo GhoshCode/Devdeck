@@ -13,7 +13,7 @@ import { SplitPanes } from '../layout/SplitPanes';
 import { Countdown } from '../ui/Countdown';
 import { TimerPanel } from '../ui/TimerPanel';
 import { AnchoredPopover } from '../ui/AnchoredPopover';
-import { GearsIcon } from '../ui/icons';
+import { SlidersIcon } from '../ui/icons';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
 // the first section ("Focus" by default). The lower card scrolls sideways
@@ -35,14 +35,14 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
   return (
     <>
       <SplitPanes setting="leftSplit" label="Resize Focus and Queue" fitHint="fit Focus to its sites">
-      <section aria-label={`Processing: ${top.name}`} className="glass flex h-full min-h-0 flex-col gap-2 p-3">
-        <PanelHeader title={top.name} count={top.items.length} />
+      <section aria-label={`Processing: ${top.name}`} className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pt-9">
+        <PanelNotch title={top.name} count={top.items.length} />
         <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />
       </section>
 
       <QueueAndTodo queueTitle={rest.length === 1 ? rest[0].name : 'Queue'} queueCount={rest.reduce((n, g) => n + g.items.length, 0)}>
-      <section aria-label="Processing: other sections" className="relative flex h-full min-h-0 flex-col gap-2 pb-9">
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
+      <section aria-label="Processing: other sections" className="relative flex h-full min-h-0 flex-col gap-2">
+        <div className="scrollbar-none min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
           {rest.length === 0 && <p className="px-1 text-[11px] text-white/35">Group more sites with sections in the editor.</p>}
           {rest.map((g) =>
             rest.length === 1 ? (
@@ -53,15 +53,18 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
           )}
         </div>
         <NotificationPrompt items={processing} />
+        <div data-card-footer className="mt-auto flex h-10 shrink-0 items-center border-t border-white/[0.06] pl-1">
+        <span className="font-mono text-[11px] text-white/45">{rest.reduce((n, g) => n + g.items.length, 0)} queued</span>
         <button
           type="button"
           onClick={() => setManagerOpen(true)}
           aria-label="Manage currently processing"
           title="Add/remove sites and set reminders"
-          className="manage-btn group absolute right-1 bottom-1 flex size-9 items-center justify-center rounded-xl"
+          className="manage-btn group ml-auto flex size-8 items-center justify-center rounded-lg"
         >
-          <GearsIcon className="size-6 transition-transform duration-500 group-hover:rotate-45" />
+          <SlidersIcon className="size-6" />
         </button>
+        </div>
       </section>
       </QueueAndTodo>
       </SplitPanes>
@@ -71,7 +74,17 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
   );
 });
 
-function PanelHeader({ title, count }: { index?: number; title: string; count: number }) {
+// The section name in a tab that hangs from the card's top edge, centred.
+function PanelNotch({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="panel-notch absolute top-0 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-b-xl border border-t-0 px-4 py-1">
+      <h2 className="font-display text-[11px] font-semibold tracking-[0.2em] text-white/80 uppercase">{title}</h2>
+      <span className="rounded-full bg-white/10 px-1.5 font-mono text-[10px] text-white/55">{count}</span>
+    </div>
+  );
+}
+
+export function PanelHeader({ title, count }: { index?: number; title: string; count: number }) {
   return (
     <div className="flex items-center gap-2">
       <h2 className="truncate font-display text-[11px] font-semibold tracking-[0.18em] text-white/65 uppercase">{title}</h2>
@@ -83,7 +96,7 @@ function PanelHeader({ title, count }: { index?: number; title: string; count: n
 function ItemList({ items, now, empty }: { items: ProcessingItem[]; now: Date; empty: ReactNode }) {
   if (items.length === 0) return <>{empty}</>;
   return (
-    <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
+    <ul className="scrollbar-none min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
       {items.map((item) => (
         <ItemRow key={item.id} item={item} now={now} />
       ))}
@@ -305,7 +318,16 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
   ];
 
   return (
-    <section aria-label="Queue and to-do" className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pb-5">
+    <section
+      aria-label="Queue and to-do"
+      onWheel={(e) => {
+        // Scrolling over the bottom band (below the divider) flips between Queue and To-do.
+        if (!(e.target as Element).closest('[data-card-footer], [data-pane-dots]')) return;
+        const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        if (Math.abs(d) > 4) go(d > 0 ? 1 : 0);
+      }}
+      className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pb-5"
+    >
       {/* Two tab buttons; scrolling over them (or clicking) switches the pane. */}
       <div
         role="tablist"
@@ -335,14 +357,14 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
       <div
         ref={ref}
         data-testid="queue-todo-scroller"
-        className={`thin-autohide-scroll flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden ${scrolling ? 'is-scrolling' : ''}`}
+        className={`scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden ${scrolling ? 'is-scrolling' : ''}`}
       >
         <div className="h-full w-full shrink-0 snap-start pr-1">{children}</div>
         <div className="h-full w-full shrink-0 snap-start pl-1">
           <TodoWidget />
         </div>
       </div>
-      <span aria-hidden className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+      <span aria-hidden data-pane-dots className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
         {[0, 1].map((i) => (
           <span key={i} className={`h-1.5 rounded-full transition-all ${pane === i ? 'w-4 bg-[var(--color-accent)]' : 'w-1.5 bg-white/25'}`} />
         ))}

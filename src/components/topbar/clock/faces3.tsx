@@ -16,9 +16,9 @@ const SMALL = 'text-[max(9px,min(12cqh,4.2cqw))]';
 const DIAL = 'aspect-square h-[min(86cqh,42cqw)] shrink-0';
 
 // The concept sheet's tile: a dark card with a soft top highlight and thin edge.
-function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+function Card({ children, className = '', tight = false }: { children: ReactNode; className?: string; tight?: boolean }) {
   return (
-    <div className="h-full w-full p-[3cqh]">
+    <div className={`h-full w-full ${tight ? 'p-[1.5cqh]' : 'p-[3cqh]'}`}>
       <div
         className={`face-dark relative h-full overflow-hidden rounded-[6cqh] border border-white/10 ${className}`}
         style={{
@@ -54,8 +54,14 @@ function AnalogFace({ parts, now }: FaceProps) {
   const m = now.getMinutes() + s / 60;
   const h = (now.getHours() % 12) + m / 60;
   return (
-    <Card className="flex items-center justify-center gap-[5cqw] px-[4cqw]">
-      <svg viewBox="0 0 100 100" className={DIAL} aria-hidden>
+    <div className="relative flex h-full w-full items-center justify-center gap-[5cqw] px-[3cqw]">
+      {/* soft ambient light behind the dial (no box around this face) */}
+      <span
+        aria-hidden
+        className="analog-ambient pointer-events-none absolute top-1/2 left-[30%] aspect-square h-[120cqh] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ background: `radial-gradient(circle, ${mix(38)} 0%, ${mix(14, 'rgba(129,140,248,0.25)')} 40%, transparent 68%)` }}
+      />
+      <svg viewBox="0 0 100 100" className="relative aspect-square h-[min(98cqh,50cqw)] shrink-0" aria-hidden>
         <defs>
           <radialGradient id="an-glass" cx="35%" cy="28%" r="85%">
             <stop offset="0" stopColor="rgba(255,255,255,0.20)" />
@@ -83,13 +89,16 @@ function AnalogFace({ parts, now }: FaceProps) {
         <line x1="50" y1="56" x2="50" y2="11" stroke={A} strokeWidth="0.7" strokeLinecap="round" transform={`rotate(${s * 6} 50 50)`} />
         <circle cx="50" cy="50" r="2.6" fill={G2} />
       </svg>
-      <div className="flex flex-col font-mac text-white">
-        <span className={`${SMALL} font-medium tabular-nums`}>
+      <div className="relative flex flex-col font-mac leading-none text-white">
+        <span className="text-[min(30cqh,11cqw)] font-light tracking-tight tabular-nums">
           {parts.hours}:{parts.minutes}
-          {parts.meridiem && <span className="text-white/60"> {parts.meridiem}</span>}
+        </span>
+        <span className="mt-[2cqh] flex items-baseline gap-[1cqw] text-[min(13cqh,4.6cqw)] tabular-nums" style={{ color: mix(70, '#fff') }}>
+          {parts.seconds}
+          {parts.meridiem && <span className="text-[0.75em] text-white/60">{parts.meridiem}</span>}
         </span>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -112,14 +121,14 @@ function KineticOrbitalFace({ parts, now }: FaceProps) {
       <span aria-hidden className="absolute top-[6cqh] right-[3cqw] h-[10cqh] w-[3cqw] border-t border-r border-white/25" />
       <span aria-hidden className="absolute bottom-[6cqh] left-[3cqw] h-[10cqh] w-[3cqw] border-b border-l border-white/25" />
       <span aria-hidden className="absolute right-[3cqw] bottom-[6cqh] h-[10cqh] w-[3cqw] border-r border-b border-white/25" />
-      {[0, 1].map((side) => (
+      {[0].map((side) => (
         <span key={side} aria-hidden className={`absolute top-1/2 flex -translate-y-1/2 flex-col gap-[2cqh] ${side ? 'right-[6cqw] items-end' : 'left-[6cqw]'}`}>
           {[0.5, 0.9, 0.35, 0.7].map((w, i) => (
             <span key={i} className="h-px rounded-full" style={{ width: `${w * 5}cqw`, background: i % 2 ? G1 : 'rgba(255,255,255,0.25)' }} />
           ))}
         </span>
       ))}
-      <svg viewBox="0 0 100 100" className="aspect-square h-[92cqh]" aria-hidden>
+      <svg viewBox="0 0 100 100" className="aspect-square h-[90cqh]" aria-hidden>
         <defs>
           <Grad id="ko-outer" from={G1} to={G2} x1={0} y1={0} x2={1} y2={1} />
           <Grad id="ko-mid" from={G3} to={G1} x1={1} y1={0} x2={0} y2={1} />
@@ -135,10 +144,17 @@ function KineticOrbitalFace({ parts, now }: FaceProps) {
         <circle cx={hour.x} cy={hour.y} r="2.6" fill={G1} style={{ filter: `drop-shadow(0 0 3px ${G1})` }} />
         <circle cx={sec.x} cy={sec.y} r="2.2" fill="#fff" style={{ filter: `drop-shadow(0 0 3px ${A})` }} />
         <circle cx={min.x} cy={min.y} r="3.4" fill="url(#ko-planet)" style={{ filter: `drop-shadow(0 0 4px ${G2})` }} />
-        <text x="50" y="52.5" textAnchor="middle" fontSize="6.5" fill="rgba(255,255,255,0.85)" fontFamily="ui-monospace, monospace">
-          {parts.hours}:{parts.minutes}
-        </text>
+        <circle cx="50" cy="50" r="1.6" fill={G1} opacity="0.8" />
       </svg>
+      <div className="ml-[3cqw] flex flex-col font-mono leading-none tabular-nums">
+        <span className="text-[min(24cqh,9cqw)] font-semibold text-white">
+          {parts.hours}:{parts.minutes}
+        </span>
+        <span className="mt-[1.5cqh] text-[min(11cqh,4cqw)]" style={{ color: A }}>
+          {parts.seconds}
+          {parts.meridiem && <span className="ml-[1cqw] text-white/55">{parts.meridiem}</span>}
+        </span>
+      </div>
     </Card>
   );
 }
@@ -176,8 +192,8 @@ const WORD_GRID = [
 function WordClockFace({ now }: FaceProps) {
   const lit = useMemo(() => litWords(now), [now]);
   return (
-    <Card className="flex items-center px-[5cqw]">
-      <p className="flex flex-wrap content-center gap-x-[1.8cqw] gap-y-[0.6cqh] font-display text-[min(10.5cqh,3.7cqw)] leading-tight font-bold tracking-wide">
+    <Card tight className="flex items-center px-[4cqw] py-[1cqh]">
+      <p className="flex flex-wrap content-center gap-x-[1.6cqw] gap-y-0 font-display text-[min(13cqh,4.3cqw)] leading-[1.12] font-bold tracking-wide">
         {WORD_GRID.map(({ key, label }) => (
           <span
             key={key}

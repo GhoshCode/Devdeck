@@ -19,6 +19,7 @@ import { Favicon } from '../Favicon';
 import { BinGlyph, SiteFormDialog } from '../library/SiteFormDialog';
 import { showUndo } from '../ui/UndoToast';
 import { CATEGORY_PALETTE, nextFreeColor } from '../../lib/palette';
+import { AnchoredPopover } from '../ui/AnchoredPopover';
 
 // Site Map & Hierarchy: every site in the library at a glance.
 //   no query → a grid of category cards; each lists its General sites, then
@@ -218,6 +219,7 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
                 {sites.length} sites · {tree.length} categories · {processing.length} in progress
               </p>
             </div>
+            <NewCategoryButton />
             <button
               type="button"
               onClick={onClose}
@@ -319,7 +321,6 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto border-t border-white/[0.07] px-6 pt-3 pb-6">
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                <NewCategoryButton />
                 <p className="text-[11px] text-white/45">
                   Double-click a name to rename it · drag a site onto another section, another site, or a bin · changes show on your deck instantly
                 </p>
@@ -408,15 +409,6 @@ function CategoryMapCard({
         <>
           <button
             type="button"
-            onClick={() => setNewSub('')}
-            aria-label={`Add a subcategory to ${category.name}`}
-            title="Add a subcategory"
-            className="sitemap-icon-btn flex h-6 items-center rounded-md px-1.5 text-[10.5px] font-semibold"
-          >
-            + Sub
-          </button>
-          <button
-            type="button"
             onClick={() => setConfirm(true)}
             aria-label={`Delete category ${category.name}`}
             title="Delete this category"
@@ -426,7 +418,6 @@ function CategoryMapCard({
           </button>
         </>
       }
-      footer={<SiteBin categoryName={category.name} />}
     >
       {confirm && (
         <div role="alertdialog" aria-label={`Delete ${category.name}?`} className="sitemap-confirm rounded-xl border p-3 text-[11.5px]">
@@ -482,6 +473,7 @@ function CategoryMapCard({
           </Section>
         ),
       )}
+      {/* New subcategory: Enter or Add creates it; clicking anywhere else just closes the field. */}
       {newSub !== null && (
         <form
           onSubmit={(e) => {
@@ -495,6 +487,7 @@ function CategoryMapCard({
             autoFocus
             value={newSub}
             onChange={(e) => setNewSub(e.target.value)}
+            onBlur={() => setNewSub(null)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.stopPropagation();
@@ -505,18 +498,30 @@ function CategoryMapCard({
             aria-label="New subcategory name"
             className="sitemap-input min-w-0 flex-1 rounded-md border px-2 py-1 text-[12px] outline-none"
           />
-          <button type="submit" className="accent-gradient rounded-md px-2.5 text-[11px] font-semibold text-white">
+          {/* mousedown keeps the field focused, so Add isn't cancelled by the blur */}
+          <button type="submit" onMouseDown={(e) => e.preventDefault()} className="accent-gradient rounded-md px-2.5 text-[11px] font-semibold text-white">
             Add
           </button>
         </form>
       )}
-      <button
-        type="button"
-        onClick={() => setAdding(true)}
-        className="sitemap-add mr-9 self-start rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
-      >
-        + Add site
-      </button>
+      <div className="mt-auto flex items-center gap-2 border-t border-white/[0.08] pt-3">
+        <button
+          type="button"
+          onClick={() => setNewSub('')}
+          aria-label={`Add a subcategory to ${category.name}`}
+          className="sitemap-add rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
+        >
+          + Sub category
+        </button>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="sitemap-add rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
+        >
+          + Add site
+        </button>
+        <SiteBin categoryName={category.name} />
+      </div>
       {adding && <SiteFormDialog categoryId={category.id} onClose={() => setAdding(false)} />}
     </MapCard>
   );
@@ -554,87 +559,94 @@ function SiteBin({ categoryName }: { categoryName: string }) {
         showUndo(`Deleted ${site.name}`, () => restoreSite(id, site.categoryId, site.subcategoryId));
       }}
       data-testid="sitemap-bin"
-      className={`sitemap-bin absolute right-3 bottom-3 flex size-9 items-center justify-center rounded-xl border transition-all ${over ? 'is-over' : ''} ${gulp ? 'is-gulp' : ''}`}
+      className={`sitemap-bin ml-auto flex size-9 shrink-0 items-center justify-center rounded-xl border transition-all ${over ? 'is-over' : ''} ${gulp ? 'is-gulp' : ''}`}
     >
       <BinGlyph className="size-[18px]" open={over} />
     </div>
   );
 }
 
-// + New category: the colour is picked for you (one no category uses yet),
-// and can be changed before adding.
+// + New Category (top of the Site Map, same as Settings → Library): the
+// colour is picked for you — one no category uses yet — and can be swapped
+// for another unused swatch before adding.
 function NewCategoryButton() {
   const categories = useStore((s) => s.categories);
   const addCategory = useStore((s) => s.addCategory);
-  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
   const auto = nextFreeColor(categories.map((c) => c.color));
   const swatches = useMemo(() => {
     const used = new Set(categories.map((c) => c.color.toLowerCase()));
-    return CATEGORY_PALETTE.filter((c) => !used.has(c)).slice(0, 8);
+    return CATEGORY_PALETTE.filter((c) => !used.has(c)).slice(0, 10);
   }, [categories]);
   const chosen = color || auto;
-  if (!open)
-    return (
+  const close = () => {
+    setAnchor(null);
+    setName('');
+    setColor('');
+  };
+  return (
+    <>
       <button
         type="button"
-        onClick={() => {
-          setColor('');
-          setOpen(true);
-        }}
-        className="sitemap-new-cat flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-semibold text-white/85"
+        onClick={(e) => (anchor ? close() : setAnchor(e.currentTarget))}
+        aria-expanded={!!anchor}
+        className="sitemap-new-cat flex shrink-0 items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium text-white"
       >
-        <span className="size-2.5 rounded-full" style={{ background: auto, boxShadow: `0 0 8px ${auto}` }} />+ Add new category
+        <span className="size-2.5 rounded-full" style={{ background: auto, boxShadow: `0 0 8px ${auto}` }} />+ New Category
       </button>
-    );
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!name.trim()) return;
-        addCategory({ name: name.trim(), color: chosen });
-        setName('');
-        setOpen(false);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          setOpen(false);
-        }
-      }}
-      className="sitemap-addform flex flex-wrap items-center gap-2 rounded-xl border p-2"
-    >
-      <span className="size-3 rounded-full" style={{ background: chosen, boxShadow: `0 0 8px ${chosen}` }} />
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Category name"
-        aria-label="New category name"
-        className="sitemap-input w-44 rounded-md border px-2 py-1 text-[12px] outline-none"
-      />
-      <span role="radiogroup" aria-label="Category colour" className="flex gap-1">
-        {swatches.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="radio"
-            aria-checked={chosen === c}
-            aria-label={c}
-            onClick={() => setColor(c)}
-            className={`size-4 rounded-full ring-offset-1 ring-offset-transparent ${chosen === c ? 'ring-2 ring-white/80' : ''}`}
-            style={{ background: c }}
-          />
-        ))}
-      </span>
-      <button type="submit" className="accent-gradient rounded-md px-2.5 py-1 text-[11px] font-semibold text-white">
-        Add
-      </button>
-      <button type="button" onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-[11px] text-white/55 hover:text-white">
-        Cancel
-      </button>
-    </form>
+      {anchor && (
+        <AnchoredPopover anchor={anchor} onClose={close} label="New category" width={300}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!name.trim()) return;
+              addCategory({ name: name.trim(), color: chosen });
+              close();
+            }}
+            className="space-y-3"
+          >
+            <div className="flex items-center gap-2">
+              <span className="size-3.5 shrink-0 rounded-full" style={{ background: chosen, boxShadow: `0 0 8px ${chosen}` }} />
+              <input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Category name"
+                aria-label="New category name"
+                className="sitemap-input min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[12px] outline-none"
+              />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[10.5px] text-white/50">Colour (only unused colours)</p>
+              <span role="radiogroup" aria-label="Category colour" className="flex flex-wrap gap-1.5">
+                {swatches.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={chosen === c}
+                    aria-label={c}
+                    onClick={() => setColor(c)}
+                    className={`size-5 rounded-full transition-transform hover:scale-110 ${chosen === c ? 'ring-2 ring-white/85 ring-offset-2 ring-offset-transparent' : ''}`}
+                    style={{ background: c }}
+                  />
+                ))}
+              </span>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={close} className="rounded-lg px-3 py-1.5 text-xs text-white/55 hover:bg-white/5">
+                Cancel
+              </button>
+              <button type="submit" className="rounded-lg bg-white/15 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/20">
+                Add Category
+              </button>
+            </div>
+          </form>
+        </AnchoredPopover>
+      )}
+    </>
   );
 }
 

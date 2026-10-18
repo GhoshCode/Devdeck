@@ -127,7 +127,7 @@ export const TodoWidget = memo(function TodoWidget() {
     return (
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-          <ul className={`mt-1.5 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 ${expanded ? 'ultra-thin-scrollbar' : ''}`}>
+          <ul className={`mt-1.5 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 ${expanded ? 'ultra-thin-scrollbar' : 'scrollbar-none'}`}>
             <AnimatePresence initial={false}>
               {items.map((t) => (
                 <TodoRow key={t.id} todo={t} now={now} expanded={expanded} animate={items.length <= ANIMATE_UP_TO} />
@@ -144,7 +144,7 @@ export const TodoWidget = memo(function TodoWidget() {
                 </button>
               </li>
             )}
-            {active.length === 0 && <li className="px-1.5 pt-1 text-xs text-white/40">🎯 All done — add the next one above.</li>}
+            {active.length === 0 && <li className="px-1.5 pt-1 text-xs text-white/40">All done — add the next one above.</li>}
             {active.length > 0 && items.length === 0 && (
               <li className="px-1.5 pt-1 text-xs text-white/40">Nothing here{q ? ` for “${query}”` : ''}.</li>
             )}
@@ -198,10 +198,10 @@ export const TodoWidget = memo(function TodoWidget() {
   );
 
   const footer = (inBox: boolean) => (
-    <div className="todo-footer mt-auto flex min-h-9 shrink-0 items-center gap-1.5 border-t border-white/[0.06] pt-1.5 pb-0.5 pl-1">
+    <div data-card-footer className="todo-footer mt-auto flex h-10 shrink-0 items-center gap-1.5 border-t border-white/[0.06] pl-1">
       {inBox || active.length === 0 ? (
         <span data-testid={inBox ? 'todo-status-box' : 'todo-status'} className="truncate font-mono text-[11px] text-white/50">
-          {inBox ? (mode === 'archive' ? `${archived.length} archived` : 'Closes after 30 s idle · Esc') : 'Zero pending 🎉'}
+          {inBox ? (mode === 'archive' ? `${archived.length} archived` : 'Closes after 30 s idle · Esc') : 'Zero pending'}
         </span>
       ) : (
         <div data-testid="todo-status" role="group" aria-label="Task summary" className="flex min-w-0 flex-wrap items-center gap-1">

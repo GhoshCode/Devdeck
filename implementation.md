@@ -10,6 +10,121 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19b — clock polish, icons, offline probe, Site Map bar, card paging, demo build
+
+### Clocks (`topbar/clock/faces*.tsx`, `index.css`)
+- **Flip** (`faces2.tsx`):
+  - hours : minutes : seconds cards (new `FlipColon`);
+  - bigger cards (`h-[66cqh] w-[22cqw]`, digits `min(48cqh,15cqw)`) in the same space;
+  - a printed **DEVDECK** plate on the top edge of the housing (`.flip-plate`).
+- **HUD:** readout `min(58cqh,22cqw)`, shifted down `translate-y-[5cqh]`.
+- **Modern Analog** (`faces3.tsx`):
+  - no card;
+  - bigger dial (`min(98cqh,50cqw)`) with a radial accent glow behind it (`.analog-ambient`);
+  - a larger digital readout with seconds beside it.
+- **Kinetic Orbital:** the digital time moved out of the SVG ring into a readout beside it; the card stays.
+- **Typographic Word:** `Card tight` (less vertical padding), text `min(13cqh,4.3cqw)`.
+- **Diffused Glow:** text `min(56cqh,21cqw)`.
+- **CLI Sophisticated:** `CodingTicker` in the bottom-right types a line of code every 2.6 s (`.cli-type` steps animation plus a block cursor).
+- **Cyberpunk 2077** (`CyberEdges`):
+  - On every minute change, a 450 ms flicker on the left and right 16% (`cyber-tick`).
+  - Every 5th minute, a 1.4 s old-TV channel-change band in the accent colour (`cyber-channel`).
+  - It never covers the centred time.
+  - Off under reduced motion.
+- **macOS minimal:** centred.
+
+### Icons & settings button (`ui/icons.tsx`, `App.tsx`, `index.css`)
+- **SlidersIcon** (two sliders, from the user's reference) replaces the gears.
+  It's used on the feeds panel button (`FeedColumn.tsx`) and the Focus/Queue
+  manage button.
+- **Main settings button:**
+  - a calm lucide-style `CogIcon` (26 px, turns 45° on hover);
+  - `.settings-orb` rewritten as a glass tile with an accent ring on hover only, so it no longer glows constantly.
+
+### Offline banner (`ui/OfflineBanner.tsx`)
+`navigator.onLine` misses "Wi-Fi connected, no internet", so `useOnline`
+also probes the connection:
+- **Probe:** `https://www.gstatic.com/generate_204`, fetched `no-cors` / `no-store` with a 5 s timeout.
+- **Schedule:** every 20 s while online, every 5 s while offline, and immediately on `online` / `offline` / `focus`.
+- **Spot-checked:** the banner showed when the adapter was off and when the probe failed while `onLine` was true.
+
+### Site Map (`search/SiteMapModal.tsx`)
+- **+ New Category** in the modal header, the same as Settings → Library. It
+  opens an `AnchoredPopover` form:
+  - the colour is preset to `nextFreeColor` (a colour no category uses);
+  - only unused swatches from `CATEGORY_PALETTE` are offered.
+- **Card bottom bar:** `mt-auto border-t pt-3` holds **+ Sub category**,
+  **+ Add site** (opens `SiteFormDialog`) and the recycle-bin drop target
+  (`ml-auto`, no longer absolute). The header "+ Sub" button is gone.
+- **New-subcategory field:** closes on blur (`onBlur → setNewSub(null)`), so a
+  click outside never creates anything. The Add button uses
+  `onMouseDown preventDefault` so it still submits.
+
+### Queue / To-do card (`processing/ProcessingPanel.tsx`, `topbar/todo/TodoWidget.tsx`)
+- **No visible scrollbars.** `scrollbar-none` is on:
+  - the pane scroller (was `thin-autohide-scroll`);
+  - the queue lists;
+  - the compact to-do list.
+  The expanded to-do view keeps its ultra-thin bar.
+- **Matching bottom bands.** Both panes end in an `h-10` band with
+  `data-card-footer` and a top border:
+  - To-do: chips, archive and expand;
+  - Queue: an "N queued" count and the sliders manage button (now in the band, `size-8`, `ml-auto`).
+  Text and buttons centre vertically in the band.
+- **Wheel switches panes.** A wheel over the bottom band or the pane dots
+  switches Queue ↔ To-do (`onWheel` on the section, filtered by
+  `closest('[data-card-footer], [data-pane-dots]')`).
+- **Focus card label.** `PanelNotch` is a tab hanging from the top border:
+  centred, rounded bottom corners, name plus count (`.panel-notch`). The
+  section uses `pt-9`. `PanelHeader` is kept and exported but unused.
+- **Emoji removed** from "Zero pending" and "All done — add the next one above."
+
+### Category row paging (`CardsPager.tsx` new, `CategoryGrid.tsx`, `CategoryOverview.tsx`)
+- **Replacement:** `CardsScrollbar.tsx` is deleted (and its `.cards-bar*` CSS).
+- **`useCardPaging(ref, count)`** measures the row from the card offsets:
+  - **perPage:** the number of cards that fully fit;
+  - **pages:** `ceil(count / perPage)`;
+  - **page:** the current page, from `scrollLeft`;
+  - **spacer:** the width after the last card that lets the last page start at the left edge.
+  It re-measures on scroll and resize, and snaps back to a page boundary when
+  perPage changes.
+- **Row wheel:** sideways wheel / trackpad swipes on the row stay blocked, as before.
+- **`PagerSpacer`:** sits after the last card (`data-pager-spacer`). With 1
+  card left in a 3-card row, the last page shows 1 card and 2 blank slots.
+- **`PagerDots`** (`data-testid="cards-pager"`, tablist):
+  - the active dot is a wide accent pill;
+  - click a dot to go to that page;
+  - ←/→ keys page;
+  - one wheel notch or swipe over the 32 px strip = one page (450 ms lock);
+  - hidden when everything fits on one page.
+- **Track attributes:** `data-per-page` on the track. `revealCategory` (the
+  overview jump) now goes to the page that holds the card instead of a
+  mid-page offset.
+- **Pinned card:** no longer `sticky`. It leads page 1, and the row still
+  returns to page 1 when you pin.
+
+### Demo build (`main.tsx`, `package.json`)
+- `npm run build:demo` (`vite build --mode demo`).
+- When `import.meta.env.MODE === 'demo'`, the first open calls
+  `loadDemoData()` once and sets `localStorage["devdeck-demo-autoloaded"]`.
+- Normal `npm run build` is unchanged. Demo items keep `demo-` ids, and
+  Settings → Data → Remove demo data clears them.
+- Content: 52 Focus + 52 Queue sites with schedules and timers, 156 to-dos, 30
+  topics, 210 feed sources.
+- `dist/` was built with `build:demo` for manual testing.
+
+### Verification this round
+- `tsc -b` clean.
+- Vitest: 207/207.
+- `build:demo` succeeds.
+- New UI not tested yet, per the testing policy. It's covered in
+  features-functionality.md for the combined QA pass.
+- **Known stale e2e:** `e2e/cockpit-tools.spec.ts` still references
+  `cards-scrollbar`, the header "+ Sub", and "Zero pending 🎉". Update it
+  during the QA pass.
+
+---
+
 ## Round 2026-10-19 — clocks, Site Map editing, data tools, to-do overhaul
 
 Status: implemented, typechecked (`tsc -b`), unit tests green (207). **Not yet

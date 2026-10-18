@@ -152,7 +152,7 @@ export default function App() {
       className="settings-orb group relative flex size-11 shrink-0 items-center justify-center rounded-2xl"
     >
       <span aria-hidden className="settings-orb-ring absolute inset-0 rounded-2xl" />
-      <CogIcon className="relative size-7 transition-transform duration-500 group-hover:rotate-90" />
+      <CogIcon className="relative size-[26px] transition-transform duration-500 group-hover:rotate-45" />
     </button>
   );
 

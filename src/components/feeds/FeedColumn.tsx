@@ -5,7 +5,7 @@ import type { Topic } from '../../types';
 import { useNow } from '../../hooks/useNow';
 import { FEED_TTL_MS, cachedFeeds, loadFeeds, selectPanel, type FeedItem, type FeedResult } from '../../services/feeds';
 import { relativeAge } from '../../services/search';
-import { GearsIcon } from '../ui/icons';
+import { SlidersIcon } from '../ui/icons';
 
 // Right column (plan Phase 5): I — tech news (items 1–4) and developer jobs
 // (items 5–8) — over J, the topic chips that filter both panels.
@@ -165,7 +165,7 @@ function TopicChips({
           title="Manage topics and sources"
           className="ml-auto flex size-8 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"
         >
-          <GearsIcon className="size-[22px]" />
+          <SlidersIcon className="size-[21px]" />
         </button>
       </div>
       <div role="radiogroup" aria-label="Filter feeds by topic" className="ultra-thin-scrollbar flex max-h-[64px] flex-wrap gap-1.5 overflow-y-auto pr-1">

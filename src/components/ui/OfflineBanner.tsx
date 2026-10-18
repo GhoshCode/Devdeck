@@ -6,16 +6,52 @@ import { OfflineIcon } from './icons';
 // the category area — the quick-links row above stays clear — with a short
 // note. It leaves on its own when the connection is back.
 
+// navigator.onLine only notices a dead network adapter; Wi-Fi that is still
+// connected but has no internet reads as online. So we also probe a tiny
+// endpoint: every 20 s while online, every 5 s while offline, and right away
+// on focus or any network change.
+const PROBE_URL = 'https://www.gstatic.com/generate_204';
+
+async function probe(): Promise<boolean> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    await fetch(`${PROBE_URL}?t=${Date.now()}`, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 export function useOnline() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
-    const up = () => setOnline(true);
-    const down = () => setOnline(false);
-    window.addEventListener('online', up);
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      clearTimeout(timer);
+      const ok = navigator.onLine && (await probe());
+      if (!alive) return;
+      setOnline(ok);
+      timer = setTimeout(check, ok ? 20_000 : 5_000);
+    };
+    const down = () => {
+      setOnline(false);
+      void check();
+    };
+    const recheck = () => void check();
+    window.addEventListener('online', recheck);
     window.addEventListener('offline', down);
+    window.addEventListener('focus', recheck);
+    void check();
     return () => {
-      window.removeEventListener('online', up);
+      alive = false;
+      clearTimeout(timer);
+      window.removeEventListener('online', recheck);
       window.removeEventListener('offline', down);
+      window.removeEventListener('focus', recheck);
     };
   }, []);
   return online;

@@ -110,14 +110,14 @@ function NeonOrbFace({ parts, now }: FaceProps) {
 function FlipCard({ value }: { value: string }) {
   const card: CSSProperties = { background: `linear-gradient(180deg, ${mix(28, '#1f232c')}, ${mix(14, '#0f1115')})` };
   return (
-    <span className="relative flex h-[52cqh] w-[24cqw] items-center justify-center overflow-hidden rounded-[4cqh] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.7)]" style={card}>
+    <span className="relative flex h-[66cqh] w-[22cqw] items-center justify-center overflow-hidden rounded-[4cqh] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.7)]" style={card}>
       {/* hinge pins */}
       <span aria-hidden className="absolute top-1/2 left-0 z-10 h-[5cqh] w-[0.8cqw] -translate-y-1/2 rounded-r-sm bg-black/70" />
       <span aria-hidden className="absolute top-1/2 right-0 z-10 h-[5cqh] w-[0.8cqw] -translate-y-1/2 rounded-l-sm bg-black/70" />
-      <span className="font-display text-[min(38cqh,15cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>{value}</span>
+      <span className="font-display text-[min(48cqh,15cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>{value}</span>
       {/* top half flips down whenever the value changes */}
       <span key={value} aria-hidden className="flip-top absolute inset-x-0 top-0 h-1/2 overflow-hidden" style={card}>
-        <span className="absolute inset-x-0 top-0 flex h-[52cqh] items-center justify-center font-display text-[min(38cqh,15cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>
+        <span className="absolute inset-x-0 top-0 flex h-[66cqh] items-center justify-center font-display text-[min(48cqh,15cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>
           {value}
         </span>
       </span>
@@ -126,26 +126,33 @@ function FlipCard({ value }: { value: string }) {
   );
 }
 
+const FlipColon = () => (
+  <span aria-hidden className="flex flex-col gap-[3cqh]">
+    <span className="size-[1.6cqh] rounded-full" style={{ background: A, boxShadow: `0 0 6px ${A}` }} />
+    <span className="size-[1.6cqh] rounded-full" style={{ background: A, boxShadow: `0 0 6px ${A}` }} />
+  </span>
+);
+
 function FlipFace({ parts }: FaceProps) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center">
       {/* the case */}
       <div
-        className="flip-case relative flex items-center gap-[2cqw] rounded-[9cqh] px-[3.5cqw] pt-[7cqh] pb-[6cqh]"
+        className="flip-case relative flex items-center gap-[1.5cqw] rounded-[7cqh] px-[2cqw] pt-[3.5cqh] pb-[3.5cqh]"
         style={{
           background: `linear-gradient(180deg, ${mix(12, '#2a2e37')}, ${mix(6, '#14161b')} 60%, #0c0d10)`,
           boxShadow: `inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 6px rgba(0,0,0,0.6), 0 10px 22px -10px rgba(0,0,0,0.8), 0 0 0 1px ${mix(18)}`,
         }}
       >
-        <span aria-hidden className={`absolute top-[1.8cqh] left-1/2 -translate-x-1/2 font-mono ${TINY} tracking-[0.4em] text-white/35`}>DEVDECK</span>
+        {/* brand plate sitting on the top rim of the case */}
+        <span aria-hidden className={`flip-plate absolute -top-[1.6cqh] left-1/2 -translate-x-1/2 rounded-[1.2cqh] px-[1.4cqw] py-[0.3cqh] font-mono ${TINY} leading-none tracking-[0.4em] text-white/55`}>DEVDECK</span>
         {/* recessed window */}
-        <div className="flex items-center gap-[1.2cqw] rounded-[5cqh] bg-black/55 p-[1.6cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center gap-[0.9cqw] rounded-[5cqh] bg-black/55 p-[1.4cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
           <FlipCard value={parts.hours} />
-          <span aria-hidden className="flex flex-col gap-[3cqh]">
-            <span className="size-[1.6cqh] rounded-full" style={{ background: A, boxShadow: `0 0 6px ${A}` }} />
-            <span className="size-[1.6cqh] rounded-full" style={{ background: A, boxShadow: `0 0 6px ${A}` }} />
-          </span>
+          <FlipColon />
           <FlipCard value={parts.minutes} />
+          <FlipColon />
+          <FlipCard value={parts.seconds} />
         </div>
         {parts.meridiem && (
           <span className={`flex flex-col items-center gap-[1cqh] font-mono ${TINY} text-white/45`}>
@@ -237,9 +244,9 @@ function FuturisticHudFace({ parts, now }: FaceProps) {
       <span aria-hidden className={`absolute top-[6cqh] left-[8cqw] font-mono ${TINY} tracking-[0.25em]`} style={{ color: mix(80, '#fff') }}>
         SYS.TIME // MK-II
       </span>
-      <div className="face-dark relative flex flex-col items-center">
+      <div className="face-dark relative flex translate-y-[5cqh] flex-col items-center">
         <span className="flex items-baseline gap-[1.5cqw] font-cyber text-white tabular-nums">
-          <span className="text-[min(48cqh,18cqw)] leading-none font-bold" style={{ textShadow: `0 0 14px ${mix(55)}, 2px 0 0 ${mix(40, '#0ff')}, -2px 0 0 rgb(255 0 60 / 0.4)` }}>
+          <span className="text-[min(58cqh,22cqw)] leading-none font-bold" style={{ textShadow: `0 0 14px ${mix(55)}, 2px 0 0 ${mix(40, '#0ff')}, -2px 0 0 rgb(255 0 60 / 0.4)` }}>
             {parts.hours}:{parts.minutes}
           </span>
           <Meridiem m={parts.meridiem} className="text-white/80" />

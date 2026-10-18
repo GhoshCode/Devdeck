@@ -32,8 +32,11 @@ export function revealCategory(id: string) {
   const track = card?.closest<HTMLElement>('[data-cards-track]');
   if (!card || !track) return;
   const wrapper = (card.parentElement && card.parentElement !== track ? card.parentElement : card) as HTMLElement;
-  const left = track.scrollLeft + wrapper.getBoundingClientRect().left - track.getBoundingClientRect().left - 6;
-  track.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  // Go to the page that holds the card (rows move a page at a time).
+  const cards = Array.from(track.children).filter((c) => !(c as HTMLElement).dataset.pagerSpacer) as HTMLElement[];
+  const per = Math.max(1, Number(track.dataset.perPage) || 1);
+  const lead = cards[Math.floor(Math.max(0, cards.indexOf(wrapper)) / per) * per] ?? wrapper;
+  track.scrollTo({ left: Math.max(0, lead.offsetLeft - (cards[0]?.offsetLeft ?? 0)), behavior: 'smooth' });
   card.classList.remove('card-flash');
   void card.offsetWidth; // restart the animation
   card.classList.add('card-flash');

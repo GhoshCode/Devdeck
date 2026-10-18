@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ClockParts } from '../../../lib/time';
 import type { ClockStyle } from '../../../lib/clockStyles';
 import { FACES2 } from './faces2';
@@ -108,13 +108,39 @@ function CyberpunkFace({ parts, showSeconds }: FaceProps) {
         </span>
       </div>
       <span aria-hidden className="absolute right-0 bottom-0 h-[3px] w-1/3" style={{ background: mix(70, '#ff003c') }} />
+      <CyberEdges minute={parts.minutes} />
     </div>
+  );
+}
+
+// Old-TV distortion on the left and right ends of the Cyberpunk box (never
+// over the time): a small flicker when the minute changes, a fuller
+// "channel change" every five minutes. Accent-coloured, kept subtle.
+function CyberEdges({ minute }: { minute: string }) {
+  const first = useRef(minute);
+  const [mode, setMode] = useState<null | 'tick' | 'channel'>(null);
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    if (minute === first.current) return;
+    first.current = minute;
+    const channel = Number(minute) % 5 === 0;
+    setMode(channel ? 'channel' : 'tick');
+    setRun((n) => n + 1);
+    const t = setTimeout(() => setMode(null), channel ? 1400 : 450);
+    return () => clearTimeout(t);
+  }, [minute]);
+  if (!mode) return null;
+  return (
+    <>
+      <span key={`l${run}`} aria-hidden className={`cyber-glitch cyber-glitch-${mode} pointer-events-none absolute inset-y-0 left-0 w-[16%]`} />
+      <span key={`r${run}`} aria-hidden className={`cyber-glitch cyber-glitch-${mode} is-right pointer-events-none absolute inset-y-0 right-0 w-[16%]`} />
+    </>
   );
 }
 
 function MacFace({ parts, showSeconds }: FaceProps) {
   return (
-    <div className="flex h-full w-full flex-col justify-center px-[6cqw]">
+    <div className="flex h-full w-full flex-col items-center justify-center px-[6cqw]">
       <div className="flex items-baseline gap-[1.5cqw] font-mac tabular-nums text-white/95">
         <span className={`${MAIN} leading-none font-extralight tracking-[-0.02em]`}>
           {parts.hours}:{parts.minutes}
@@ -276,7 +302,7 @@ function DiffusedGlowFace({ parts, showSeconds }: FaceProps) {
   return (
     <div className={`${center} gap-[2cqw]`} style={{ background: `radial-gradient(60% 70% at 50% 55%, ${mix(16)}, transparent 70%)` }}>
       <span
-        className={`face-glow font-mac ${MAIN} leading-none font-light tracking-tight tabular-nums`}
+        className={`face-glow font-mac text-[min(56cqh,21cqw)] leading-none font-light tracking-tight tabular-nums`}
         style={{ color: mix(55, '#fff'), textShadow: `0 0 8px ${mix(80)}, 0 0 22px ${mix(70)}, 0 0 44px ${mix(55)}` }}
       >
         {parts.hours}:{parts.minutes}
@@ -431,9 +457,34 @@ function CliSophisticatedFace({ parts, showSeconds }: FaceProps) {
           {parts.hours}:{parts.minutes}
           {showSeconds && `:${parts.seconds}`}
         </span>
-        <span aria-hidden className="cli-cursor absolute right-[5cqw] bottom-[8cqh] h-[9cqh] w-[2.2cqw]" style={{ background: A }} />
+        <CodingTicker />
       </div>
     </div>
+  );
+}
+
+// Bottom-right corner of the CLI face: commands type themselves out, one
+// after another, with a blinking block cursor.
+const CODE_LINES = ['git pull --rebase', 'npm run build', 'vitest run ✓ 207', 'docker compose up', 'git push origin main', 'deploy → prod ✓'];
+function CodingTicker() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((n) => (n + 1) % CODE_LINES.length), 2600);
+    return () => clearInterval(id);
+  }, []);
+  const prev = CODE_LINES[(i + CODE_LINES.length - 1) % CODE_LINES.length];
+  const line = CODE_LINES[i];
+  return (
+    <span aria-hidden className={`absolute right-[4cqw] bottom-[6cqh] flex flex-col items-end font-mono ${TINY} leading-tight`}>
+      <span className="text-white/25">$ {prev}</span>
+      <span className="flex items-center" style={{ color: mix(80, '#fff') }}>
+        <span style={{ color: A }}>{'$ '}</span>
+        <span key={i} className="cli-type inline-block overflow-hidden whitespace-nowrap" style={{ ['--chars' as string]: line.length, width: `${line.length}ch` }}>
+          {line}
+        </span>
+        <span className="cli-cursor ml-[0.4cqw] inline-block h-[1em] w-[0.55em]" style={{ background: A }} />
+      </span>
+    </span>
   );
 }
 
