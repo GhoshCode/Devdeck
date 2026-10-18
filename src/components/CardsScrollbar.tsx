@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from 'react';
 
 // The category row's own scrollbar: a thin track under the cards whose thumb
-// you drag (or click the track to jump a card). The row itself ignores the
-// mouse wheel and trackpad swipes, so cards only move when you mean it.
+// you drag, click (jumps a card) or scroll the wheel over. The row itself
+// ignores the wheel and trackpad swipes, so cards only move when you mean it.
 // Hidden when every card already fits.
 
 export function CardsScrollbar({ target }: { target: RefObject<HTMLElement | null> }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const [m, setM] = useState({ ratio: 1, pos: 0 });
   const [dragging, setDragging] = useState(false);
 
@@ -43,6 +44,21 @@ export function CardsScrollbar({ target }: { target: RefObject<HTMLElement | nul
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [target]);
+
+  // Over the scrollbar itself, the wheel (or a trackpad swipe) does move the cards.
+  useEffect(() => {
+    const bar = barRef.current;
+    const el = target.current;
+    if (!bar || !el) return;
+    const onWheel = (e: WheelEvent) => {
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!d) return;
+      e.preventDefault();
+      el.scrollBy({ left: d * (e.deltaMode === 1 ? 40 : 1), behavior: 'instant' });
+    };
+    bar.addEventListener('wheel', onWheel, { passive: false });
+    return () => bar.removeEventListener('wheel', onWheel);
+  }, [target, m.ratio]);
 
   if (m.ratio >= 0.999) return null;
   const thumb = Math.max(8, m.ratio * 100);
@@ -88,7 +104,7 @@ export function CardsScrollbar({ target }: { target: RefObject<HTMLElement | nul
   };
 
   return (
-    <div className="group/cards-bar shrink-0 px-2 pt-2.5 pb-0.5">
+    <div ref={barRef} className="group/cards-bar shrink-0 px-2 pt-2.5 pb-0.5">
       <div
         ref={trackRef}
         role="scrollbar"

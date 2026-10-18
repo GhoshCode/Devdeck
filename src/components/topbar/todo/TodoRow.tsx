@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Priority, Todo } from '../../../types';
 import { useStore } from '../../../store';
-import { REPEAT_LABEL, formatDue, isDueToday, isOverdue } from '../../../lib/todos';
+import { REPEAT_LABEL, formatDue, isDueToday, isOverdue, todoTone } from '../../../lib/todos';
 import { Countdown } from '../../ui/Countdown';
 import { showUndo } from '../../ui/UndoToast';
 import { DateTimePicker } from './DateTimePicker';
@@ -70,7 +70,7 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
       exit={{ opacity: 0, x: 48, transition: { duration: 0.22 } }}
       data-todo-id={todo.id}
       data-overdue={overdue || undefined}
-      className={`group/todo rounded-lg ${overdue ? 'todo-danger' : ''} ${details ? 'todo-open' : ''} ${isDragging ? 'opacity-60' : ''} prio-${priority}`}
+      className={`group/todo todo-row tone-${todoTone(todo, now)} rounded-lg ${priority ? 'has-prio' : ''} ${overdue ? 'todo-danger' : ''} ${details ? 'todo-open' : ''} ${isDragging ? 'opacity-60' : ''} prio-${priority}`}
     >
       <div ref={setNodeRef} style={style} className="flex items-center gap-2 px-1.5 py-[3px]">
         <button

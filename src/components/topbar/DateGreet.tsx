@@ -4,6 +4,7 @@ import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
 import { formatDateLine, greetingFor } from '../../lib/time';
 import { quoteFor } from '../../lib/greeting';
+import { GREET_STYLES } from '../../types';
 
 // The uppercase date line, under the clock.
 export const DateLine = memo(function DateLine() {
@@ -47,12 +48,24 @@ export const DateGreet = memo(function DateGreet() {
   const name = useStore((s) => s.settings.greetingName);
   const showQuote = useStore((s) => s.settings.showQuote ?? true);
   const greetStyle = useStore((s) => s.settings.greetStyle ?? 'classic');
+  const updateSettings = useStore((s) => s.updateSettings);
+  // Click the greeting for the next style, right-click for the previous one.
+  const at = Math.max(0, GREET_STYLES.findIndex((g) => g.id === greetStyle));
+  const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
   const [shuffle, setShuffle] = useState(0);
   const quote = quoteFor(now, shuffle);
 
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 text-center">
-      <h1 className="max-w-full truncate font-display text-[1.85rem] leading-tight font-bold tracking-tight text-white/95">
+      <h1
+        onClick={() => step(1)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          step(-1);
+        }}
+        title={`Greeting style: ${GREET_STYLES[at].name} — click: next · right-click: previous`}
+        className="max-w-full truncate font-display text-[1.85rem] leading-tight font-bold tracking-tight text-white/95 cursor-pointer select-none"
+      >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}
         <span data-testid="greet-words" className={`greet-words greet-${greetStyle}`}>
           {greetingFor(now)}

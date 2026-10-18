@@ -1,0 +1,243 @@
+# DevDeck — Implementation log
+
+Technical record of what was built, where it lives and why. Newest round first.
+User-facing behaviour and the manual test checklist are in
+[features-functionality.md](features-functionality.md).
+
+Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
+`localStorage["devdeck"]`), Tailwind v4, motion/react, dnd-kit, MV3 extension
+(`npm run build` → `dist/`, load unpacked).
+
+---
+
+## Round 2026-10-19 — clocks, Site Map editing, data tools, to-do overhaul
+
+Status: implemented, typechecked (`tsc -b`), unit tests green (207). **Not yet
+integration-tested** — by request, testing of this round happens in the
+combined QA pass at the end of the UI work.
+
+### 1. Clock faces
+
+| Change | Where | Notes |
+|---|---|---|
+| Cyberpunk 2077: time centred in the box | `src/components/topbar/clock/faces.tsx` (`CyberpunkFace`) | `justify-center` on the time row. |
+| Neon Orb → **Chrono 2100** (futuristic analogue) | `faces2.tsx` (`NeonOrbFace`), `lib/clockStyles.ts` | SVG dial: 60 micro-ticks (5-min bars in accent), two counter-rotating data rings (`.chrono-spin`, `.chrono-spin-rev`, 24 s / 40 s, off with reduced motion), seconds sweep arc + orbiting light, glowing "light-beam" hour/minute hands, `CHRONO·2100` label, side readout (hh:mm, seconds, meridiem, 6-cell seconds bar). Style id stays `neon-orb` so saved settings keep working. |
+| Flip Clock: classic desk-clock housing | `faces2.tsx` (`FlipFace`, `FlipCard`) | Case with top highlight and inner shadow, `DEVDECK` label, recessed window, hinge pins on each card, glowing colon dots, AM/PM indicator, two feet. Cards resized to fit the case. |
+| Futuristic HUD: bigger readout, cyberpunk weapon-panel background | `faces2.tsx` (`FuturisticHudFace`) | Angular armour-plate SVG with carbon-weave pattern, seams, vents, hazard-stripe corner, rivets, `SYS.TIME // MK-II` label, readout `min(48cqh,18cqw)` (was 36/14) with chromatic shadow, 12-cell "ammo counter" (one cell per 5 s) + seconds. |
+| Circular Progress removed | `faces2.tsx`, `lib/clockStyles.ts` | Saved value falls back to the default face via `normalizeSettings`. |
+| Multi-Timezone: click a city to change it | `faces2.tsx` (`MultiTimezoneFace`, `ZoneSearch`, `useLocalPlaceName`), `lib/zones.ts` | First tile = your location (weather place name from browser location, else the browser time zone's city). Up to **2** chosen cities; empty slots show "+ Add city". Clicking a tile (live clock only, `interactive` prop) opens a portal popover with a search box over every IANA zone (`Intl.supportedValuesOf('timeZone')`) showing city, region and offset; ↑/↓/Enter supported. `DEFAULT_ZONES` is now `[]` (no preset cities). The popover stops click propagation so picking a city doesn't also switch the clock style. |
+| Right-click (secondary click) → previous face | `src/components/topbar/TimeWidget.tsx` | `onContextMenu` → previous style; left click still → next. Tooltip and hover hint updated. |
+| `FaceProps.interactive` | `faces.tsx` | Only the top-bar clock passes it, so gallery previews never open pickers. |
+
+### 2. Fixes
+
+- **Git username** slightly smaller: 14.5 px → 13.5 px (`GitWidget.tsx`).
+- **Mic doesn't turn off** (`src/hooks/useSpeechInput.ts`): `stop()` used
+  `rec.stop()`, which waits for the engine to finish (seconds, sometimes never)
+  while the button stays "listening". Now `stop()` aborts and clears state
+  immediately. A `startingRef` guards a double start during the mic permission
+  check, and a turn-off during that check cancels the start. An aborted older
+  session's `onend` can no longer switch off a newer one.
+- **Wheel over the cards scrollbar** (`src/components/CardsScrollbar.tsx`): the
+  wheel/trackpad over the thin scrollbar under the category cards now scrolls
+  the row (native non-passive listener). The cards themselves still ignore the
+  wheel.
+
+### 3. Category overview (menu left of the quick links)
+
+- New icon `CategoryMenuIcon` (`src/components/CategoryOverview.tsx`): four
+  filled rounded blocks (tall/short over short/tall) in `var(--color-accent)`, so it
+  follows the theme.
+- The overview now **replaces** the cards view instead of layering on top
+  (`src/App.tsx`: `overview ? <CategoryOverview/> : <CategoryGrid/>`). Lighter DOM;
+  only one view mounted at a time.
+- The menu button glows while open (`.category-menu-btn.is-open`).
+- Back to the cards: toggle the button, click the overview's top bar
+  (`header role="button"`), its ✕, or Esc. Picking a category returns to the cards
+  and scrolls to it after ~420 ms (the grid mounts first), then flashes it.
+
+### 4. Full address on hover — `LinkPeek`
+
+`src/components/ui/LinkPeek.tsx`, mounted once in `App.tsx`. A document-level
+`mouseover` listener finds the nearest `a[href^="http"]`; after 380 ms a portal
+popover shows the hostname and full URL (break-all, max 420 px, flips above near
+the bottom edge). While shown, the link's own `title` is moved aside (restored on
+leave) so the native tooltip doesn't double up. Hidden on mouse-out, mousedown,
+scroll and window blur. Any subtree can opt out with `data-no-peek`.
+
+### 5. Site Map editing + recycle bin
+
+Data model (`src/types.ts`, `src/store/store.ts`, `src/store/seed.ts`):
+
+- `PersistedState.trash: { sites: TrashedSite[]; processing: TrashedProcessing[] }`
+  (additive, normalised on load; capped at 500 each, newest first).
+- `deleteSite` now **moves the site to the trash**, recording `deletedAt`,
+  `fromCategory` and `fromSubcategory` names.
+- `deleteCategory` moves all of that category's sites to the trash.
+- `deleteProcessingItem` moves the item to `trash.processing`. Its undo
+  (`reinsertProcessingItem`) also takes it back out of the trash.
+- `restoreSite(id, categoryId?, subcategoryId?)` puts a site into the given
+  section. Otherwise it goes back where it came from if that still exists, else
+  into the first category's General group.
+- `purgeTrash({ sites?, processing? })`.
+
+UI:
+
+- **Shared Add/Edit site window** — `src/components/library/SiteFormDialog.tsx`.
+  Settings → Library now renders this component, and its old inline modal and
+  handlers were removed. The Site Map's "+ Add site" opens the same window,
+  pre-set to that category.
+- **Recycle bin list** under the form (add mode only): "Deleted / archived
+  sites" with search, origin, time ago, and **Restore**, which restores into the
+  category/subcategory chosen in the form.
+- **Site Map** (`src/components/search/SiteMapModal.tsx`):
+  - **+ Add new category** in the toolbar: the colour is chosen automatically by
+    `nextFreeColor` and shown as a dot; it can be swapped for another unused
+    swatch before adding.
+  - **Per category card:** "+ Sub" adds a subcategory inline, and the bin icon
+    deletes the category after an inline confirmation ("sites go to the recycle
+    bin").
+  - **Per subcategory section:** a bin icon deletes the section; its sites move
+    to General (existing store behaviour).
+  - **Recycle-bin drop target** (`SiteBin`) in each card's bottom-right corner:
+    - dragging a site over it opens the lid (SVG lid rotates around its hinge)
+      and the bin grows and turns red;
+    - dropping deletes the site, plays a "gulp" bounce, and shows the Undo bar.
+- **Colour picker logic** — `src/lib/palette.ts`: a 20-colour palette, and
+  `nextFreeColor(used)` returns the first unused one. When all are used, it picks
+  a golden-angle hue as far as possible from every hue in use. Settings → Library
+  "+ New Category" also defaults to it.
+
+### 6. Settings → Data
+
+`src/components/settings/DataCleanup.tsx` (mounted in `DataTab.tsx`):
+
+- **Clear cache**: removes `localStorage` keys `devdeck:cache:*` (weather, feeds,
+  GitHub, favicons…), clears `sessionStorage` and Cache Storage. It reports how
+  many entries went. Sites, tasks and settings are untouched.
+  - The browser's own HTTP cache can't be cleared from a page; that needs the
+    `browsingData` permission, which wasn't added.
+- **Clear data…**: a stacked checklist with counts:
+  - deleted sites (bin)
+  - removed Focus/Queue sites
+  - completed (archived) to-dos
+  - demo data
+
+  Then **Permanently delete (n)** → a second click on the inline warning ("This
+  can't be undone… Continue with permanent deletion?") → `clearData(...)`.
+- **Demo data**: `loadDemoData()` / `clearDemoData()` in the store, data from
+  `src/lib/demoData.ts`. All ids start with `demo-`, so only demo items are
+  replaced or removed.
+  - **Focus / Queue:** 52 Focus + 52 Queue sites, cycling through:
+    - every reminder frequency (minute / hourly / daily / weekly / monthly), with
+      varied weekdays, times, intervals and days of month (including the last
+      day), and some reminders off;
+    - timers in every state (just set, mid-way, last-day clock, over today, days
+      overdue, no timer).
+  - **To-dos (156):**
+    - status mix: about 20% completed, overdue, due within 25 min / 5 h, due in 2
+      and 9 days, next month, no date;
+    - priorities P1–P3 and none, 12 tags, notes, subtasks (partly done);
+    - repeats (daily, weekdays, weekly, monthly, yearly) and some timers.
+  - **Feeds:**
+    - 30 topics with keyword lists;
+    - 210 sources: per topic, HN search, HN newest, Dev.to tag, Dev.to top, Ask
+      HN, Show HN (news) and Remotive search (jobs). These are the hosts the
+      extension can reach (see manifest `host_permissions`).
+- **Feed loading** (`src/services/feeds.ts`): `settleLimited` caps concurrent
+  requests at 8, so 200+ sources don't flood the network. Results are cached as
+  before.
+
+### 7. Offline banner, icons, settings button
+
+- `src/components/ui/OfflineBanner.tsx` (`useOnline` + banner): when the browser
+  goes offline, it covers the category area (not the quick-links row). The veil
+  is 75% transparent, with a slight blur, a centred card (wifi-off icon, "You're
+  offline", reassurance text) and a pulsing "waiting for connection…". It doesn't
+  block clicks (`pointer-events: none`) and disappears when back online.
+- `src/components/ui/icons.tsx`:
+  - `GearsIcon` (two meshing gears) replaces the feeds-panel ⚙ (now 32 px button,
+    22 px icon) and the Focus/Queue manage cog (36 px button, 24 px icon);
+  - `CogIcon` is the main settings icon;
+  - `OfflineIcon`.
+- **Main settings button** (`App.tsx`, `.settings-orb`): same 44 px box, now a
+  raised accent-tinted tile.
+  - Glossy top highlight, inner shadow, accent glow, outline ring.
+  - Lifts on hover, presses on click; the cog rotates on hover.
+  - Icon 28 px (was 20).
+- **Topics list** scrolls after two rows (`max-h-[64px]`) so 30+ topics don't push
+  the feeds down.
+
+### 8. Greeting styles
+
+- Six more (12 total): Chrome, Synthwave, Holo (animated iridescent), Terminal
+  (mono, green, `> ` prompt), Fire, Ice. They're defined in `GREET_STYLES`
+  (`src/types.ts`), with CSS at the end of `src/index.css` (light-theme variants
+  included).
+- **Click the greeting** → next style; **right-click** → previous
+  (`DateGreet.tsx`). The Appearance gallery lists all 12 automatically. The name
+  keeps its own look and spotlight.
+
+### 9. Queue / To-do card and the to-do list
+
+- `ProcessingPanel.tsx`:
+  - **Headers:** D1/D2 badges removed. The top-right dots are gone; the two page
+    dots now sit at the bottom middle of the card.
+  - **Queue / To-do tabs:** two separate tab buttons (`.pane-tab`, accent fill
+    when active, count pill). Click, or **scroll the wheel over them**, to switch.
+  - **Manage button:** two gears, larger.
+- **Sorting** (`src/lib/todos.ts`): overdue first (by due time), then by priority
+  P1 → P2 → P3 → none. Within the same priority, your manual (drag) order.
+- **Row tint** (`todoTone`): overdue (red, existing), due within 1 h (amber), due
+  today (accent), this week (light blue), later or no date (plain). Rows with a
+  priority get a glowing coloured bar on the left (`var(--prio)`).
+- **Footer:**
+  - **Summary chips** (`StatChip`): "x to-do", "y overdue", "z priority",
+    "n need action". "Need action" means overdue, due within the hour, or P1 and
+    due today (`needsAction`).
+  - Clicking a chip toggles it: it glows, and its tasks move to the top
+    (`matchesFocus`). Click again, or click "x to-do", to go back.
+  - With nothing pending it reads "Zero pending 🎉".
+  - Footer icons are larger (28 px buttons, 15–17 px icons), vertically centred.
+    The footer now sits at the bottom of the card, which moves its separator line
+    lower.
+
+### Data/compatibility notes
+
+- All schema additions are optional or normalised (`trash`, `greetStyle`,
+  `interval`, `dayOfMonth`, `timer`, `createdAt`…). Old saved data loads without
+  migration.
+- Retired clock face (`circular-progress`) falls back to the default face.
+
+---
+
+## Round 2026-10-18 (summary, committed `be5fc3e` and earlier)
+
+- **Countdown timers** on to-dos and Focus/Queue sites (`lib/timer.ts`,
+  `ui/Countdown.tsx`, `ui/TimerPanel.tsx`), counted from the item's creation:
+  "N days left" → "hh:mm left" on the last day → "hh:mm over" the same day →
+  "N days overdue". Minute and hour timers tick hh:mm:ss.
+- **Undo bar** (`ui/UndoToast.tsx`): 5 s, pauses on hover, Ctrl/⌘+Z. Covers
+  deleted to-dos and removed Focus/Queue sites.
+- **Weekly / monthly reminders** for Focus/Queue sites (`lib/schedule.ts`):
+  - weekly: chosen weekdays, every 1–4 weeks;
+  - monthly: a day of the month or the last day, every 1/2/3/6 months;
+  - the interval resets when the frequency changes.
+- **Site reordering** only in the Site Map and the Bookmarks drawer: drop onto a
+  site to land before it (`placeSite`).
+- **Themed dropdowns:** a themed `Select` (`ui/Select.tsx`) replaces every native
+  `<select>`.
+- **Category overview, pins and the card row:**
+  - category overview (first version);
+  - pin/unpin sites to a card's top row;
+  - scrollbar-only card row.
+- **Search and greeting:**
+  - AI-coloured search glow;
+  - greeting styles (first six);
+  - name spotlight;
+  - snap-resize side columns;
+  - Option A top bar.
+- **To-do improvements:**
+  - repeats;
+  - safer quick-add parsing (whole day and month names only);
+  - paged long lists (40 rows + Show more, about 70 ms per add with 200 tasks).

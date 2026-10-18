@@ -8,7 +8,9 @@ import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { CategoryOverview } from './components/CategoryOverview';
 import { UndoToast } from './components/ui/UndoToast';
-import { AnimatePresence } from 'motion/react';
+import { LinkPeek } from './components/ui/LinkPeek';
+import { OfflineBanner } from './components/ui/OfflineBanner';
+import { CogIcon } from './components/ui/icons';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
 import { DateLine } from './components/topbar/DateGreet';
@@ -147,19 +149,10 @@ export default function App() {
       onClick={() => openSettings('library')}
       title="Open Settings (,)"
       aria-label="Settings"
-      className="glass-raised group flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-white/60 shadow-xl backdrop-blur-xl transition-all hover:scale-105 hover:bg-white/10 hover:text-white border border-white/15"
+      className="settings-orb group relative flex size-11 shrink-0 items-center justify-center rounded-2xl"
     >
-      <svg
-        className="size-5 transition-transform duration-500 group-hover:rotate-90"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-      >
-        <path
-          fillRule="evenodd"
-          d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-          clipRule="evenodd"
-        />
-      </svg>
+      <span aria-hidden className="settings-orb-ring absolute inset-0 rounded-2xl" />
+      <CogIcon className="relative size-7 transition-transform duration-500 group-hover:rotate-90" />
     </button>
   );
 
@@ -187,9 +180,13 @@ export default function App() {
           <div data-testid="center-frame" className="glass flex h-full min-h-0 flex-col overflow-hidden">
             <LinksStrip menuOpen={overview} onMenu={() => setOverview((o) => !o)} />
             <div data-center-body className="relative flex min-h-0 flex-1 p-3">
-              <CategoryGrid onOpenSettings={() => openSettings('library')} />
-              {/* The grid stays mounted underneath so a pick can scroll straight to its card. */}
-              <AnimatePresence>{overview && <CategoryOverview onClose={() => setOverview(false)} />}</AnimatePresence>
+              {/* The overview replaces the cards (one view at a time keeps it light). */}
+              {overview ? (
+                <CategoryOverview onClose={() => setOverview(false)} />
+              ) : (
+                <CategoryGrid onOpenSettings={() => openSettings('library')} />
+              )}
+              <OfflineBanner />
             </div>
           </div>
         }
@@ -197,6 +194,7 @@ export default function App() {
       />
 
       <UndoToast />
+      <LinkPeek />
 
       {/* Settings Overlay */}
       <SettingsModal

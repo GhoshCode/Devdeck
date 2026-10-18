@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react';
 import { useStore } from '../../store';
 import type { ImportSummary } from '../../types';
+import { DataCleanup } from './DataCleanup';
 
 export function DataTab() {
   const exportState = useStore((s) => s.exportState);
@@ -152,6 +153,8 @@ export function DataTab() {
       </section>
 
       {/* 4. Danger Zone: Factory Seed */}
+      <DataCleanup />
+
       <section className="glass-inner space-y-3 p-5 rounded-2xl border border-red-500/20">
         <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider">
           Danger Zone

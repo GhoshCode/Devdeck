@@ -32,7 +32,8 @@ export const ZONE_CHOICES: ReadonlyArray<{ tz: string; city: string }> = [
   { tz: 'UTC', city: 'UTC' },
 ];
 
-export const DEFAULT_ZONES = ['America/New_York', 'Asia/Tokyo'];
+// No preset cities: the first clock is local, the user picks the other two.
+export const DEFAULT_ZONES: string[] = [];
 
 // Legacy IANA names some systems still report.
 const ALIASES: Record<string, string> = { 'Asia/Calcutta': 'Asia/Kolkata', 'Asia/Saigon': 'Asia/Ho_Chi_Minh', 'Europe/Kiev': 'Europe/Kyiv' };

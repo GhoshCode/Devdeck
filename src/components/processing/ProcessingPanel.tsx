@@ -13,6 +13,7 @@ import { SplitPanes } from '../layout/SplitPanes';
 import { Countdown } from '../ui/Countdown';
 import { TimerPanel } from '../ui/TimerPanel';
 import { AnchoredPopover } from '../ui/AnchoredPopover';
+import { GearsIcon } from '../ui/icons';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
 // the first section ("Focus" by default). The lower card scrolls sideways
@@ -35,7 +36,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
     <>
       <SplitPanes setting="leftSplit" label="Resize Focus and Queue" fitHint="fit Focus to its sites">
       <section aria-label={`Processing: ${top.name}`} className="glass flex h-full min-h-0 flex-col gap-2 p-3">
-        <PanelHeader index={1} title={top.name} count={top.items.length} />
+        <PanelHeader title={top.name} count={top.items.length} />
         <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />
       </section>
 
@@ -57,15 +58,9 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
           onClick={() => setManagerOpen(true)}
           aria-label="Manage currently processing"
           title="Add/remove sites and set reminders"
-          className="group absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white"
+          className="manage-btn group absolute right-1 bottom-1 flex size-9 items-center justify-center rounded-xl"
         >
-          <svg className="size-4 transition-transform duration-500 group-hover:rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path
-              fillRule="evenodd"
-              d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <GearsIcon className="size-6 transition-transform duration-500 group-hover:rotate-45" />
         </button>
       </section>
       </QueueAndTodo>
@@ -76,10 +71,9 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
   );
 });
 
-function PanelHeader({ index, title, count }: { index: number; title: string; count: number }) {
+function PanelHeader({ title, count }: { index?: number; title: string; count: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white/55">D{index}</span>
       <h2 className="truncate font-display text-[11px] font-semibold tracking-[0.18em] text-white/65 uppercase">{title}</h2>
       <span className="ml-auto font-mono text-[10px] text-white/35">{count}</span>
     </div>
@@ -311,30 +305,32 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
   ];
 
   return (
-    <section aria-label="Queue and to-do" className="glass relative flex h-full min-h-0 flex-col gap-2 p-3">
-      <div className="flex items-center gap-2">
-        <span className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white/55">D2</span>
-        <div role="tablist" aria-label="Queue or to-do" className="segmented flex min-w-0 rounded-md p-0.5">
-          {tabs.map((t, i) => (
-            <button
-              key={t.label}
-              type="button"
-              role="tab"
-              aria-selected={pane === i}
-              onClick={() => go(i as 0 | 1)}
-              className={`truncate rounded px-2 py-0.5 font-display text-[10.5px] font-semibold tracking-[0.12em] uppercase ${
-                pane === i ? 'segmented-on text-white' : 'text-white/55 hover:text-white/85'
-              }`}
-            >
-              {t.label} <span className="font-mono tracking-normal text-white/45">{t.count}</span>
-            </button>
-          ))}
-        </div>
-        <span aria-hidden className="ml-auto flex gap-1">
-          {[0, 1].map((i) => (
-            <span key={i} className={`h-1.5 rounded-full transition-all ${pane === i ? 'w-3.5 bg-[var(--color-accent)]' : 'w-1.5 bg-white/25'}`} />
-          ))}
-        </span>
+    <section aria-label="Queue and to-do" className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pb-5">
+      {/* Two tab buttons; scrolling over them (or clicking) switches the pane. */}
+      <div
+        role="tablist"
+        aria-label="Queue or to-do"
+        onWheel={(e) => {
+          const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          if (Math.abs(d) > 4) go(d > 0 ? 1 : 0);
+        }}
+        className="grid grid-cols-2 gap-1.5"
+      >
+        {tabs.map((t, i) => (
+          <button
+            key={t.label}
+            type="button"
+            role="tab"
+            aria-selected={pane === i}
+            onClick={() => go(i as 0 | 1)}
+            className={`pane-tab flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 font-display text-[11px] font-semibold tracking-[0.12em] uppercase transition-all ${
+              pane === i ? 'is-on' : ''
+            }`}
+          >
+            <span className="truncate">{t.label}</span>
+            <span className="pane-tab-count rounded-full px-1.5 font-mono text-[10px] tracking-normal">{t.count}</span>
+          </button>
+        ))}
       </div>
       <div
         ref={ref}
@@ -346,6 +342,11 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
           <TodoWidget />
         </div>
       </div>
+      <span aria-hidden className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+        {[0, 1].map((i) => (
+          <span key={i} className={`h-1.5 rounded-full transition-all ${pane === i ? 'w-4 bg-[var(--color-accent)]' : 'w-1.5 bg-white/25'}`} />
+        ))}
+      </span>
     </section>
   );
 }

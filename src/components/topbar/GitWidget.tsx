@@ -165,7 +165,7 @@ export const GitWidget = memo(function GitWidget() {
         <div className="min-w-0 shrink-0 leading-tight">
           <a
             href={profile.data?.url ?? `https://github.com/${username}`}
-            className="block truncate text-[14.5px] font-semibold text-white/95 hover:underline"
+            className="block truncate text-[13.5px] font-semibold text-white/95 hover:underline"
           >
             @{profile.data?.login ?? username}
           </a>

@@ -1,11 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useStore } from '../../store';
 import type { Site } from '../../types';
 import { Favicon } from '../Favicon';
-import { deriveNameFromUrl, normalizeUrl } from '../../utils';
-import { Select } from '../ui/Select';
+import { SiteFormDialog } from '../library/SiteFormDialog';
+import { nextFreeColor } from '../../lib/palette';
 
-const GENERAL_VALUE = '__general__'; // the Select needs a non-empty value for "no subcategory"
 
 interface LibraryTabProps {
   initialPrefillUrl?: string;
@@ -28,8 +27,6 @@ export function LibraryTab({
   const updateSubcategory = useStore((s) => s.updateSubcategory);
   const deleteSubcategory = useStore((s) => s.deleteSubcategory);
 
-  const addSite = useStore((s) => s.addSite);
-  const updateSite = useStore((s) => s.updateSite);
   const deleteSite = useStore((s) => s.deleteSite);
   const togglePrimary = useStore((s) => s.togglePrimary);
 
@@ -37,16 +34,14 @@ export function LibraryTab({
   const [isAddingSite, setIsAddingSite] = useState(Boolean(initialPrefillUrl));
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [siteUrl, setSiteUrl] = useState(initialPrefillUrl);
-  const [siteName, setSiteName] = useState('');
   const [siteCategoryId, setSiteCategoryId] = useState(categories[0]?.id || '');
   const [siteSubcategoryId, setSiteSubcategoryId] = useState<string | null>(null);
   const [sitePrimary, setSitePrimary] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
 
   // New category inline state
   const [isAddingCat, setIsAddingCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
-  const [newCatColor, setNewCatColor] = useState('#a78bfa');
+  const [newCatColor, setNewCatColor] = useState(() => nextFreeColor(categories.map((c) => c.color)));
 
   // New subcategory state
   const [addingSubcatForCatId, setAddingSubcatForCatId] = useState<string | null>(null);
@@ -61,77 +56,22 @@ export function LibraryTab({
   const [editingSubcatId, setEditingSubcatId] = useState<string | null>(null);
   const [editingSubcatName, setEditingSubcatName] = useState('');
 
-  const handleUrlChange = (val: string) => {
-    setSiteUrl(val);
-    setUrlError(null);
-    if (!siteName || siteName === deriveNameFromUrl(siteUrl)) {
-      const derived = deriveNameFromUrl(val);
-      if (derived) setSiteName(derived);
-    }
-  };
-
   const handleOpenAddSite = () => {
     setEditingSite(null);
     setSiteUrl('');
-    setSiteName('');
     setSiteCategoryId(categories[0]?.id || '');
     setSiteSubcategoryId(null);
     setSitePrimary(false);
-    setUrlError(null);
     setIsAddingSite(true);
   };
 
   const handleOpenEditSite = (site: Site) => {
     setEditingSite(site);
     setSiteUrl(site.url);
-    setSiteName(site.name);
     setSiteCategoryId(site.categoryId);
     setSiteSubcategoryId(site.subcategoryId);
     setSitePrimary(site.primary);
-    setUrlError(null);
     setIsAddingSite(true);
-  };
-
-  const handleSaveSite = (e: FormEvent) => {
-    e.preventDefault();
-    if (!siteUrl.trim() || !siteCategoryId) return;
-
-    const normalized = normalizeUrl(siteUrl);
-
-    try {
-      const parsed = new URL(normalized);
-      if (!parsed.hostname || !parsed.hostname.includes('.')) {
-        setUrlError('Please enter a valid URL with domain (e.g. github.com)');
-        return;
-      }
-    } catch {
-      setUrlError('Invalid URL format. Please enter a valid web address.');
-      return;
-    }
-
-    const finalName = siteName.trim() || deriveNameFromUrl(normalized) || 'Untitled';
-
-    if (editingSite) {
-      updateSite(editingSite.id, {
-        name: finalName,
-        url: normalized,
-        categoryId: siteCategoryId,
-        subcategoryId: siteSubcategoryId,
-        primary: sitePrimary,
-      });
-    } else {
-      addSite({
-        name: finalName,
-        url: normalized,
-        categoryId: siteCategoryId,
-        subcategoryId: siteSubcategoryId,
-        primary: sitePrimary,
-      });
-    }
-
-    setIsAddingSite(false);
-    setEditingSite(null);
-    onClearPrefill?.();
   };
 
   const handleSaveNewCategory = (e: FormEvent) => {
@@ -148,10 +88,6 @@ export function LibraryTab({
     setNewSubcatName('');
     setAddingSubcatForCatId(null);
   };
-
-  const selectedCategorySubcategories = useMemo(() => {
-    return subcategories.filter((s) => s.categoryId === siteCategoryId);
-  }, [subcategories, siteCategoryId]);
 
   const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
 
@@ -220,133 +156,20 @@ export function LibraryTab({
         </form>
       )}
 
-      {/* Add / Edit Site Modal Form */}
+      {/* Add / Edit Site — the shared window (also used by the Site Map) */}
       {isAddingSite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <form
-            onSubmit={handleSaveSite}
-            className="glass w-full max-w-md space-y-4 rounded-2xl border-white/20 bg-[#150e24] p-6 shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h4 className="font-display text-sm font-semibold text-white">
-                {editingSite ? 'Edit Site' : 'Add New Site'}
-              </h4>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddingSite(false);
-                  onClearPrefill?.();
-                }}
-                className="text-white/40 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* URL Input & Favicon Preview */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-white/70 uppercase">URL</label>
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-                  <Favicon url={siteUrl || 'https://example.com'} name={siteName || 'Site'} className="size-5" />
-                </div>
-                <input
-                  type="text"
-                  value={siteUrl}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  placeholder="https://example.com"
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
-                  autoFocus
-                  required
-                />
-              </div>
-              {urlError && <p className="text-[11px] text-red-400">{urlError}</p>}
-            </div>
-
-            {/* Name Input */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-white/70 uppercase">Display Name</label>
-              <input
-                type="text"
-                value={siteName}
-                onChange={(e) => setSiteName(e.target.value)}
-                placeholder="e.g. GitHub"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
-                required
-              />
-            </div>
-
-            {/* Category Select */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-white/70 uppercase">Category</label>
-                <Select
-                  value={siteCategoryId}
-                  onChange={(v) => {
-                    setSiteCategoryId(v);
-                    setSiteSubcategoryId(null);
-                  }}
-                  ariaLabel="Category"
-                  className="w-full"
-                  options={categories.map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                    icon: <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} />,
-                  }))}
-                />
-              </div>
-
-              {/* Subcategory Select */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-white/70 uppercase">Subcategory</label>
-                <Select
-                  value={siteSubcategoryId || GENERAL_VALUE}
-                  onChange={(v) => setSiteSubcategoryId(v === GENERAL_VALUE ? null : v)}
-                  ariaLabel="Subcategory"
-                  className="w-full"
-                  options={[
-                    { value: GENERAL_VALUE, label: 'General (None)' },
-                    ...selectedCategorySubcategories.map((sc) => ({ value: sc.id, label: sc.name })),
-                  ]}
-                />
-              </div>
-            </div>
-
-            {/* Primary Toggle */}
-            <label className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
-              <div>
-                <p className="text-xs font-semibold text-white">Primary Site</p>
-                <p className="text-[10px] text-white/40">Pinned to category's horizontal tile row</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={sitePrimary}
-                onChange={(e) => setSitePrimary(e.target.checked)}
-                className="size-4 accent-[var(--color-accent)]"
-              />
-            </label>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddingSite(false);
-                  onClearPrefill?.();
-                }}
-                className="rounded-lg px-3.5 py-1.5 text-xs text-white/50 hover:bg-white/5"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-[var(--color-accent)] px-4 py-1.5 text-xs font-semibold text-white shadow-lg hover:opacity-95"
-              >
-                {editingSite ? 'Save Changes' : 'Add to DevDeck'}
-              </button>
-            </div>
-          </form>
-        </div>
+        <SiteFormDialog
+          editing={editingSite}
+          prefillUrl={siteUrl}
+          categoryId={siteCategoryId}
+          subcategoryId={siteSubcategoryId}
+          primary={sitePrimary}
+          onClose={() => {
+            setIsAddingSite(false);
+            setEditingSite(null);
+            onClearPrefill?.();
+          }}
+        />
       )}
 
       {/* Delete Category Confirm Modal */}

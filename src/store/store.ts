@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { buildDemoData, isDemo } from '../lib/demoData';
 import { REPEAT_LABEL, nextRepeatDate } from '../lib/todos';
 import { normalizeTimer, type TimerUnit } from '../lib/timer';
 import { persist } from 'zustand/middleware';
@@ -17,6 +18,8 @@ import type {
   Subcategory,
   Priority,
   Repeat,
+  TrashedSite,
+  TrashedProcessing,
   Todo,
   Topic,
 } from '../types';
@@ -138,6 +141,10 @@ export function normalizePersisted(input: unknown): PersistedState {
     todos: toArray<unknown>(obj.todos).map(normalizeTodo).filter(notNull),
     processing: toArray<unknown>(obj.processing).map(normalizeProcessing).filter(notNull),
     feeds: normalizeFeeds(obj.feeds),
+    trash: {
+      sites: toArray<TrashedSite>(asRecord(obj.trash).sites).filter((x) => x && typeof x.id === 'string' && typeof x.url === 'string'),
+      processing: toArray<TrashedProcessing>(asRecord(obj.trash).processing).filter((x) => x && typeof x.id === 'string'),
+    },
   };
 }
 
@@ -202,7 +209,9 @@ export interface StoreActions {
   // Site CRUD
   addSite: (input: NewSite) => Site;
   updateSite: (id: string, patch: Partial<Omit<Site, 'id'>>) => void;
-  deleteSite: (id: string) => void;
+  deleteSite: (id: string) => void; // → trash
+  restoreSite: (id: string, categoryId?: string, subcategoryId?: string | null) => void;
+  purgeTrash: (what: { sites?: boolean; processing?: boolean }) => void;
   // Quick link CRUD
   addQuickLink: (input: NewQuickLink) => QuickLink;
   updateQuickLink: (id: string, patch: Partial<Omit<QuickLink, 'id'>>) => void;
@@ -253,11 +262,24 @@ export interface StoreActions {
   // processing items and feeds — used by the "fewer than 10 categories" upgrade.
   reseedLibrary: () => void;
   loadBenchmark200: () => void;
+  // Settings → Data
+  loadDemoData: () => void; // adds demo-* Focus/Queue sites, to-dos, topics and feed sources
+  clearDemoData: () => void;
+  clearData: (what: { deletedSites?: boolean; removedProcessing?: boolean; completedTodos?: boolean; demo?: boolean }) => void;
 }
 
 export type Store = PersistedState & StoreActions;
 
 // Pull just the persisted slice out of the live store (used by export/persist).
+// The bin keeps the most recent 500 of each kind.
+const capTrash = <T,>(list: T[]): T[] => list.slice(0, 500);
+const toTrash = (s: Store, site: Site): TrashedSite => ({
+  ...site,
+  deletedAt: Date.now(),
+  fromCategory: s.categories.find((c) => c.id === site.categoryId)?.name ?? '',
+  fromSubcategory: s.subcategories.find((x) => x.id === site.subcategoryId)?.name ?? null,
+});
+
 const pickPersisted = (s: Store): PersistedState => ({
   schemaVersion: s.schemaVersion,
   categories: s.categories,
@@ -269,6 +291,7 @@ const pickPersisted = (s: Store): PersistedState => ({
   todos: s.todos,
   processing: s.processing,
   feeds: s.feeds,
+  trash: s.trash,
 });
 
 // The seed's bookmark library only — no settings and no v2 collections.
@@ -310,12 +333,14 @@ export const useStore = create<Store>()(
           categories: s.categories.map((c) => (c.id === id ? { ...c, ...patch } : c)),
         })),
       // Cascades: removing a category removes its subcategories and sites too.
+      // A deleted category's sites go to the trash, so they can be restored.
       deleteCategory: (id) =>
         set((s) => ({
           categories: s.categories.filter((c) => c.id !== id),
           subcategories: s.subcategories.filter((sc) => sc.categoryId !== id),
           sites: s.sites.filter((site) => site.categoryId !== id),
           pinnedCategoryId: s.pinnedCategoryId === id ? null : s.pinnedCategoryId,
+          trash: { ...s.trash, sites: capTrash([...s.sites.filter((site) => site.categoryId === id).map((site) => toTrash(s, site)), ...s.trash.sites]) },
         })),
       pinCategory: (id) =>
         set((s) => ({
@@ -385,7 +410,43 @@ export const useStore = create<Store>()(
         set((s) => ({
           sites: s.sites.map((site) => (site.id === id ? { ...site, ...patch } : site)),
         })),
-      deleteSite: (id) => set((s) => ({ sites: s.sites.filter((site) => site.id !== id) })),
+      deleteSite: (id) =>
+        set((s) => {
+          const site = s.sites.find((x) => x.id === id);
+          if (!site) return {};
+          return { sites: s.sites.filter((x) => x.id !== id), trash: { ...s.trash, sites: capTrash([toTrash(s, site), ...s.trash.sites]) } };
+        }),
+      // Back from the bin: into the given section, else where it came from,
+      // else the first category's General group.
+      restoreSite: (id, categoryId, subcategoryId = null) =>
+        set((s) => {
+          const t = s.trash.sites.find((x) => x.id === id);
+          if (!t) return {};
+          const { deletedAt: _d, fromCategory: _c, fromSubcategory: _sc, ...site } = t;
+          const cat =
+            (categoryId && s.categories.some((c) => c.id === categoryId) && categoryId) ||
+            (s.categories.some((c) => c.id === site.categoryId) && site.categoryId) ||
+            [...s.categories].sort((a, b) => a.order - b.order)[0]?.id;
+          if (!cat) return {};
+          const sub =
+            cat === categoryId
+              ? subcategoryId
+              : cat === site.categoryId && s.subcategories.some((x) => x.id === site.subcategoryId)
+                ? site.subcategoryId
+                : null;
+          const order = nextOrder(s.sites.filter((x) => x.categoryId === cat && x.subcategoryId === sub));
+          return {
+            sites: [...s.sites, { ...site, categoryId: cat, subcategoryId: sub, order }],
+            trash: { ...s.trash, sites: s.trash.sites.filter((x) => x.id !== id) },
+          };
+        }),
+      purgeTrash: (what) =>
+        set((s) => ({
+          trash: {
+            sites: what.sites ? [] : s.trash.sites,
+            processing: what.processing ? [] : s.trash.processing,
+          },
+        })),
 
       // ---- Quick links ---------------------------------------------------
       addQuickLink: ({ name, url }) => {
@@ -557,9 +618,20 @@ export const useStore = create<Store>()(
           processing: s.processing.map((p) => (p.id === id ? { ...p, ...patch } : p)),
         })),
       deleteProcessingItem: (id) =>
-        set((s) => ({ processing: s.processing.filter((p) => p.id !== id) })),
+        set((s) => {
+          const item = s.processing.find((p) => p.id === id);
+          if (!item) return {};
+          return {
+            processing: s.processing.filter((p) => p.id !== id),
+            trash: { ...s.trash, processing: capTrash([{ ...item, deletedAt: Date.now() }, ...s.trash.processing]) },
+          };
+        }),
       reinsertProcessingItem: (item) =>
-        set((s) => (s.processing.some((p) => p.id === item.id) ? s : { processing: [...s.processing, item] })),
+        set((s) =>
+          s.processing.some((p) => p.id === item.id)
+            ? s
+            : { processing: [...s.processing, item], trash: { ...s.trash, processing: s.trash.processing.filter((p) => p.id !== item.id) } },
+        ),
 
       // ---- Feed topics ---------------------------------------------------
       addTopic: ({ label, query }) => {
@@ -653,6 +725,32 @@ export const useStore = create<Store>()(
       },
       resetToSeed: () => set(() => ({ ...getSeedState() })),
       reseedLibrary: () => set(() => seedLibrary()),
+      loadDemoData: () =>
+        set((s) => {
+          const demo = buildDemoData();
+          const keep = <T extends { id: string }>(list: T[]) => list.filter((x) => !isDemo(x.id));
+          return {
+            processing: [...keep(s.processing), ...demo.processing],
+            todos: [...keep(s.todos), ...demo.todos],
+            feeds: { topics: [...keep(s.feeds.topics), ...demo.topics], sources: [...keep(s.feeds.sources), ...demo.sources] },
+          };
+        }),
+      clearDemoData: () =>
+        set((s) => {
+          const keep = <T extends { id: string }>(list: T[]) => list.filter((x) => !isDemo(x.id));
+          return { processing: keep(s.processing), todos: keep(s.todos), feeds: { topics: keep(s.feeds.topics), sources: keep(s.feeds.sources) } };
+        }),
+      // Permanent: the chosen kinds are gone for good (no bin, no undo).
+      clearData: (what) =>
+        set((s) => {
+          const keep = <T extends { id: string }>(list: T[]) => (what.demo ? list.filter((x) => !isDemo(x.id)) : list);
+          return {
+            trash: { sites: what.deletedSites ? [] : s.trash.sites, processing: what.removedProcessing ? [] : s.trash.processing },
+            todos: keep(what.completedTodos ? s.todos.filter((t) => t.archivedAt === null) : s.todos),
+            processing: keep(s.processing),
+            feeds: { topics: keep(s.feeds.topics), sources: keep(s.feeds.sources) },
+          };
+        }),
       loadBenchmark200: () =>
         set((s) => ({ ...getBenchmark200State(), settings: s.settings, todos: s.todos, processing: s.processing, feeds: s.feeds })),
     }),

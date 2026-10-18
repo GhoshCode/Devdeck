@@ -15,7 +15,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { useStore } from '../../../store';
 import { useNow } from '../../../hooks/useNow';
 import { useIdleTimeout } from '../../../hooks/useIdleTimeout';
-import { isOverdue, matchesView, sortActive, sortArchived, type TodoView } from '../../../lib/todos';
+import { isOverdue, matchesView, sortActive, sortArchived, type TodoView, matchesFocus, needsAction, type TodoFocus } from '../../../lib/todos';
 import { localDateKey } from '../../../lib/time';
 import { parseQuickAdd } from '../../../lib/todoParse';
 import { REPEAT_LABEL } from '../../../lib/todos';
@@ -62,6 +62,8 @@ export const TodoWidget = memo(function TodoWidget() {
   // Long lists render in pages: every row is a drag target with a layout
   // animation, so 200+ rows made each add take ~300 ms. "Show more" adds a page.
   const [limit, setLimit] = useState(ROW_PAGE);
+  // Footer chip toggled on: its tasks go to the top of the list.
+  const [focus, setFocus] = useState<TodoFocus | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +71,12 @@ export const TodoWidget = memo(function TodoWidget() {
   const active = useMemo(() => sortActive(todos, now), [todos, now]);
   const archived = useMemo(() => sortArchived(todos), [todos]);
   const overdueCount = active.filter((t) => isOverdue(t, now)).length;
+  const priorityCount = active.filter((t) => !!t.priority).length;
+  const actionCount = active.filter((t) => needsAction(t, now)).length;
+  const focused = useMemo(
+    () => (focus ? [...active.filter((t) => matchesFocus(t, focus, now)), ...active.filter((t) => !matchesFocus(t, focus, now))] : active),
+    [active, focus, now],
+  );
   const todayKey = localDateKey(new Date(now));
   const doneToday = archived.filter((t) => localDateKey(new Date(t.archivedAt!)) === todayKey).length;
   const open = mode !== 'collapsed';
@@ -190,16 +198,25 @@ export const TodoWidget = memo(function TodoWidget() {
   );
 
   const footer = (inBox: boolean) => (
-    <div className="mt-1 flex h-6 shrink-0 items-center gap-1 border-t border-white/[0.06] pt-0.5 pl-1">
-      <span data-testid={inBox ? 'todo-status-box' : 'todo-status'} className="truncate font-mono text-[10px] text-white/45">
-        {inBox
-          ? mode === 'archive'
-            ? `${archived.length} archived`
-            : 'Closes after 30 s idle · Esc'
-          : active.length === 0
-            ? 'Zero pending'
-            : `${active.length} remaining${doneToday ? ` · ${doneToday} done today` : ''}`}
-      </span>
+    <div className="todo-footer mt-auto flex min-h-9 shrink-0 items-center gap-1.5 border-t border-white/[0.06] pt-1.5 pb-0.5 pl-1">
+      {inBox || active.length === 0 ? (
+        <span data-testid={inBox ? 'todo-status-box' : 'todo-status'} className="truncate font-mono text-[11px] text-white/50">
+          {inBox ? (mode === 'archive' ? `${archived.length} archived` : 'Closes after 30 s idle · Esc') : 'Zero pending 🎉'}
+        </span>
+      ) : (
+        <div data-testid="todo-status" role="group" aria-label="Task summary" className="flex min-w-0 flex-wrap items-center gap-1">
+          <StatChip label={`${active.length} to-do`} on={focus === null} onClick={() => setFocus(null)} title={doneToday ? `${doneToday} done today` : 'All tasks in their usual order'} />
+          {overdueCount > 0 && (
+            <StatChip tone="danger" label={`${overdueCount} overdue`} on={focus === 'overdue'} onClick={() => setFocus(focus === 'overdue' ? null : 'overdue')} title="Show overdue tasks first" />
+          )}
+          {priorityCount > 0 && (
+            <StatChip tone="prio" label={`${priorityCount} priority`} on={focus === 'priority'} onClick={() => setFocus(focus === 'priority' ? null : 'priority')} title="Show prioritised tasks first" />
+          )}
+          {actionCount > 0 && (
+            <StatChip tone="warn" label={`${actionCount} need action`} on={focus === 'action'} onClick={() => setFocus(focus === 'action' ? null : 'action')} title="Overdue, due within the hour, or urgent and due today — shown first" />
+          )}
+        </div>
+      )}
       <span className="ml-auto" />
       <IconButton
         label={mode === 'archive' && inBox ? 'Back to tasks' : `Archive (${archived.length})`}
@@ -209,7 +226,7 @@ export const TodoWidget = memo(function TodoWidget() {
         <ArchiveIcon />
       </IconButton>
       <IconButton label={inBox ? 'Collapse' : 'Expand'} active={false} onClick={() => setMode(inBox ? 'collapsed' : 'expanded')}>
-        <svg className={`size-3.5 ${inBox ? '' : ''}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+        <svg className="size-[15px]" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
           {inBox ? (
             <path d="M4.5 1.5v3h-3M7.5 10.5v-3h3M1.5 4.5 4.5 1.5M10.5 7.5l-3 3" strokeLinecap="round" strokeLinejoin="round" />
           ) : (
@@ -227,7 +244,7 @@ export const TodoWidget = memo(function TodoWidget() {
         <div className="mt-1.5 shrink-0">
           <Composer inputRef={inlineInputRef} />
         </div>
-        {list(false, active)}
+        {list(false, focused)}
         {footer(false)}
       </div>
 
@@ -488,7 +505,7 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`flex size-5 items-center justify-center rounded-md transition-colors ${
+      className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
         active ? 'bg-white/15 text-white' : 'text-white/45 hover:bg-white/10 hover:text-white'
       }`}
     >
@@ -499,9 +516,18 @@ function IconButton({
 
 function ArchiveIcon() {
   return (
-    <svg className="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
+    <svg className="size-[17px]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
       <rect x="1.8" y="2.5" width="12.4" height="3.2" rx="0.8" />
       <path d="M3 5.7v7a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-7M6.3 8.6h3.4" strokeLinecap="round" />
     </svg>
+  );
+}
+
+// Footer summary chip; a pressed chip glows and floats its tasks to the top.
+function StatChip({ label, on, onClick, title, tone = 'plain' }: { label: string; on: boolean; onClick: () => void; title: string; tone?: 'plain' | 'danger' | 'prio' | 'warn' }) {
+  return (
+    <button type="button" aria-pressed={on} onClick={onClick} title={title} className={`stat-chip stat-${tone} rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] whitespace-nowrap transition-all ${on ? 'is-on' : ''}`}>
+      {label}
+    </button>
   );
 }

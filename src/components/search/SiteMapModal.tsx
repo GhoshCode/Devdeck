@@ -6,7 +6,6 @@ import {
   useState,
   type CSSProperties,
   type DragEvent,
-  type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -15,9 +14,11 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import type { Category } from '../../types';
-import { deriveNameFromUrl, getCategoryDisplayColor, getHostname, normalizeUrl, searchSites } from '../../utils';
+import { getCategoryDisplayColor, getHostname, searchSites } from '../../utils';
 import { Favicon } from '../Favicon';
-import { Select } from '../ui/Select';
+import { BinGlyph, SiteFormDialog } from '../library/SiteFormDialog';
+import { showUndo } from '../ui/UndoToast';
+import { CATEGORY_PALETTE, nextFreeColor } from '../../lib/palette';
 
 // Site Map & Hierarchy: every site in the library at a glance.
 //   no query → a grid of category cards; each lists its General sites, then
@@ -317,9 +318,12 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
             </>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto border-t border-white/[0.07] px-6 pt-3 pb-6">
-              <p className="mb-3 text-[11px] text-white/45">
-                Double-click a name to rename it · drag a site onto another section to move it · changes show on your deck instantly
-              </p>
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <NewCategoryButton />
+                <p className="text-[11px] text-white/45">
+                  Double-click a name to rename it · drag a site onto another section, another site, or a bin · changes show on your deck instantly
+                </p>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <MapCard
                   title="Currently Processing"
@@ -377,8 +381,13 @@ function CategoryMapCard({
 }) {
   const updateCategory = useStore((s) => s.updateCategory);
   const updateSubcategory = useStore((s) => s.updateSubcategory);
+  const deleteSubcategory = useStore((s) => s.deleteSubcategory);
+  const deleteCategory = useStore((s) => s.deleteCategory);
+  const addSubcategory = useStore((s) => s.addSubcategory);
   const placeSite = useStore((s) => s.placeSite);
   const [adding, setAdding] = useState(false);
+  const [newSub, setNewSub] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(false);
 
   return (
     <MapCard
@@ -395,7 +404,45 @@ function CategoryMapCard({
           style={{ color: 'var(--cat)' }}
         />
       }
+      actions={
+        <>
+          <button
+            type="button"
+            onClick={() => setNewSub('')}
+            aria-label={`Add a subcategory to ${category.name}`}
+            title="Add a subcategory"
+            className="sitemap-icon-btn flex h-6 items-center rounded-md px-1.5 text-[10.5px] font-semibold"
+          >
+            + Sub
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirm(true)}
+            aria-label={`Delete category ${category.name}`}
+            title="Delete this category"
+            className="sitemap-icon-btn sitemap-danger flex size-6 items-center justify-center rounded-md"
+          >
+            <BinGlyph className="size-3.5" />
+          </button>
+        </>
+      }
+      footer={<SiteBin categoryName={category.name} />}
     >
+      {confirm && (
+        <div role="alertdialog" aria-label={`Delete ${category.name}?`} className="sitemap-confirm rounded-xl border p-3 text-[11.5px]">
+          <p className="text-white/85">
+            Delete <b>{category.name}</b>{total ? ` and its ${total} site${total === 1 ? '' : 's'}` : ''}? Sites go to the recycle bin (restore them from “+ Add site”).
+          </p>
+          <div className="mt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setConfirm(false)} className="rounded-md px-2.5 py-1 text-white/60 hover:bg-white/10">
+              Cancel
+            </button>
+            <button type="button" onClick={() => deleteCategory(category.id)} className="rounded-md bg-red-500/80 px-2.5 py-1 font-semibold text-white hover:bg-red-500">
+              Delete category
+            </button>
+          </div>
+        </div>
+      )}
       {groups.map((g) =>
         g.sites.length === 0 && g.id === GENERAL && !dragging ? null : (
           <Section
@@ -407,6 +454,14 @@ function CategoryMapCard({
                 <EditableName value={g.name} label={`Rename subcategory ${g.name}`} onSave={(name) => updateSubcategory(g.id, { name })} />
               )
             }
+            onDelete={
+              g.id === GENERAL
+                ? undefined
+                : () => {
+                    deleteSubcategory(g.id);
+                  }
+            }
+            deleteLabel={`Delete section ${g.name} (its sites move to General)`}
             onDropSite={(siteId, before) => placeSite(siteId, category.id, g.id === GENERAL ? null : g.id, before ?? null)}
             dropId={`${category.id}/${g.id}`}
           >
@@ -427,23 +482,162 @@ function CategoryMapCard({
           </Section>
         ),
       )}
-      {adding ? (
-        <AddSiteForm categoryId={category.id} groups={groups} onDone={() => setAdding(false)} />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="sitemap-add self-start rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
+      {newSub !== null && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (newSub.trim()) addSubcategory({ name: newSub.trim(), categoryId: category.id });
+            setNewSub(null);
+          }}
+          className="flex gap-1.5"
         >
-          + Add site
-        </button>
+          <input
+            autoFocus
+            value={newSub}
+            onChange={(e) => setNewSub(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation();
+                setNewSub(null);
+              }
+            }}
+            placeholder="New subcategory name"
+            aria-label="New subcategory name"
+            className="sitemap-input min-w-0 flex-1 rounded-md border px-2 py-1 text-[12px] outline-none"
+          />
+          <button type="submit" className="accent-gradient rounded-md px-2.5 text-[11px] font-semibold text-white">
+            Add
+          </button>
+        </form>
       )}
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        className="sitemap-add mr-9 self-start rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
+      >
+        + Add site
+      </button>
+      {adding && <SiteFormDialog categoryId={category.id} onClose={() => setAdding(false)} />}
     </MapCard>
   );
 }
 
-// Click-free rename: double-click (or Enter when focused) turns the name into
-// a field; Enter or leaving it saves, Esc cancels. Empty names are ignored.
+// The recycle bin in a card's corner: drop a site on it to delete it. The lid
+// swings open while a site hovers over it and snaps shut on the drop.
+function SiteBin({ categoryName }: { categoryName: string }) {
+  const deleteSite = useStore((s) => s.deleteSite);
+  const restoreSite = useStore((s) => s.restoreSite);
+  const [over, setOver] = useState(false);
+  const [gulp, setGulp] = useState(false);
+  return (
+    <div
+      role="button"
+      aria-label={`Recycle bin for ${categoryName}: drop a site here to delete it`}
+      title="Drop a site here to delete it (restore from + Add site)"
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(SITE_MIME)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!over) setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setOver(false);
+        const id = e.dataTransfer.getData(SITE_MIME);
+        const site = useStore.getState().sites.find((x) => x.id === id);
+        if (!site) return;
+        deleteSite(id);
+        setGulp(true);
+        setTimeout(() => setGulp(false), 450);
+        showUndo(`Deleted ${site.name}`, () => restoreSite(id, site.categoryId, site.subcategoryId));
+      }}
+      data-testid="sitemap-bin"
+      className={`sitemap-bin absolute right-3 bottom-3 flex size-9 items-center justify-center rounded-xl border transition-all ${over ? 'is-over' : ''} ${gulp ? 'is-gulp' : ''}`}
+    >
+      <BinGlyph className="size-[18px]" open={over} />
+    </div>
+  );
+}
+
+// + New category: the colour is picked for you (one no category uses yet),
+// and can be changed before adding.
+function NewCategoryButton() {
+  const categories = useStore((s) => s.categories);
+  const addCategory = useStore((s) => s.addCategory);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('');
+  const auto = nextFreeColor(categories.map((c) => c.color));
+  const swatches = useMemo(() => {
+    const used = new Set(categories.map((c) => c.color.toLowerCase()));
+    return CATEGORY_PALETTE.filter((c) => !used.has(c)).slice(0, 8);
+  }, [categories]);
+  const chosen = color || auto;
+  if (!open)
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setColor('');
+          setOpen(true);
+        }}
+        className="sitemap-new-cat flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-semibold text-white/85"
+      >
+        <span className="size-2.5 rounded-full" style={{ background: auto, boxShadow: `0 0 8px ${auto}` }} />+ Add new category
+      </button>
+    );
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        addCategory({ name: name.trim(), color: chosen });
+        setName('');
+        setOpen(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      }}
+      className="sitemap-addform flex flex-wrap items-center gap-2 rounded-xl border p-2"
+    >
+      <span className="size-3 rounded-full" style={{ background: chosen, boxShadow: `0 0 8px ${chosen}` }} />
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Category name"
+        aria-label="New category name"
+        className="sitemap-input w-44 rounded-md border px-2 py-1 text-[12px] outline-none"
+      />
+      <span role="radiogroup" aria-label="Category colour" className="flex gap-1">
+        {swatches.map((c) => (
+          <button
+            key={c}
+            type="button"
+            role="radio"
+            aria-checked={chosen === c}
+            aria-label={c}
+            onClick={() => setColor(c)}
+            className={`size-4 rounded-full ring-offset-1 ring-offset-transparent ${chosen === c ? 'ring-2 ring-white/80' : ''}`}
+            style={{ background: c }}
+          />
+        ))}
+      </span>
+      <button type="submit" className="accent-gradient rounded-md px-2.5 py-1 text-[11px] font-semibold text-white">
+        Add
+      </button>
+      <button type="button" onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-[11px] text-white/55 hover:text-white">
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 function EditableName({
   value,
   label,
@@ -503,80 +697,6 @@ function EditableName({
   );
 }
 
-function AddSiteForm({ categoryId, groups, onDone }: { categoryId: string; groups: MapGroup[]; onDone: () => void }) {
-  const addSite = useStore((s) => s.addSite);
-  const [url, setUrl] = useState('');
-  const [name, setName] = useState('');
-  const [group, setGroup] = useState(GENERAL);
-  const [error, setError] = useState('');
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const normalized = normalizeUrl(url);
-    try {
-      new URL(normalized);
-    } catch {
-      return setError('Enter a valid web address');
-    }
-    if (!normalized) return setError('Enter a web address');
-    addSite({ name: name.trim() || deriveNameFromUrl(normalized) || normalized, url: normalized, categoryId, subcategoryId: group === GENERAL ? null : group });
-    setUrl('');
-    setName('');
-    setError('');
-    onDone();
-  };
-  return (
-    <form
-      onSubmit={submit}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          onDone();
-        }
-      }}
-      aria-label="Add a site"
-      className="sitemap-addform flex flex-col gap-1.5 rounded-xl border p-2"
-    >
-      <input
-        autoFocus
-        value={url}
-        onChange={(e) => {
-          setUrl(e.target.value);
-          setError('');
-        }}
-        placeholder="https://example.com"
-        aria-label="Site address"
-        className="sitemap-input rounded-md border px-2 py-1 font-mono text-[12px] outline-none"
-      />
-      <div className="flex gap-1.5">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={url ? deriveNameFromUrl(normalizeUrl(url)) || 'Name' : 'Name (optional)'}
-          aria-label="Site name"
-          className="sitemap-input min-w-0 flex-1 rounded-md border px-2 py-1 text-[12px] outline-none"
-        />
-        <Select
-          value={group}
-          onChange={setGroup}
-          ariaLabel="Subcategory"
-          size="sm"
-          className="w-[46%]"
-          options={groups.map((g) => ({ value: g.id, label: g.name, hint: String(g.sites.length) }))}
-        />
-      </div>
-      {error && <p className="text-[11px] text-red-300">{error}</p>}
-      <div className="flex justify-end gap-1.5">
-        <button type="button" onClick={onDone} className="rounded-md px-2 py-1 text-[11px] text-white/55 hover:text-white">
-          Cancel
-        </button>
-        <button type="submit" className="accent-gradient rounded-md px-2.5 py-1 text-[11px] font-semibold text-white">
-          Add
-        </button>
-      </div>
-    </form>
-  );
-}
-
 function MapCard({
   title,
   color,
@@ -584,6 +704,8 @@ function MapCard({
   testId,
   categoryId,
   titleNode,
+  actions,
+  footer,
   children,
 }: {
   title: string;
@@ -592,6 +714,8 @@ function MapCard({
   testId?: string;
   categoryId?: string;
   titleNode?: ReactNode;
+  actions?: ReactNode;
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -600,7 +724,7 @@ function MapCard({
       data-testid={testId}
       data-sitemap-category={categoryId}
       style={catVars(color)}
-      className="sitemap-card cat-scope flex flex-col gap-3 rounded-2xl border p-4 [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
+      className="sitemap-card cat-scope relative flex flex-col gap-3 rounded-2xl border p-4 [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
     >
       <header className="flex items-center gap-2">
         <span className="size-2 rounded-full" style={{ background: 'var(--cat)', boxShadow: '0 0 8px var(--cat)' }} />
@@ -610,8 +734,10 @@ function MapCard({
           </h3>
         )}
         <span className="ml-auto rounded-full bg-white/[0.07] px-2 font-mono text-[10px] text-white/55">{count}</span>
+        {actions}
       </header>
       {children}
+      {footer}
     </section>
   );
 }
@@ -622,12 +748,16 @@ function Section({
   nameNode,
   onDropSite,
   dropId,
+  onDelete,
+  deleteLabel,
   children,
 }: {
   name: string;
   count: number;
   nameNode?: ReactNode;
   onDropSite?: (siteId: string, beforeSiteId?: string) => void;
+  onDelete?: () => void;
+  deleteLabel?: string;
   dropId?: string;
   children: ReactNode;
 }) {
@@ -660,6 +790,17 @@ function Section({
         {nameNode ?? <span>{name}</span>}
         <span className="h-px flex-1 bg-white/[0.07]" />
         <span className="font-mono tracking-normal text-white/35">{count}</span>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={deleteLabel}
+            title={deleteLabel}
+            className="sitemap-icon-btn sitemap-danger flex size-5 items-center justify-center rounded-md normal-case"
+          >
+            <BinGlyph className="size-3" />
+          </button>
+        )}
       </div>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>

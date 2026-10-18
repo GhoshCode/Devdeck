@@ -14,6 +14,7 @@ export interface FaceProps {
   parts: ClockParts;
   showSeconds: boolean;
   now: Date;
+  interactive?: boolean; // the live top-bar clock (not gallery previews): faces may take clicks
 }
 
 const A = 'var(--color-accent)';
@@ -90,7 +91,7 @@ function CyberpunkFace({ parts, showSeconds }: FaceProps) {
           ))}
         </span>
       </div>
-      <div className="flex flex-1 items-center gap-[2cqw]">
+      <div className="flex flex-1 items-center justify-center gap-[2cqw]">
         <span
           className="font-cyber text-[min(60cqh,23cqw)] leading-[0.8] font-bold tracking-tight tabular-nums"
           style={{ color: A, textShadow: `-2px 0 0 rgb(255 0 60 / 0.55), 2px 0 0 ${mix(45, '#0ff')}, 0 0 18px ${mix(35)}` }}

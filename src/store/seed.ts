@@ -51,12 +51,13 @@ export const DEFAULT_FEEDS: FeedsConfig = {
 // callers never share (and accidentally mutate) the same arrays.
 export const emptyV2Collections = (): Pick<
   PersistedState,
-  'pinnedCategoryId' | 'todos' | 'processing' | 'feeds'
+  'pinnedCategoryId' | 'todos' | 'processing' | 'feeds' | 'trash'
 > => ({
   pinnedCategoryId: null,
   todos: [],
   processing: [],
   feeds: structuredClone(DEFAULT_FEEDS),
+  trash: { sites: [], processing: [] },
 });
 
 // Built-in rotating dev quotes (SPEC §2 header — one per page load, ~20).

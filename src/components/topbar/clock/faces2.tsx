@@ -1,6 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 import { useStore } from '../../../store';
-import { DEFAULT_ZONES, zoneCity, zoneTime } from '../../../lib/zones';
+import { cachedWeather } from '../../../services/weather';
+import { DEFAULT_ZONES, ZONE_CHOICES, zoneCity, zoneTime } from '../../../lib/zones';
+import { AnchoredPopover } from '../../ui/AnchoredPopover';
 import type { FaceProps } from './faces';
 
 // The second set of TIME faces (complex / hybrid designs). Same contract as
@@ -23,45 +25,80 @@ const DIAL = 'aspect-square h-[min(88cqh,44cqw)] shrink-0';
 
 // ---- 3. Neon Orb ------------------------------------------------------------------------
 
-function Ring({ value, size = 100, width = 5, glow = true, children }: { value: number; size?: number; width?: number; glow?: boolean; children?: ReactNode }) {
-  const r = (size - width) / 2 - 2;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90" aria-hidden>
-      <defs>
-        <linearGradient id="orb-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={mix(100)} />
-          <stop offset="1" stopColor={mix(45, '#60a5fa')} />
-        </linearGradient>
-      </defs>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={mix(18)} strokeWidth={width} />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="url(#orb-grad)"
-        strokeWidth={width}
-        strokeLinecap="round"
-        strokeDasharray={`${c * value} ${c}`}
-        style={glow ? { filter: `drop-shadow(0 0 4px ${mix(80)})`, transition: 'stroke-dasharray 0.6s linear' } : undefined}
-      />
-      {children}
-    </svg>
-  );
-}
-
 function NeonOrbFace({ parts, now }: FaceProps) {
-  const progress = (now.getSeconds() + now.getMilliseconds() / 1000) / 60;
+  const s = now.getSeconds() + now.getMilliseconds() / 1000;
+  const m = now.getMinutes() + s / 60;
+  const h = (now.getHours() % 12) + m / 60;
+  const polar = (deg: number, r: number) => {
+    const a = ((deg - 90) * Math.PI) / 180;
+    return [50 + r * Math.cos(a), 50 + r * Math.sin(a)];
+  };
+  const [sx, sy] = polar(s * 6, 44);
   return (
-    <div className="flex h-full w-full items-center justify-center gap-[5cqw] px-[4cqw]">
+    <div className="flex h-full w-full items-center justify-center gap-[4cqw] px-[3cqw]">
       <div className={`relative ${DIAL}`}>
-        <Ring value={progress || 0.001} width={6} />
-        <span className="absolute inset-0 flex flex-col items-center justify-center font-mac text-white tabular-nums">
-          <span className="text-[min(22cqh,9cqw)] leading-none font-medium">
-            {parts.hours}:{parts.minutes}
+        <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
+          <defs>
+            <radialGradient id="chrono-core" cx="50%" cy="45%" r="55%">
+              <stop offset="0%" stopColor={mix(30, '#0b1020')} />
+              <stop offset="70%" stopColor="#05070d" />
+              <stop offset="100%" stopColor="#020308" />
+            </radialGradient>
+            <filter id="chrono-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.2" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <circle cx="50" cy="50" r="49" fill="url(#chrono-core)" stroke={mix(35)} strokeWidth="0.6" />
+          {/* 60 micro ticks, every 5th a light bar */}
+          {Array.from({ length: 60 }, (_, i) => {
+            const [x1, y1] = polar(i * 6, i % 5 ? 45.5 : 43);
+            const [x2, y2] = polar(i * 6, 47.5);
+            return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={i % 5 ? 'rgba(255,255,255,0.18)' : A} strokeWidth={i % 5 ? 0.5 : 1.2} />;
+          })}
+          {/* slowly counter-rotating data rings */}
+          <g className="chrono-spin">
+            <circle cx="50" cy="50" r="36" fill="none" stroke={mix(45)} strokeWidth="0.5" strokeDasharray="1 3" />
+          </g>
+          <g className="chrono-spin-rev">
+            <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.6" strokeDasharray="18 6 2 6" />
+          </g>
+          {/* seconds sweep arc + orbiting light */}
+          <circle
+            cx="50" cy="50" r="44" fill="none" stroke={A} strokeWidth="0.8" strokeLinecap="round"
+            strokeDasharray={`${(s / 60) * 276.5} 276.5`} transform="rotate(-90 50 50)" opacity="0.55"
+          />
+          <circle cx={sx} cy={sy} r="1.6" fill="#fff" filter="url(#chrono-glow)" />
+          {/* light-beam hands */}
+          <g filter="url(#chrono-glow)" strokeLinecap="round">
+            <line x1="50" y1="50" x2={polar(h * 30, 22)[0]} y2={polar(h * 30, 22)[1]} stroke="#fff" strokeWidth="2.4" />
+            <line x1="50" y1="50" x2={polar(m * 6, 34)[0]} y2={polar(m * 6, 34)[1]} stroke={A} strokeWidth="1.5" />
+          </g>
+          <circle cx="50" cy="50" r="3.2" fill="#05070d" stroke={A} strokeWidth="1" />
+          <circle cx="50" cy="50" r="1" fill="#fff" />
+          <text x="50" y="68" textAnchor="middle" fontSize="5" fontFamily="monospace" fill={mix(70, '#fff')} letterSpacing="1">
+            CHRONO·2100
+          </text>
+        </svg>
+      </div>
+      {/* side readout */}
+      <div className="flex flex-col gap-[1.5cqh] font-mono leading-none tabular-nums">
+        <span className="text-[min(20cqh,8cqw)] font-semibold text-white">
+          {parts.hours}:{parts.minutes}
+        </span>
+        <span className="flex items-center gap-[1cqw]">
+          <span className="text-[min(12cqh,4.6cqw)]" style={{ color: A }}>
+            {parts.seconds}
           </span>
-          <Meridiem m={parts.meridiem} className="mt-[2cqh] text-white/70" />
+          <Meridiem m={parts.meridiem} className="text-white/60" />
+        </span>
+        <span aria-hidden className="flex gap-[0.6cqw]">
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={i} className="h-[1.6cqh] w-[2.2cqw] rounded-[1px]" style={{ background: i < Math.ceil(s / 10) ? A : 'rgba(255,255,255,0.12)' }} />
+          ))}
         </span>
       </div>
     </div>
@@ -73,11 +110,14 @@ function NeonOrbFace({ parts, now }: FaceProps) {
 function FlipCard({ value }: { value: string }) {
   const card: CSSProperties = { background: `linear-gradient(180deg, ${mix(28, '#1f232c')}, ${mix(14, '#0f1115')})` };
   return (
-    <span className="relative flex h-[66cqh] w-[30cqw] items-center justify-center overflow-hidden rounded-[6cqh] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.7)]" style={card}>
-      <span className="font-display text-[min(48cqh,19cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>{value}</span>
+    <span className="relative flex h-[52cqh] w-[24cqw] items-center justify-center overflow-hidden rounded-[4cqh] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.7)]" style={card}>
+      {/* hinge pins */}
+      <span aria-hidden className="absolute top-1/2 left-0 z-10 h-[5cqh] w-[0.8cqw] -translate-y-1/2 rounded-r-sm bg-black/70" />
+      <span aria-hidden className="absolute top-1/2 right-0 z-10 h-[5cqh] w-[0.8cqw] -translate-y-1/2 rounded-l-sm bg-black/70" />
+      <span className="font-display text-[min(38cqh,15cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>{value}</span>
       {/* top half flips down whenever the value changes */}
       <span key={value} aria-hidden className="flip-top absolute inset-x-0 top-0 h-1/2 overflow-hidden" style={card}>
-        <span className="absolute inset-x-0 top-0 flex h-[66cqh] items-center justify-center font-display text-[min(48cqh,19cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>
+        <span className="absolute inset-x-0 top-0 flex h-[52cqh] items-center justify-center font-display text-[min(38cqh,15cqw)] leading-none font-bold tabular-nums" style={{ color: "#fff" }}>
           {value}
         </span>
       </span>
@@ -88,18 +128,38 @@ function FlipCard({ value }: { value: string }) {
 
 function FlipFace({ parts }: FaceProps) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-[3cqh]">
-      <div className="flex items-end gap-[2.5cqw]">
-        <FlipCard value={parts.hours} />
-        <FlipCard value={parts.minutes} />
-        <Meridiem m={parts.meridiem} className="pb-[2cqh] text-white/70" />
+    <div className="flex h-full w-full flex-col items-center justify-center">
+      {/* the case */}
+      <div
+        className="flip-case relative flex items-center gap-[2cqw] rounded-[9cqh] px-[3.5cqw] pt-[7cqh] pb-[6cqh]"
+        style={{
+          background: `linear-gradient(180deg, ${mix(12, '#2a2e37')}, ${mix(6, '#14161b')} 60%, #0c0d10)`,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 6px rgba(0,0,0,0.6), 0 10px 22px -10px rgba(0,0,0,0.8), 0 0 0 1px ${mix(18)}`,
+        }}
+      >
+        <span aria-hidden className={`absolute top-[1.8cqh] left-1/2 -translate-x-1/2 font-mono ${TINY} tracking-[0.4em] text-white/35`}>DEVDECK</span>
+        {/* recessed window */}
+        <div className="flex items-center gap-[1.2cqw] rounded-[5cqh] bg-black/55 p-[1.6cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
+          <FlipCard value={parts.hours} />
+          <span aria-hidden className="flex flex-col gap-[3cqh]">
+            <span className="size-[1.6cqh] rounded-full" style={{ background: A, boxShadow: `0 0 6px ${A}` }} />
+            <span className="size-[1.6cqh] rounded-full" style={{ background: A, boxShadow: `0 0 6px ${A}` }} />
+          </span>
+          <FlipCard value={parts.minutes} />
+        </div>
+        {parts.meridiem && (
+          <span className={`flex flex-col items-center gap-[1cqh] font-mono ${TINY} text-white/45`}>
+            <span style={parts.meridiem === 'AM' ? { color: A } : undefined}>AM</span>
+            <span style={parts.meridiem === 'PM' ? { color: A } : undefined}>PM</span>
+          </span>
+        )}
+        {/* feet */}
+        <span aria-hidden className="absolute -bottom-[2.4cqh] left-[14%] h-[2.6cqh] w-[12%] rounded-b-[2cqh] bg-[#0a0b0e]" />
+        <span aria-hidden className="absolute right-[14%] -bottom-[2.4cqh] h-[2.6cqh] w-[12%] rounded-b-[2cqh] bg-[#0a0b0e]" />
       </div>
     </div>
   );
 }
-
-
-
 
 // ---- 8. Gradient Blocks ---------------------------------------------------------------------
 
@@ -146,60 +206,52 @@ function TypographicBoldFace({ parts, now }: FaceProps) {
 
 // ---- 13. Futuristic HUD ---------------------------------------------------------------------------
 
-function FuturisticHudFace({ parts }: FaceProps) {
+function FuturisticHudFace({ parts, now }: FaceProps) {
+  const sec = now.getSeconds();
   return (
-    <div className="relative flex h-full w-full items-center justify-center p-[5cqh]">
-      <svg aria-hidden viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute inset-[5cqh] h-[calc(100%-10cqh)] w-[calc(100%-10cqh)]">
-        <path
-          d="M14 2 H186 L198 14 V70 L182 98 H18 L2 84 V14 Z"
-          fill={mix(8, 'rgba(10,14,25,0.85)')}
-          stroke={A}
-          strokeWidth="1.4"
-          vectorEffect="non-scaling-stroke"
-          style={{ filter: `drop-shadow(0 0 4px ${mix(70)})` }}
-        />
+    <div className="relative flex h-full w-full items-center justify-center p-[3cqh]">
+      <svg aria-hidden viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute inset-[3cqh] h-[calc(100%-6cqh)] w-[calc(100%-6cqh)]">
+        <defs>
+          <pattern id="hud-carbon" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="4" height="4" fill="#07090f" />
+            <rect width="2" height="4" fill="#0d1018" />
+          </pattern>
+          <pattern id="hud-hazard" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+            <rect width="3" height="6" fill={A} />
+          </pattern>
+        </defs>
+        {/* receiver body: angular armour plate */}
+        <path d="M10 2 H150 L160 10 H192 L198 18 V64 L188 74 V90 L180 98 H22 L12 90 V70 L2 60 V12 Z" fill="url(#hud-carbon)" stroke={A} strokeWidth="1.3" vectorEffect="non-scaling-stroke" style={{ filter: `drop-shadow(0 0 4px ${mix(65)})` }} />
+        {/* panel seams + vents */}
+        <path d="M160 10 V40 M150 2 V18 H120" fill="none" stroke={mix(40)} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <rect key={i} x={166 + i * 5} y="24" width="2.4" height="14" rx="1" fill="rgba(255,255,255,0.08)" />
+        ))}
+        {/* hazard stripe corner */}
+        <path d="M12 70 L2 60 V84 L12 90 Z" fill="url(#hud-hazard)" opacity="0.85" />
+        {/* rivets */}
+        {[[18, 8], [140, 8], [186, 66], [28, 92], [170, 92]].map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="1.3" fill="rgba(255,255,255,0.25)" />
+        ))}
       </svg>
+      <span aria-hidden className={`absolute top-[6cqh] left-[8cqw] font-mono ${TINY} tracking-[0.25em]`} style={{ color: mix(80, '#fff') }}>
+        SYS.TIME // MK-II
+      </span>
       <div className="face-dark relative flex flex-col items-center">
-        <span className="flex items-baseline gap-[1.5cqw] font-mac text-white tabular-nums">
-          <span className="text-[min(36cqh,14cqw)] leading-none font-medium">
+        <span className="flex items-baseline gap-[1.5cqw] font-cyber text-white tabular-nums">
+          <span className="text-[min(48cqh,18cqw)] leading-none font-bold" style={{ textShadow: `0 0 14px ${mix(55)}, 2px 0 0 ${mix(40, '#0ff')}, -2px 0 0 rgb(255 0 60 / 0.4)` }}>
             {parts.hours}:{parts.minutes}
           </span>
           <Meridiem m={parts.meridiem} className="text-white/80" />
         </span>
       </div>
-      <span aria-hidden className="absolute right-[9cqw] bottom-[9cqh] flex gap-[1cqw]">
-        {[0, 1, 2, 3].map((i) => (
-          <span key={i} className="h-[4cqh] w-[2.4cqw] -skew-x-[30deg]" style={{ background: A, opacity: 0.55 + i * 0.15 }} />
+      {/* ammo counter: one cell per 5 s */}
+      <span aria-hidden className="absolute right-[7cqw] bottom-[7cqh] flex items-end gap-[0.5cqw]">
+        {Array.from({ length: 12 }, (_, i) => (
+          <span key={i} className="w-[1.2cqw] -skew-x-[20deg]" style={{ height: `${3 + (i % 3)}cqh`, background: i < Math.ceil((sec + 1) / 5) ? A : 'rgba(255,255,255,0.1)' }} />
         ))}
+        <span className={`ml-[1cqw] font-mono ${TINY}`} style={{ color: A }}>{String(sec).padStart(2, '0')}</span>
       </span>
-    </div>
-  );
-}
-
-// ---- 9. Circular Progress ----------------------------------------------------------------------
-
-function CircularProgressFace({ parts, now }: FaceProps) {
-  const progress = (now.getSeconds() + 1) / 60;
-  const angle = progress * 2 * Math.PI - Math.PI / 2;
-  return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className={`relative ${DIAL}`}>
-        <Ring value={progress} width={2.5} glow={false}>
-          <circle
-            cx={50 + 44.75 * Math.cos(angle + Math.PI / 2)}
-            cy={50 + 44.75 * Math.sin(angle + Math.PI / 2)}
-            r="3"
-            fill={A}
-            style={{ filter: `drop-shadow(0 0 3px ${A})` }}
-          />
-        </Ring>
-        <span className="absolute inset-0 flex flex-col items-center justify-center font-mac text-white tabular-nums">
-          <span className="text-[min(20cqh,8cqw)] leading-none font-light">
-            {parts.hours}:{parts.minutes}
-          </span>
-          <Meridiem m={parts.meridiem} className="mt-[1cqh] text-white/65" />
-        </span>
-      </div>
     </div>
   );
 }
@@ -208,31 +260,138 @@ function CircularProgressFace({ parts, now }: FaceProps) {
 
 const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-function MultiTimezoneFace({ parts, now }: FaceProps) {
-  const zones = useStore((s) => s.settings.clockZones ?? DEFAULT_ZONES);
+function MultiTimezoneFace({ parts, now, interactive }: FaceProps) {
+  const zones = useStore((s) => s.settings.clockZones ?? DEFAULT_ZONES).slice(0, 2);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const localName = useLocalPlaceName();
   const h24 = parts.meridiem === null;
-  const tiles = [
-    { city: zoneCity(LOCAL_TZ), hours: parts.hours, minutes: parts.minutes, meridiem: parts.meridiem, offset: 'local', local: true },
-    ...zones.slice(0, 3).map((tz) => ({ city: zoneCity(tz), ...zoneTime(now, tz, h24), local: false })),
+  const [edit, setEdit] = useState<{ index: number; anchor: HTMLElement } | null>(null);
+  const tiles: Array<{ key: string; city: string; hours: string; minutes: string; meridiem: string | null; offset: string; local: boolean; index: number }> = [
+    { key: 'local', city: localName, hours: parts.hours, minutes: parts.minutes, meridiem: parts.meridiem, offset: 'local', local: true, index: -1 },
+    ...zones.map((tz, i) => ({ key: tz, city: zoneCity(tz), ...zoneTime(now, tz, h24), local: false, index: i })),
   ];
+  const slots = 2 - zones.length;
+  const pick = (index: number, tz: string) => {
+    const next = [...zones];
+    next[index] = tz;
+    updateSettings({ clockZones: next.filter(Boolean) });
+    setEdit(null);
+  };
+  // Clicks on a city change it — without also switching the clock style.
+  const open = (index: number) => (e: MouseEvent<HTMLElement>) => {
+    if (!interactive) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setEdit({ index, anchor: e.currentTarget });
+  };
   return (
     <div className="flex h-full w-full items-center justify-center gap-[2cqw] px-[3cqw]">
       {tiles.map((t) => (
         <div
-          key={t.city}
-          className="face-zone flex h-[78cqh] min-w-0 flex-1 flex-col items-center justify-center rounded-[6cqh] border px-[1cqw]"
+          key={t.key}
+          role={interactive && !t.local ? 'button' : undefined}
+          aria-label={interactive && !t.local ? `Change ${t.city}` : undefined}
+          onClick={t.local ? undefined : open(t.index)}
+          className={`face-zone flex h-[78cqh] min-w-0 flex-1 flex-col items-center justify-center rounded-[6cqh] border px-[1cqw] ${interactive && !t.local ? 'cursor-pointer hover:brightness-125' : ''}`}
           style={t.local ? { borderColor: mix(55), boxShadow: `0 0 0 1px ${mix(25)}` } : undefined}
+          title={t.local ? 'Your location' : interactive ? 'Click to change city' : undefined}
         >
           <span className="font-mac text-[min(24cqh,7.5cqw)] leading-none font-medium text-white tabular-nums">
             {t.hours}:{t.minutes}
           </span>
           <span className={`mt-[2cqh] max-w-full truncate font-mac ${TINY} text-white/75`}>{t.city}</span>
-          <span className={`font-mono ${TINY} ${t.local ? "" : "text-white/50"}`} style={t.local ? { color: A } : undefined}>
+          <span className={`font-mono ${TINY} ${t.local ? '' : 'text-white/50'}`} style={t.local ? { color: A } : undefined}>
             {t.local ? (t.meridiem ?? 'local') : `${t.offset}${t.meridiem ? ` · ${t.meridiem}` : ''}`}
           </span>
         </div>
       ))}
+      {Array.from({ length: slots }, (_, i) => (
+        <div
+          key={`add${i}`}
+          role={interactive ? 'button' : undefined}
+          aria-label={interactive ? 'Add a city' : undefined}
+          onClick={open(zones.length + i)}
+          className={`face-zone flex h-[78cqh] min-w-0 flex-1 flex-col items-center justify-center rounded-[6cqh] border border-dashed px-[1cqw] text-white/45 ${interactive ? 'cursor-pointer hover:text-white/80' : ''}`}
+        >
+          <span className="text-[min(20cqh,7cqw)] leading-none">+</span>
+          <span className={`mt-[2cqh] font-mac ${TINY}`}>Add city</span>
+        </div>
+      ))}
+      {edit && <ZoneSearch anchor={edit.anchor} now={now} onPick={(tz) => pick(edit.index, tz)} onClose={() => setEdit(null)} />}
     </div>
+  );
+}
+
+// The first clock is wherever you are: the place from the weather lookup
+// (browser location), else the city of the browser's time zone.
+function useLocalPlaceName() {
+  const useGeolocation = useStore((s) => s.settings.useGeolocation);
+  const manualCity = useStore((s) => s.settings.manualCity);
+  const weatherSource = useStore((s) => s.settings.weatherSource);
+  const customWeatherSources = useStore((s) => s.settings.customWeatherSources);
+  const w = cachedWeather({ useGeolocation, manualCity, weatherSource, customWeatherSources });
+  return w?.place ?? zoneCity(LOCAL_TZ);
+}
+
+const ALL_ZONES: string[] = (() => {
+  try {
+    return (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? ZONE_CHOICES.map((z) => z.tz);
+  } catch {
+    return ZONE_CHOICES.map((z) => z.tz);
+  }
+})();
+
+// Searchable list of every time zone (city · region · offset).
+function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now: Date; onPick: (tz: string) => void; onClose: () => void }) {
+  const [q, setQ] = useState('');
+  const [active, setActive] = useState(0);
+  const list = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return ALL_ZONES.map((tz) => ({ tz, city: zoneCity(tz), region: tz.split('/')[0] }))
+      .filter((z) => !needle || z.city.toLowerCase().includes(needle) || z.tz.toLowerCase().includes(needle))
+      .slice(0, 60);
+  }, [q]);
+  return (
+    <AnchoredPopover anchor={anchor} onClose={onClose} label="Choose a city" width={280}>
+      {/* The popover is a portal, so React would bubble clicks to the clock button (style switch). */}
+      <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.stopPropagation()}>
+      <input
+        autoFocus
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setActive(0);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') (e.preventDefault(), setActive((i) => Math.min(list.length - 1, i + 1)));
+          else if (e.key === 'ArrowUp') (e.preventDefault(), setActive((i) => Math.max(0, i - 1)));
+          else if (e.key === 'Enter' && list[active]) onPick(list[active].tz);
+        }}
+        placeholder="Search a city or time zone…"
+        aria-label="Search time zones"
+        className="dtp-stepper mb-2 h-8 w-full rounded-lg border px-2.5 text-[12px] text-white outline-none placeholder:text-white/35"
+      />
+      <ul role="listbox" aria-label="Time zones" className="ultra-thin-scrollbar max-h-[240px] overflow-y-auto">
+        {list.map((z, i) => (
+          <li
+            key={z.tz}
+            role="option"
+            aria-selected={i === active}
+            onMouseEnter={() => setActive(i)}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onPick(z.tz)}
+            className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-white/85 ${i === active ? 'dropdown-active text-white' : ''}`}
+          >
+            <span className="min-w-0 flex-1 truncate">
+              {z.city} <span className="text-[10.5px] text-white/40">{z.region}</span>
+            </span>
+            <span className="shrink-0 font-mono text-[10px] text-white/45">{zoneTime(now, z.tz, true).offset}</span>
+          </li>
+        ))}
+        {list.length === 0 && <li className="px-2 py-2 text-[11px] text-white/40">No match</li>}
+      </ul>
+      </div>
+    </AnchoredPopover>
   );
 }
 
@@ -242,6 +401,5 @@ export const FACES2 = {
   'gradient-blocks': GradientBlocksFace,
   'typographic-bold': TypographicBoldFace,
   'futuristic-hud': FuturisticHudFace,
-  'circular-progress': CircularProgressFace,
   'multi-timezone': MultiTimezoneFace,
 } as const;

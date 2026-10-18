@@ -176,6 +176,21 @@ export interface PersistedState {
   todos: Todo[];
   processing: ProcessingItem[];
   feeds: FeedsConfig;
+  // Deleted sites and removed Focus/Queue items, restorable until purged.
+  trash: Trash;
+}
+
+export interface TrashedSite extends Site {
+  deletedAt: number;
+  fromCategory: string; // names at deletion time, for the bin list
+  fromSubcategory: string | null;
+}
+export interface TrashedProcessing extends ProcessingItem {
+  deletedAt: number;
+}
+export interface Trash {
+  sites: TrashedSite[];
+  processing: TrashedProcessing[];
 }
 
 // Discriminates which collection a `reorder` call targets.
@@ -226,7 +241,7 @@ export interface CustomWeatherSource {
   siteUrl: string; // opened when the weather is clicked; may use {lat}/{lon}
 }
 
-export type GreetStyle = 'classic' | 'accent' | 'gradient' | 'aurora' | 'neon' | 'outline';
+export type GreetStyle = 'classic' | 'accent' | 'gradient' | 'aurora' | 'neon' | 'outline' | 'chrome' | 'synthwave' | 'holo' | 'terminal' | 'fire' | 'ice';
 export const GREET_STYLES: Array<{ id: GreetStyle; name: string }> = [
   { id: 'classic', name: 'Classic' },
   { id: 'accent', name: 'Accent' },
@@ -234,4 +249,10 @@ export const GREET_STYLES: Array<{ id: GreetStyle; name: string }> = [
   { id: 'aurora', name: 'Aurora' },
   { id: 'neon', name: 'Neon' },
   { id: 'outline', name: 'Outline' },
+  { id: 'chrome', name: 'Chrome' },
+  { id: 'synthwave', name: 'Synthwave' },
+  { id: 'holo', name: 'Holo' },
+  { id: 'terminal', name: 'Terminal' },
+  { id: 'fire', name: 'Fire' },
+  { id: 'ice', name: 'Ice' },
 ];

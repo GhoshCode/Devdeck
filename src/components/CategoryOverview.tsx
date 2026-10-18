@@ -13,13 +13,15 @@ import { getCategoryDisplayColor } from '../utils';
 //   narrow (1)      — compact name + count boxes
 // Clicking a category jumps the cards row to it.
 
+// Four solid blocks in a staggered grid (tall / short over short / tall),
+// filled with the theme accent.
 export function CategoryMenuIcon({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 20 20" className={className} fill="none" strokeWidth="2" aria-hidden>
-      <rect x="2.5" y="2.5" width="6.5" height="6.5" rx="2" stroke="var(--color-accent)" />
-      <rect x="11" y="2.5" width="6.5" height="6.5" rx="2" stroke="currentColor" />
-      <rect x="2.5" y="11" width="6.5" height="6.5" rx="2" stroke="currentColor" />
-      <rect x="11" y="11" width="6.5" height="6.5" rx="2" stroke="var(--color-accent)" />
+    <svg viewBox="0 0 20 20" className={className} fill="var(--color-accent)" aria-hidden>
+      <rect x="2" y="2" width="7.2" height="9.6" rx="2.2" />
+      <rect x="10.8" y="2" width="7.2" height="5.4" rx="2" />
+      <rect x="2" y="12.8" width="7.2" height="5.2" rx="2" />
+      <rect x="10.8" y="8.6" width="7.2" height="9.4" rx="2.2" />
     </svg>
   );
 }
@@ -70,9 +72,10 @@ export const CategoryOverview = memo(function CategoryOverview({ onClose }: { on
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // The cards view mounts again after closing, so reveal once it has laid out.
   const jump = (id: string) => {
     onClose();
-    requestAnimationFrame(() => revealCategory(id));
+    setTimeout(() => revealCategory(id), 420);
   };
   const openSite = (e: MouseEvent, siteId: string) => {
     e.stopPropagation();
@@ -88,13 +91,22 @@ export const CategoryOverview = memo(function CategoryOverview({ onClose }: { on
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.16 }}
-      className="category-overview @container absolute inset-3 z-20 flex flex-col overflow-hidden rounded-2xl border"
+      className="category-overview @container flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border"
     >
-      <header className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] px-4 py-2">
+      {/* The top bar takes you back to the category cards. */}
+      <header
+        role="button"
+        tabIndex={0}
+        onClick={onClose}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onClose())}
+        aria-label="Back to category cards"
+        title="Back to category cards"
+        className="overview-bar flex shrink-0 cursor-pointer items-center gap-2 border-b border-white/[0.07] px-4 py-2"
+      >
         <CategoryMenuIcon className="size-4 text-white/70" />
         <h2 className="font-display text-[12px] font-bold tracking-[0.16em] text-white/80 uppercase">All categories</h2>
         <span className="rounded-full bg-white/[0.08] px-2 font-mono text-[10px] text-white/55">{rows.length}</span>
-        <span className="ml-auto hidden font-mono text-[10px] text-white/35 @min-[520px]:inline">click a category to jump · Esc to close</span>
+        <span className="ml-auto hidden font-mono text-[10px] text-white/35 @min-[520px]:inline">click a category to jump · click this bar or Esc for the cards</span>
         <button
           type="button"
           onClick={onClose}

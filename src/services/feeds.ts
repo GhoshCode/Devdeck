@@ -150,6 +150,24 @@ export function selectPanel(items: readonly FeedItem[], category: FeedCategory, 
     .slice(0, limit);
 }
 
+// Promise.allSettled with at most `limit` tasks running at once.
+async function settleLimited<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<PromiseSettledResult<T>[]> {
+  const out: PromiseSettledResult<T>[] = new Array(tasks.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < tasks.length) {
+      const i = next++;
+      try {
+        out[i] = { status: 'fulfilled', value: await tasks[i]() };
+      } catch (reason) {
+        out[i] = { status: 'rejected', reason };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+  return out;
+}
+
 export interface FeedResult {
   items: FeedItem[];
   errors: string[]; // per-source failures; other sources still show
@@ -175,7 +193,7 @@ export async function loadFeeds(
     if (hit) return hit;
   }
   const enabled = sources.filter((s) => s.enabled);
-  const settled = await Promise.allSettled(enabled.map((s) => fetchSource(s, opts.fetcher)));
+  const settled = await settleLimited(enabled.map((s) => () => fetchSource(s, opts.fetcher)), 8);
   const result: FeedResult = {
     items: settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])),
     errors: settled.flatMap((r, i) =>

@@ -5,6 +5,7 @@ import type { Topic } from '../../types';
 import { useNow } from '../../hooks/useNow';
 import { FEED_TTL_MS, cachedFeeds, loadFeeds, selectPanel, type FeedItem, type FeedResult } from '../../services/feeds';
 import { relativeAge } from '../../services/search';
+import { GearsIcon } from '../ui/icons';
 
 // Right column (plan Phase 5): I — tech news (items 1–4) and developer jobs
 // (items 5–8) — over J, the topic chips that filter both panels.
@@ -157,11 +158,17 @@ function TopicChips({
       <div className="mb-2 flex items-center gap-2">
         <span className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white/55">J</span>
         <h2 className="font-display text-[11px] font-semibold tracking-[0.18em] text-white/65">TOPICS</h2>
-        <button type="button" onClick={onManage} aria-label="Manage topics and sources" title="Manage topics and sources" className="ml-auto text-xs text-white/35 hover:text-white">
-          ⚙
+        <button
+          type="button"
+          onClick={onManage}
+          aria-label="Manage topics and sources"
+          title="Manage topics and sources"
+          className="ml-auto flex size-8 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <GearsIcon className="size-[22px]" />
         </button>
       </div>
-      <div role="radiogroup" aria-label="Filter feeds by topic" className="flex flex-wrap gap-1.5">
+      <div role="radiogroup" aria-label="Filter feeds by topic" className="ultra-thin-scrollbar flex max-h-[64px] flex-wrap gap-1.5 overflow-y-auto pr-1">
         <button type="button" role="radio" aria-checked={active === null} onClick={() => onSelect(null)} className={chip(active === null)}>
           All
         </button>

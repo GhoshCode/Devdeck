@@ -29,8 +29,36 @@ export function sortActive(todos: readonly Todo[], now: number): Todo[] {
   const overdue = active
     .filter((t) => isOverdue(t, now))
     .sort((a, b) => dueTimestamp(a)! - dueTimestamp(b)!);
-  const rest = active.filter((t) => !isOverdue(t, now)).sort((a, b) => a.order - b.order);
+  // Then by priority (P1, P2, P3, none); your manual order within each.
+  const rest = active.filter((t) => !isOverdue(t, now)).sort((a, b) => prioRank(a) - prioRank(b) || a.order - b.order);
   return [...overdue, ...rest];
+}
+
+const prioRank = (t: Pick<Todo, 'priority'>) => (t.priority ? t.priority : 4);
+
+// How a row is tinted: by when it is due.
+export type TodoTone = 'overdue' | 'soon' | 'today' | 'week' | 'later' | 'none';
+export function todoTone(t: Todo, now: number): TodoTone {
+  const due = dueTimestamp(t);
+  if (due === null) return 'none';
+  if (due <= now) return 'overdue';
+  if (due - now <= 3_600_000) return 'soon';
+  if (t.dueDate === localDateKey(new Date(now))) return 'today';
+  if (due - now <= 7 * 86_400_000) return 'week';
+  return 'later';
+}
+
+// "Immediate action": overdue, due within the hour, or urgent (P1) and due today.
+export function needsAction(t: Todo, now: number): boolean {
+  const tone = todoTone(t, now);
+  return tone === 'overdue' || tone === 'soon' || (t.priority === 1 && tone === 'today');
+}
+
+export type TodoFocus = 'overdue' | 'priority' | 'action';
+export function matchesFocus(t: Todo, focus: TodoFocus, now: number): boolean {
+  if (focus === 'overdue') return isOverdue(t, now);
+  if (focus === 'priority') return !!t.priority;
+  return needsAction(t, now);
 }
 
 export const sortArchived = (todos: readonly Todo[]): Todo[] =>

@@ -77,14 +77,32 @@ export function useSpeechInput(onText: (text: string, final: boolean) => void) {
     return () => clearTimeout(t);
   }, [error]);
 
-  const stop = useCallback(() => recRef.current?.stop(), []);
+  const startingRef = useRef(false);
+
+  // Turning the mic off is immediate: abort (rec.stop() would keep listening
+  // until the engine finishes the phrase) and drop the listening state now.
+  const stop = useCallback(() => {
+    startingRef.current = false;
+    const rec = recRef.current;
+    recRef.current = null;
+    setListening(false);
+    rec?.abort();
+  }, []);
 
   const start = useCallback(async () => {
     const Ctor = recognitionCtor();
     if (!Ctor) return setError('Voice input is not supported in this browser');
-    if (recRef.current) return;
+    if (recRef.current || startingRef.current) return;
     setError(null);
-    if (!(await ensureMicrophone())) return setError(SPEECH_ERRORS['not-allowed']);
+    startingRef.current = true;
+    setListening(true); // the button shows "on" while the mic permission is checked
+    const allowed = await ensureMicrophone();
+    if (!startingRef.current) return; // turned off while we waited
+    startingRef.current = false;
+    if (!allowed) {
+      setListening(false);
+      return setError(SPEECH_ERRORS['not-allowed']);
+    }
 
     const rec = new Ctor();
     rec.lang = navigator.language || 'en-US';
@@ -104,6 +122,8 @@ export function useSpeechInput(onText: (text: string, final: boolean) => void) {
       if (e.error !== 'aborted') setError(SPEECH_ERRORS[e.error] ?? 'Voice input stopped unexpectedly');
     };
     rec.onend = () => {
+      // An older, aborted session ending must not switch off a newer one.
+      if (recRef.current && recRef.current !== rec) return;
       recRef.current = null;
       setListening(false);
     };
