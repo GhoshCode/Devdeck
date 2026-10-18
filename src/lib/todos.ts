@@ -1,4 +1,4 @@
-import type { Todo } from '../types';
+import type { Repeat, Todo } from '../types';
 import { localDateKey } from './time';
 
 // The moment a to-do becomes overdue. A date with no time is due by the end of
@@ -69,4 +69,35 @@ export function matchesView(t: Todo, view: TodoView, now: number): boolean {
   if (view === 'overdue') return overdue;
   if (view === 'today') return overdue || isDueToday(t, now);
   return !!t.dueDate && !overdue && !isDueToday(t, now);
+}
+
+export const REPEAT_LABEL: Record<Repeat, string> = {
+  daily: 'Daily',
+  weekdays: 'Weekdays',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+};
+
+// One step of a repeat from a 'YYYY-MM-DD' date. Months keep the day where
+// they can (Jan 31 → Feb 28/29), weekdays skip Saturday and Sunday.
+export function stepRepeat(dateKey: string, repeat: Repeat): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  if (repeat === 'monthly' || repeat === 'yearly') {
+    const months = repeat === 'monthly' ? 1 : 12;
+    const last = new Date(y, m - 1 + months + 1, 0).getDate();
+    return localDateKey(new Date(y, m - 1 + months, Math.min(d, last)));
+  }
+  let next = new Date(y, m - 1, d + (repeat === 'weekly' ? 7 : 1));
+  if (repeat === 'weekdays') while (next.getDay() === 0 || next.getDay() === 6) next = new Date(next.getFullYear(), next.getMonth(), next.getDate() + 1);
+  return localDateKey(next);
+}
+
+// The next due date after completing: one step on, then on until it is no
+// longer in the past (so a weekly task ticked late lands on its next slot).
+export function nextRepeatDate(t: Pick<Todo, 'dueDate' | 'dueTime'>, repeat: Repeat, now: number): string | null {
+  if (!t.dueDate) return null;
+  let next = stepRepeat(t.dueDate, repeat);
+  for (let i = 0; i < 1000 && (dueTimestamp({ dueDate: next, dueTime: t.dueTime }) ?? 0) <= now; i++) next = stepRepeat(next, repeat);
+  return next;
 }

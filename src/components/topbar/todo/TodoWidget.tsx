@@ -18,6 +18,7 @@ import { useIdleTimeout } from '../../../hooks/useIdleTimeout';
 import { isOverdue, matchesView, sortActive, sortArchived, type TodoView } from '../../../lib/todos';
 import { localDateKey } from '../../../lib/time';
 import { parseQuickAdd } from '../../../lib/todoParse';
+import { REPEAT_LABEL } from '../../../lib/todos';
 import type { Priority } from '../../../types';
 import { PRIORITY_LABEL, TodoRow } from './TodoRow';
 import { DateTimePicker, describeDue, type DueValue } from './DateTimePicker';
@@ -44,6 +45,9 @@ const VIEWS: Array<{ id: TodoView; label: string }> = [
   { id: 'overdue', label: 'Overdue' },
 ];
 
+const ROW_PAGE = 40;
+const ANIMATE_UP_TO = 60; // above this, rows skip the layout animation
+
 export const TodoWidget = memo(function TodoWidget() {
   const todos = useStore((s) => s.todos);
   const reorder = useStore((s) => s.reorder);
@@ -52,6 +56,9 @@ export const TodoWidget = memo(function TodoWidget() {
   const [mode, setMode] = useState<Mode>('collapsed');
   const [view, setView] = useState<TodoView>('all');
   const [query, setQuery] = useState('');
+  // Long lists render in pages: every row is a drag target with a layout
+  // animation, so 200+ rows made each add take ~300 ms. "Show more" adds a page.
+  const [limit, setLimit] = useState(ROW_PAGE);
   const cardRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
@@ -102,7 +109,9 @@ export const TodoWidget = memo(function TodoWidget() {
   };
 
   // The list, shared by the inline card and the big box.
-  const list = (expanded: boolean, items: typeof active) => {
+  const list = (expanded: boolean, all: typeof active) => {
+    const items = all.slice(0, limit);
+    const hidden = all.length - items.length;
     const sortableIds = items.filter((t) => !isOverdue(t, now)).map((t) => t.id);
     return (
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -110,9 +119,20 @@ export const TodoWidget = memo(function TodoWidget() {
           <ul className={`mt-1.5 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 ${expanded ? 'ultra-thin-scrollbar' : ''}`}>
             <AnimatePresence initial={false}>
               {items.map((t) => (
-                <TodoRow key={t.id} todo={t} now={now} expanded={expanded} />
+                <TodoRow key={t.id} todo={t} now={now} expanded={expanded} animate={items.length <= ANIMATE_UP_TO} />
               ))}
             </AnimatePresence>
+            {hidden > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setLimit((n) => n + ROW_PAGE)}
+                  className="w-full rounded-md px-1.5 py-1 text-left font-mono text-[10.5px] text-white/50 hover:bg-white/[0.06] hover:text-white/80"
+                >
+                  Show {Math.min(ROW_PAGE, hidden)} more · {hidden} hidden
+                </button>
+              </li>
+            )}
             {active.length === 0 && <li className="px-1.5 pt-1 text-xs text-white/40">🎯 All done — add the next one above.</li>}
             {active.length > 0 && items.length === 0 && (
               <li className="px-1.5 pt-1 text-xs text-white/40">Nothing here{q ? ` for “${query}”` : ''}.</li>
@@ -329,7 +349,7 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!parsed) return;
-    addTodo({ text: parsed.text, ...finalDue, priority: finalPriority, tags });
+    addTodo({ text: parsed.text, ...finalDue, priority: finalPriority, tags, repeat: parsed.repeat });
     setText('');
     setDue(null);
     setPriority(null);
@@ -375,6 +395,9 @@ function Composer({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }
         <div data-testid="todo-parse" className="mt-1 flex flex-wrap items-center gap-1 px-1 font-mono text-[10px]">
           {finalDue.dueDate && (
             <span className="rounded bg-[var(--color-accent)]/15 px-1.5 py-px text-[var(--color-accent)]">📅 {describeDue(finalDue)}</span>
+          )}
+          {parsed?.repeat && finalDue.dueDate && (
+            <span className="rounded bg-[var(--color-accent)]/15 px-1.5 py-px text-[var(--color-accent)]">↻ {REPEAT_LABEL[parsed.repeat]}</span>
           )}
           {finalPriority > 0 && (
             <span className={`prio-${finalPriority} rounded px-1.5 py-px`} style={{ color: 'var(--prio)', background: 'color-mix(in srgb, var(--prio) 15%, transparent)' }}>

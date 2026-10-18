@@ -225,13 +225,26 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
     }
   });
   const [scrolling, setScrolling] = useState(false);
+  const paneRef = useRef(pane);
+  paneRef.current = pane;
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.scrollLeft = pane * el.clientWidth; // restore without animating
+    // When the card changes width (window or column resize) the old scroll
+    // offset no longer lines up with a pane: keep the chosen pane in view
+    // instead of letting the stale offset flip it.
+    let width = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      el.scrollLeft = paneRef.current * width;
+    });
+    ro.observe(el);
     let timer: ReturnType<typeof setTimeout>;
     const onScroll = () => {
+      if (el.clientWidth !== width) return; // a resize clamped the offset; the observer restores it
       setScrolling(true);
       clearTimeout(timer);
       timer = setTimeout(() => setScrolling(false), 900);
@@ -246,6 +259,7 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       clearTimeout(timer);
+      ro.disconnect();
       el.removeEventListener('scroll', onScroll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount

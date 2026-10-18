@@ -194,19 +194,31 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
       <span
         {...handlers}
         data-testid="weather-place"
-        className="flex max-w-full min-w-0 cursor-pointer items-baseline gap-1.5 leading-tight font-medium text-white/80 select-none"
+        className="flex max-w-full min-w-0 cursor-pointer flex-col items-start gap-0.5 leading-tight font-medium text-white/80 select-none"
       >
-        <span aria-hidden className="self-center text-[10px]">
-          📍
-        </span>
         {data ? (
           <>
-            {data.area && <span className="truncate text-[12px]">{data.area},</span>}
-            <span className="shrink-0 text-[13.5px] text-white/90">{data.place}</span>
-            {data.postcode && <span className="shrink-0 font-mono text-[12px] text-white/65">{data.postcode}</span>}
+            <span className="flex max-w-full min-w-0 items-center gap-1 text-[11px] text-white/75">
+              <span aria-hidden className="text-[10px]">
+                📍
+              </span>
+              <span className="truncate">{data.area ?? data.place}</span>
+            </span>
+            {data.area && (
+              <span className="max-w-full truncate pl-[15px] text-[14.5px] text-white/90">
+                {data.place}
+                {data.postcode && <span className="font-mono text-[11.5px] text-white/60">, {data.postcode}</span>}
+              </span>
+            )}
+            {!data.area && data.postcode && <span className="pl-[15px] font-mono text-[11.5px] text-white/60">{data.postcode}</span>}
           </>
         ) : (
-          <span className="text-[12px]">{error ? 'Unavailable' : 'Locating…'}</span>
+          <span className="flex items-center gap-1 text-[11px]">
+            <span aria-hidden className="text-[10px]">
+              📍
+            </span>
+            {error ? 'Unavailable' : 'Locating…'}
+          </span>
         )}
       </span>
     </div>

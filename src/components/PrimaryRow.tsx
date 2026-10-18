@@ -163,7 +163,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
                 categoryColor={categoryColor}
                 className="size-7 sm:size-8"
               />
-              <span className="w-full truncate text-xs sm:text-[13px] font-semibold text-white/90 group-hover/tile:text-white">
+              <span className="w-full truncate text-[12.5px] font-medium text-white/85 group-hover/tile:text-white">
                 {site.name}
               </span>
             </a>

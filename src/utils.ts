@@ -26,13 +26,17 @@ export function getHostname(rawUrl: string): string {
   }
 }
 
+// Generic subdomains that say nothing about the site (news.ycombinator.com → Ycombinator).
+const GENERIC_SUBDOMAINS = new Set(['www', 'm', 'news', 'app', 'docs', 'doc', 'blog', 'api', 'web', 'my', 'en', 'portal', 'dashboard', 'console', 'developer', 'developers']);
+
 /**
  * Derives a readable site name from a URL domain (e.g. "https://github.com/..." -> "Github").
  */
 export function deriveNameFromUrl(rawUrl: string): string {
   try {
-    const host = getHostname(rawUrl);
-    const part = host.split('.')[0] || '';
+    const labels = getHostname(rawUrl).split('.');
+    const first = labels.length > 2 && GENERIC_SUBDOMAINS.has(labels[0]) ? 1 : 0;
+    const part = labels[first] || '';
     if (!part) return '';
     return part.charAt(0).toUpperCase() + part.slice(1);
   } catch {

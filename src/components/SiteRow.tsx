@@ -69,13 +69,13 @@ export const SiteRow = memo(function SiteRow({
         <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
           <span
             title={site.name}
-            className="truncate text-sm font-semibold text-white/95 group-hover/site:text-white min-w-0 @min-[240px]:shrink-0 @min-[240px]:max-w-[65%]"
+            className="truncate text-[12.5px] font-medium text-white/85 group-hover/site:text-white min-w-0 @min-[240px]:shrink-0 @min-[240px]:max-w-[65%]"
           >
             {site.name}
           </span>
           <span
             title={site.url}
-            className="hidden truncate text-xs text-white/45 group-hover/site:text-white/70 min-w-0 flex-1 font-mono @min-[240px]:block"
+            className="hidden truncate text-[10px] text-white/35 group-hover/site:text-white/60 min-w-0 flex-1 @min-[240px]:block"
           >
             {hostname}
           </span>

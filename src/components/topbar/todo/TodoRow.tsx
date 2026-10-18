@@ -4,13 +4,14 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Priority, Todo } from '../../../types';
 import { useStore } from '../../../store';
-import { formatDue, isDueToday, isOverdue } from '../../../lib/todos';
+import { REPEAT_LABEL, formatDue, isDueToday, isOverdue } from '../../../lib/todos';
 import { DateTimePicker } from './DateTimePicker';
 
 interface TodoRowProps {
   todo: Todo;
   now: number;
   expanded: boolean; // drag, detail panel, delete only when the card is expanded
+  animate?: boolean; // layout animation (off for very long lists)
 }
 
 export const PRIORITY_LABEL: Record<Priority, string> = { 0: 'No priority', 1: 'P1 · Urgent', 2: 'P2 · High', 3: 'P3 · Normal' };
@@ -21,7 +22,7 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${
 // archives it (spec §3.4). Overdue rows sit in the Red Danger Zone and are not
 // draggable — how overdue they are decides their position. In the expanded
 // card, clicking a row opens its details: notes, subtasks, priority and tags.
-export const TodoRow = memo(function TodoRow({ todo, now, expanded }: TodoRowProps) {
+export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = true }: TodoRowProps) {
   const completeTodo = useStore((s) => s.completeTodo);
   const updateTodo = useStore((s) => s.updateTodo);
   const deleteTodo = useStore((s) => s.deleteTodo);
@@ -58,7 +59,7 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded }: TodoRowPro
 
   return (
     <motion.li
-      layout="position"
+      layout={animate ? 'position' : false}
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 48, transition: { duration: 0.22 } }}
@@ -71,7 +72,7 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded }: TodoRowPro
           type="button"
           onClick={() => completeTodo(todo.id)}
           aria-label={`Complete "${todo.text}"`}
-          title={`Mark complete (archives it)${priority ? ` · ${PRIORITY_LABEL[priority]}` : ''}`}
+          title={`${todo.repeat && todo.dueDate ? `Mark done — moves to its next ${REPEAT_LABEL[todo.repeat].toLowerCase()} date` : 'Mark complete (archives it)'}${priority ? ` · ${PRIORITY_LABEL[priority]}` : ''}`}
           className={`todo-bullet flex size-3.5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors ${
             overdue
               ? 'border-red-400 hover:bg-red-400/40'
@@ -109,6 +110,11 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded }: TodoRowPro
             className={`flex min-w-0 flex-1 items-center gap-1.5 ${expanded && !overdue ? 'cursor-grab active:cursor-grabbing' : ''}`}
           >
             <span className={`min-w-0 truncate text-[13px] ${overdue ? 'font-medium text-red-100' : 'text-white/85'}`}>{todo.text}</span>
+            {todo.repeat && todo.dueDate && (
+              <span data-testid="todo-repeat" title={`Repeats ${REPEAT_LABEL[todo.repeat].toLowerCase()}`} className="shrink-0 font-mono text-[10px] text-[var(--color-accent)]">
+                ↻
+              </span>
+            )}
             {tags.slice(0, 2).map((t) => (
               <span key={t} className="todo-tag shrink-0 rounded px-1 font-mono text-[9.5px]">
                 #{t}

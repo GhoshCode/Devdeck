@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, it, test } from 'vitest';
 import type { Todo } from '../types';
-import { dueTimestamp, formatDue, isDueToday, isOverdue, sortActive, sortArchived } from './todos';
+import { dueTimestamp, formatDue, isDueToday, isOverdue, nextRepeatDate, sortActive, sortArchived, stepRepeat } from './todos';
 
 const NOW = new Date(2026, 9, 15, 14, 0).getTime(); // Thu Oct 15 2026, 14:00
 
@@ -61,5 +61,19 @@ describe('formatDue', () => {
     [{}, null],
   ])('%o → %s', (due, label) => {
     expect(formatDue(todo({ id: 'x', ...due }), NOW)).toBe(label);
+  });
+});
+
+describe('repeat steps', () => {
+  it('steps by period, clamping month ends and skipping weekends', () => {
+    expect(stepRepeat('2026-01-31', 'monthly')).toBe('2026-02-28');
+    expect(stepRepeat('2026-10-23', 'weekdays')).toBe('2026-10-26'); // Fri → Mon
+    expect(stepRepeat('2026-10-18', 'weekly')).toBe('2026-10-25');
+    expect(stepRepeat('2024-02-29', 'yearly')).toBe('2025-02-28');
+  });
+  it('skips past occurrences when ticked late', () => {
+    const now = new Date(2026, 9, 18, 12, 0).getTime();
+    expect(nextRepeatDate({ dueDate: '2026-10-01', dueTime: '09:00' }, 'weekly', now)).toBe('2026-10-22');
+    expect(nextRepeatDate({ dueDate: '2026-10-18', dueTime: '09:00' }, 'daily', now)).toBe('2026-10-19');
   });
 });

@@ -93,7 +93,10 @@ export interface Todo {
   tags?: string[]; // lower-case, without the #
   notes?: string;
   subtasks?: Subtask[];
+  repeat?: Repeat | null; // ticking a repeating task moves it to its next date
 }
+
+export type Repeat = 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
 
 export type Priority = 0 | 1 | 2 | 3;
 

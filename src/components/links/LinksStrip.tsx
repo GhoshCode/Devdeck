@@ -93,7 +93,7 @@ function Chip({
       onClick={() => onOpen(link)}
       data-chip={variant}
       title={link.url}
-      className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-semibold whitespace-nowrap transition-all hover:-translate-y-px ${
+      className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-[12.5px] font-medium whitespace-nowrap transition-all hover:-translate-y-px ${
         variant === 'fixed'
           ? 'glass-inner border-white/15 bg-white/[0.09] text-white/95 hover:bg-white/15'
           : variant === 'auto'

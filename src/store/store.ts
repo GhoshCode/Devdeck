@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { REPEAT_LABEL, nextRepeatDate } from '../lib/todos';
 import { persist } from 'zustand/middleware';
 import type {
   Category,
@@ -14,6 +15,7 @@ import type {
   Site,
   Subcategory,
   Priority,
+  Repeat,
   Todo,
   Topic,
 } from '../types';
@@ -73,6 +75,7 @@ const normalizeTodo = (raw: unknown, i: number): Todo | null => {
       .map(asRecord)
       .filter((x) => typeof x.id === 'string' && typeof x.text === 'string')
       .map((x) => ({ id: x.id as string, text: x.text as string, done: x.done === true })),
+    repeat: dueDate && typeof t.repeat === 'string' && t.repeat in REPEAT_LABEL ? (t.repeat as Repeat) : null,
   };
 };
 
@@ -168,6 +171,7 @@ export type NewTodo = {
   dueTime?: string | null;
   priority?: Priority;
   tags?: string[];
+  repeat?: Repeat | null;
 };
 export type NewProcessingItem = {
   name: string;
@@ -446,7 +450,7 @@ export const useStore = create<Store>()(
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
 
       // ---- To-dos --------------------------------------------------------
-      addTodo: ({ text, dueDate = null, dueTime = null, priority = 0, tags = [] }) => {
+      addTodo: ({ text, dueDate = null, dueTime = null, priority = 0, tags = [], repeat = null }) => {
         const todo: Todo = {
           id: newId(),
           text,
@@ -459,6 +463,7 @@ export const useStore = create<Store>()(
           tags,
           notes: '',
           subtasks: [],
+          repeat: dueDate ? repeat : null,
         };
         set((s) => ({ todos: [...s.todos, todo] }));
         return todo;
@@ -472,9 +477,16 @@ export const useStore = create<Store>()(
             return next;
           }),
         })),
+      // A repeating task moves on to its next date (subtasks reset) instead
+      // of being archived.
       completeTodo: (id) =>
         set((s) => ({
-          todos: s.todos.map((t) => (t.id === id ? { ...t, archivedAt: Date.now() } : t)),
+          todos: s.todos.map((t) => {
+            if (t.id !== id) return t;
+            const next = t.repeat ? nextRepeatDate(t, t.repeat, Date.now()) : null;
+            if (next) return { ...t, dueDate: next, subtasks: (t.subtasks ?? []).map((x) => ({ ...x, done: false })) };
+            return { ...t, archivedAt: Date.now() };
+          }),
         })),
       // Restored items rejoin at the tail of the active list.
       restoreTodo: (id) =>
