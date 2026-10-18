@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../../store';
 import {
   UV_LABEL,
@@ -10,9 +10,10 @@ import {
   type WeatherIcon,
 } from '../../services/weather';
 
-// A (weather °C) over B (UV badge) over the location, as the right-hand column
-// of the clock + weather area. Refreshes every 15 min. Click to refresh now;
-// double-click to open the page of the source the reading came from.
+// Under the clock: `lead` (the date line), then A (weather °C) and B (UV
+// badge) on the same line, and the place — area, city, pincode — below.
+// Refreshes every 15 min. Click to refresh now; double-click to open the page
+// of the source the reading came from.
 
 const ICON: Record<WeatherIcon, string> = {
   sun: '☀️',
@@ -40,7 +41,7 @@ type State =
   | { status: 'error'; data: WeatherData | null; error: string };
 
 // onSetup: opens Settings → Profile when there is no usable location.
-export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => void }) {
+export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: () => void; lead?: ReactNode }) {
   const enabled = useStore((s) => s.settings.weatherEnabled);
   const useGeolocation = useStore((s) => s.settings.useGeolocation);
   const manualCity = useStore((s) => s.settings.manualCity);
@@ -91,31 +92,34 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => void (clickTimer.current && clearTimeout(clickTimer.current)), []);
 
-  if (!enabled) return null;
+  if (!enabled) return <>{lead}</>;
 
   const { data } = state;
   const error = state.status === 'error' ? state.error : null;
 
   // First run with location denied and no city: say what to do instead of
   // showing a bare warning and "--°C".
-  const column = 'flex max-w-full min-w-0 shrink-0 flex-col items-start gap-1 rounded-lg px-1 -mx-1 py-0.5 text-left';
+  const row = 'flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-0.5 text-left';
 
   if (!data && error && !manualCity.trim() && onSetup) {
     return (
-      <button
-        type="button"
-        onClick={onSetup}
-        title={`${error} — set a city in Settings → Profile`}
-        aria-label="Set your location for weather"
-        data-testid="weather-uv"
-        className={`${column} items-center text-center hover:bg-white/[0.04]`}
-      >
-        <span aria-hidden className="text-base leading-none">
-          📍
-        </span>
-        <span className="text-[11px] leading-tight font-semibold text-white/90">Set location</span>
-        <span className="text-[9px] leading-tight text-white/50">for weather &amp; UV</span>
-      </button>
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {lead}
+        <button
+          type="button"
+          onClick={onSetup}
+          title={`${error} — set a city in Settings → Profile`}
+          aria-label="Set your location for weather"
+          data-testid="weather-uv"
+          className={`${row} hover:bg-white/[0.04]`}
+        >
+          <span aria-hidden className="text-sm leading-none">
+            📍
+          </span>
+          <span className="text-[11px] leading-tight font-semibold text-white/90">Set location</span>
+          <span className="text-[10px] leading-tight text-white/50">for weather &amp; UV</span>
+        </button>
+      </div>
     );
   }
 
@@ -148,58 +152,63 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
     if (site) window.open(site, '_blank', 'noopener');
   };
 
+  const handlers = { onClick, onDoubleClick, title };
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
-      title={title}
-      aria-label={
-        data
-          ? `Weather in ${where}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}. Click to refresh, double-click to open ${data.source}`
-          : 'Weather'
-      }
-      data-testid="weather-uv"
-      className={`${column} cursor-pointer transition-colors select-none hover:bg-white/[0.04] ${
-        state.status === 'loading' ? (data ? 'opacity-70' : 'animate-pulse') : ''
-      }`}
-    >
-      {/* A — condition + temperature, with B (UV) beside it */}
-      <span className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 text-white/90">
-          <span aria-hidden className="text-base leading-none">
-            {data ? ICON[data.icon] : error ? '⚠️' : '·'}
-          </span>
-          <span className="font-mac text-[1.05rem] leading-none font-light tracking-tight tabular-nums">
-            {data ? `${Math.round(data.temperature)}°` : '--°'}
-            <span className="text-[0.7rem] text-white/55">C</span>
-          </span>
-        </span>
-        {/* B — UV index */}
-        <span
-          className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
-            data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
+    <div className="flex max-w-full min-w-0 flex-col items-start gap-1">
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {lead}
+        <button
+          type="button"
+          {...handlers}
+          aria-label={
+            data
+              ? `Weather in ${where}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}. Click to refresh, double-click to open ${data.source}`
+              : 'Weather'
+          }
+          data-testid="weather-uv"
+          className={`${row} -my-0.5 cursor-pointer transition-colors select-none hover:bg-white/[0.05] ${
+            state.status === 'loading' ? (data ? 'opacity-70' : 'animate-pulse') : ''
           }`}
         >
-          UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
-        </span>
-      </span>
-      {/* Location: area, then city and pincode */}
-      <span className="flex max-w-full flex-col items-start leading-tight">
-        <span className="flex max-w-full items-center gap-1 text-[10.5px] text-white/80">
-          <span aria-hidden className="text-[9px]">
-            📍
+          {/* A — condition + temperature */}
+          <span className="flex items-center gap-1.5 text-white/90">
+            <span aria-hidden className="text-base leading-none">
+              {data ? ICON[data.icon] : error ? '⚠️' : '·'}
+            </span>
+            <span className="font-mac text-[1.05rem] leading-none font-light tracking-tight tabular-nums">
+              {data ? `${Math.round(data.temperature)}°` : '--°'}
+              <span className="text-[0.7rem] text-white/55">C</span>
+            </span>
           </span>
-          <span className="truncate font-medium">{data ? (data.area ?? data.place) : error ? 'Unavailable' : 'Locating…'}</span>
-        </span>
-        {data && (data.area || data.postcode) && (
-          <span className="max-w-full truncate pl-[15px] text-[9.5px] text-white/50">
-            {data.area ? data.place : ''}
-            {data.area && data.postcode ? ' · ' : ''}
-            {data.postcode && <span className="font-mono">{data.postcode}</span>}
+          {/* B — UV index */}
+          <span
+            className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
+              data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
+            }`}
+          >
+            UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
           </span>
+        </button>
+      </div>
+      {/* The place: area, city, pincode — one weight, the city a touch larger */}
+      <span
+        {...handlers}
+        data-testid="weather-place"
+        className="flex max-w-full min-w-0 cursor-pointer items-baseline gap-1.5 leading-tight font-medium text-white/80 select-none"
+      >
+        <span aria-hidden className="self-center text-[10px]">
+          📍
+        </span>
+        {data ? (
+          <>
+            {data.area && <span className="truncate text-[12px]">{data.area},</span>}
+            <span className="shrink-0 text-[13.5px] text-white/90">{data.place}</span>
+            {data.postcode && <span className="shrink-0 font-mono text-[12px] text-white/65">{data.postcode}</span>}
+          </>
+        ) : (
+          <span className="text-[12px]">{error ? 'Unavailable' : 'Locating…'}</span>
         )}
       </span>
-    </button>
+    </div>
   );
 });

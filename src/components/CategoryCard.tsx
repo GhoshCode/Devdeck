@@ -371,7 +371,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
                     <div
                       key={group.id}
                       data-list-group-id={group.id}
-                      className="glass-inner rounded-2xl p-3.5 border border-white/[0.06] space-y-2.5"
+                      className="glass-inner @container rounded-2xl p-3 border border-white/[0.06] space-y-2"
                     >
                       <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                         <div className="flex items-center gap-2.5">

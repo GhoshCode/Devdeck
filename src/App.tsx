@@ -8,6 +8,7 @@ import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
+import { DateLine } from './components/topbar/DateGreet';
 import { CommandPrompt } from './components/topbar/CommandPrompt';
 import { GitWidget } from './components/topbar/GitWidget';
 import { DashboardLayout } from './components/layout/DashboardLayout';
@@ -164,9 +165,9 @@ export default function App() {
       <DashboardLayout
         topBar={
           <TopBar
-            weather={<WeatherUV onSetup={() => openSettings('profile')} />}
+            weather={<WeatherUV onSetup={() => openSettings('profile')} lead={<DateLine />} />}
             search={
-              <div className="mx-auto flex w-full max-w-[780px] items-center gap-2">
+              <div className="mx-auto flex w-full max-w-[860px] items-center gap-2">
                 <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
                 <SiteMapButton />
                 <BookmarkButton />

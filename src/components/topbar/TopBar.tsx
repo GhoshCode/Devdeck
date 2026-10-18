@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { TimeWidget } from './TimeWidget';
-import { DateGreet, DateLine } from './DateGreet';
+import { DateGreet } from './DateGreet';
 
 // Zone 1 (plan §1), three columns:
 //   left   — TIME over the date, A/B (weather + UV) and the location
@@ -22,17 +22,16 @@ export function TopBar({ weather, search, git, command }: TopBarProps) {
       data-topbar-grid
       className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:h-[236px] md:grid-cols-[minmax(320px,1fr)_minmax(0,1.15fr)_minmax(320px,1fr)] lg:grid-cols-[minmax(340px,530px)_minmax(460px,1fr)_minmax(340px,530px)]"
     >
-      {/* Left: clock, then the date, then weather + UV and the location under it (click the clock to change its face). */}
+      {/* Left: clock, then the date with weather + UV on its line, and the place under it (click the clock to change its face). */}
       <div data-widget="time-cluster" className="flex min-w-0 flex-col items-start gap-1.5 px-3 pt-1 sm:col-span-2 md:col-span-1">
-        <div data-widget-card="clock-weather" className="flex h-[118px] w-[340px] max-w-full min-w-0 shrink-0 overflow-hidden">
+        <div data-widget-card="clock-weather" className="flex h-[132px] w-[380px] max-w-full min-w-0 shrink-0 overflow-hidden">
           <TimeWidget />
         </div>
-        <DateLine />
         {weather}
       </div>
       {/* Left and right columns are equal width, so this column — the greeting at the top and the search at the bottom — sits in the exact middle of the screen, just above the cockpit. */}
-      <div data-widget="search" className="relative z-20 flex min-w-0 flex-col justify-between gap-3 pt-3 pb-1 sm:col-span-2 md:col-span-1">
-        <div data-widget="date-greet" className="mx-auto w-full max-w-[780px] min-w-0 px-1">
+      <div data-widget="search" className="relative z-20 flex min-w-0 flex-col justify-between gap-3 pt-3 pb-5 sm:col-span-2 md:col-span-1">
+        <div data-widget="date-greet" className="mx-auto w-full max-w-[860px] min-w-0 px-1">
           <DateGreet />
         </div>
         {search}

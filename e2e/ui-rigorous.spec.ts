@@ -109,9 +109,8 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     }
     await page.waitForTimeout(200);
 
-    // 5. Verify thin space below cards is present and handles horizontal scroll
-    const thinScrollSpace = page.locator('[data-testid="thin-cards-scroll-space"]');
-    await expect(thinScrollSpace).toBeVisible();
+    // 5. The thin cards scrollbar sits below the cards
+    await expect(page.getByTestId('cards-scrollbar')).toBeVisible();
 
     // Verify page window still has zero scroll
     const pageScroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
@@ -210,17 +209,24 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     expect(pageMetrics.docScrollHeight).toBeLessThanOrEqual(pageMetrics.docClientHeight);
     expect(pageMetrics.docScrollWidth).toBeLessThanOrEqual(pageMetrics.docClientWidth);
 
-    // 4. Test horizontal scroll inside the category deck via the thin scroll space below cards
+    // 4. The deck ignores the wheel; dragging its thin scrollbar moves it
     const track = page.locator('[role="region"][aria-label="Scrollable category cards"]');
     await expect(track).toBeVisible();
-
-    const thinSpace = page.locator('[data-testid="thin-cards-scroll-space"]');
-    await expect(thinSpace).toBeVisible();
-    await thinSpace.dispatchEvent('wheel', { deltaY: 400, deltaX: 0 });
+    const tBox = (await track.boundingBox())!;
+    await page.mouse.move(tBox.x + 6, tBox.y + tBox.height - 6);
+    await page.mouse.wheel(400, 0);
     await page.waitForTimeout(300);
+    expect(await track.evaluate((el) => el.scrollLeft)).toBe(0);
 
-    const scrollLeft = await track.evaluate((el) => el.scrollLeft);
-    expect(scrollLeft).toBeGreaterThan(0);
+    const bar = page.getByTestId('cards-scrollbar');
+    await expect(bar).toBeVisible();
+    const thumb = (await bar.locator('div').first().boundingBox())!;
+    await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + thumb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(thumb.x + thumb.width / 2 + 200, thumb.y + thumb.height / 2, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    expect(await track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 
     // 5. Scroll to the last category card and verify its rendering
     const lastCard = cards.last();

@@ -307,10 +307,10 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
           type="button"
           onClick={() => (q ? go(undefined, false) : inputRef.current?.focus())}
           aria-label={geminiMode ? `Ask ${ai.name} now` : 'Search the web'}
-          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 sm:px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
+          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 min-[1700px]:px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
         >
           <SearchIcon className="size-4" />
-          <span className="hidden sm:inline">SEARCH</span>
+          <span className="hidden min-[1700px]:inline">SEARCH</span>
         </button>
       </div>
 

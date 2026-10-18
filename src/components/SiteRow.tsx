@@ -49,7 +49,7 @@ export const SiteRow = memo(function SiteRow({
       ref={setNodeRef}
       style={style}
       data-site-id={site.id}
-      className={`group/site flex items-center justify-between gap-3 rounded-xl px-3 py-1.5 text-left transition-colors duration-150 ${
+      className={`group/site flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left @min-[240px]:gap-3 @min-[240px]:px-3 transition-colors duration-150 ${
         isOverlay
           ? 'glass-inner bg-white/10 shadow-2xl border-white/20'
           : 'hover:bg-white/[0.07] hover:border-white/10'
@@ -58,7 +58,7 @@ export const SiteRow = memo(function SiteRow({
       <a
         href={site.url}
         onClick={handleClick}
-        className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-center gap-2 focus-visible:outline-none @min-[240px]:gap-3"
       >
         <Favicon
           url={site.url}
@@ -69,13 +69,13 @@ export const SiteRow = memo(function SiteRow({
         <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
           <span
             title={site.name}
-            className="truncate text-sm font-semibold text-white/95 group-hover/site:text-white shrink-0 max-w-[65%]"
+            className="truncate text-sm font-semibold text-white/95 group-hover/site:text-white min-w-0 @min-[240px]:shrink-0 @min-[240px]:max-w-[65%]"
           >
             {site.name}
           </span>
           <span
             title={site.url}
-            className="truncate text-xs text-white/45 group-hover/site:text-white/70 min-w-0 flex-1 font-mono"
+            className="hidden truncate text-xs text-white/45 group-hover/site:text-white/70 min-w-0 flex-1 font-mono @min-[240px]:block"
           >
             {hostname}
           </span>
@@ -83,7 +83,7 @@ export const SiteRow = memo(function SiteRow({
       </a>
 
       {/* Hover actions: open in new tab & drag handle */}
-      <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/site:opacity-100 focus-within:opacity-100">
+      <div className="hidden items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/site:flex group-hover/site:opacity-100 focus-within:flex focus-within:opacity-100 @min-[240px]:flex">
         <a
           href={site.url}
           target="_blank"
