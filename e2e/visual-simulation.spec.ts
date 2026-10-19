@@ -38,10 +38,8 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     // Toggle Default Light
     const lightBtn = settingsModal.getByRole('radio', { name: 'Light', exact: true });
     await lightBtn.click();
-    await page.waitForTimeout(200);
-
-    const dataTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-    expect(dataTheme).toBe('light');
+    // the theme commits inside a view transition, so wait for it rather than a fixed delay
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
     // Close settings
     await page.keyboard.press('Escape');

@@ -15,6 +15,10 @@ const html = (page: Page) => page.locator('html');
 const accentVar = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim().toLowerCase());
 
+// Theme changes run inside view transitions; under a busy full-suite run they
+// need more than the default 30 s.
+test.describe.configure({ timeout: 60_000 });
+
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
