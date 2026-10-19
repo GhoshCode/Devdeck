@@ -10,6 +10,64 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20f — alerts on any website, floating bookmarks panel, Tree View at scale, layout
+
+### Alerts outside DevDeck (`background.ts`, `lib/alertEvents.ts`, `lib/alertOverlay.ts`, `hooks/useInPageAlerts.ts`)
+- **Why Chrome popups appeared:** they were the "no DevDeck tab in view" fallback. You chose: **top panel always**.
+- **The service worker now delivers every alert**, through `deliver()`:
+  1. A visible DevDeck tab is asked first (`devdeck:alert-due` / `devdeck:reminder-due`); if it answers `{shown:true}`, nothing else happens.
+  2. Otherwise `chrome.scripting.executeScript` injects `renderAlertOverlay` into the active tab of the focused window. It's self-contained, in a shadow DOM, uses the same four matte designs, stacks up to 3 plus "+N more", and auto-hides after 12 / 20 s (paused on hover).
+  3. Otherwise, a `chrome.notifications` notification. That covers `chrome://` pages, the Web Store, the PDF viewer, and Chrome not in front.
+- **Events:**
+  - Reminders: per-item alarms from the mirrored items, which now carry `section`.
+  - To-do due times and timers: the page mirrors upcoming events (35 days, ≤ 200) to `devdeck:alert-events`, with one alarm each.
+  - Theme: the accent and light/dark are mirrored to `devdeck:alert-theme`.
+- **Overlay actions** (`devdeck:overlay-action`):
+  - Open: the site, or DevDeck at `#todo=<id>`, which flashes the task.
+  - Snooze 10m: stored in `devdeck:bg-snoozes` with an alarm.
+  - Mark done: messages an open DevDeck, otherwise queued in `devdeck:pending-actions` and applied when DevDeck next opens.
+  - Dismiss.
+- **The page** never sends its own system notification in the extension.
+- **Manifest:** `scripting` plus host `<all_urls>` (needed to draw on websites); `favicon`; `web_accessible_resources` for `_favicon/*`.
+- **Verified in a real Chrome window:**
+  - DevDeck visible: in-page alert, 0 notifications.
+  - DevDeck closed, on a website: an overlay with 3 stacked cards, and Snooze stored.
+  - On `chrome://version`: 1 notification.
+
+### Bookmarks panel (`search/BookmarkDrawer.tsx`, `search/expandStore.ts`)
+- **Shell:** a centred floating panel (like the Site Map, max 960 px, rounded 22 px) replaces the right-side drawer. The list scrolls both ways; rows don't truncate, so deep levels and long names scroll sideways.
+- **Expand all / Collapse all** toggle in the header.
+- **`ExpandStore`:** rows subscribe to their own folder (`useSyncExternalStore`), so a change re-renders only that row. Large changes run in per-frame batches of 24 folders: closing deepest-first, opening parents-first. Row Edit/Delete buttons render on first hover or focus.
+- **Measured on 3,427 rows:** the longest main-thread block went from about 1.2 s to about 0.13 s; rows stream in top-down.
+- **Esc while Tree View fades out** now reaches the panel.
+
+### Tree View at scale (`bookmarkLayout.ts`, `BookmarkTreeView.tsx`)
+- **The problem:** with a real collection, it was a single row about 15,000 px wide at 25 % zoom — unreadable, and impossible to grab.
+- **Compact layout:** a folder whose sub-folders have no further (expanded) folders stacks them vertically, indented 30 px with an elbow connector. Width now grows with depth, not breadth (unit-tested).
+- **Opening:** it opens at 80 % centred on the first top-level folder, unless the whole tree fits.
+- **Icons:** bookmark icons come from Chrome's own favicon cache (`_favicon`): no network requests and no 404s.
+
+### Site icons without failed requests (`lib/faviconStore.ts`, `Favicon.tsx`, `background.ts`)
+- **The problem:** Google's icon service can answer 404 at random (it happened for dotnet.microsoft.com).
+- **In the extension:**
+  - the page never requests icons itself; the worker fetches each one (`devdeck:favicon`) and returns a `data:` URL;
+  - icons are cached in `localStorage["devdeck.favicons.v1"]` (≤ 800 entries), so 309 icons paint within 150 ms on reload;
+  - a missing icon is retried after 3 days.
+- **On the website build**, icons load directly as before.
+
+### Layout (`DashboardLayout.tsx`, `App.tsx`, `LinksStrip.tsx`, `TopBar.tsx`, `CategoryGrid.tsx`, `PrimaryRow.tsx`, `ProcessingPanel.tsx`)
+- **Quick-links bar:** quick links + recent are their own floating glass bar (`--links-bar-h: 56px`), with a 12 px gap above the category cards container.
+- **Side columns:** both start with a band the height of that bar.
+  - Left: breathing space.
+  - Right: the terminal (`rightTop` slot).
+  - Measured: the left card, the cards container and the news card all start at y = 332 (1920 and 1536 wide).
+- **Top bar:** on wide screens the terminal leaves it (`LayoutContext.rightInline`) and the Git box takes the full 236 px. When the right column folds into a drawer, the terminal returns there.
+- **All categories:** moved into the cards container's footer, bottom-left, with the page dots centred.
+- **Pin badge:** the hover badge on top-row tiles is removed. Unpin a site from its row's pin.
+- **Currently processing / Queue rows:** name 15 px (was 13), schedule line 12 px (was 10), icon 20 px.
+
+---
+
 ## Round 2026-10-20e — GitHub refresh every 3 hours
 
 - `GIT_TTL_MS` (`services/github.ts`) is now 3 h (was 30 min).

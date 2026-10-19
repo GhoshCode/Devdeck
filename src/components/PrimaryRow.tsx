@@ -11,7 +11,6 @@ import {
 import type { Site } from '../types';
 import { useStore } from '../store';
 import { Favicon } from './Favicon';
-import { PinIcon } from './SiteRow';
 
 interface PrimaryRowProps {
   sites: Site[];
@@ -20,7 +19,6 @@ interface PrimaryRowProps {
 
 export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: PrimaryRowProps) {
   const recordVisit = useStore((s) => s.recordVisit);
-  const togglePrimary = useStore((s) => s.togglePrimary);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -169,15 +167,6 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
                   {site.name}
                 </span>
               </a>
-              <button
-                type="button"
-                onClick={() => togglePrimary(site.id)}
-                aria-label={`Remove ${site.name} from the top row`}
-                title="Unpin from the top row"
-                className="tile-unpin absolute -top-1 -right-1 z-10 flex size-5 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover/pin:opacity-100 focus-visible:opacity-100"
-              >
-                <PinIcon filled={false} className="size-3" />
-              </button>
             </div>
           ))}
         </div>

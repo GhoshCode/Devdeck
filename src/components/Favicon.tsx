@@ -79,6 +79,7 @@ export const Favicon = memo(function Favicon({
         className={`${className} flex items-center justify-center rounded font-display text-xs font-bold text-white shadow-sm shrink-0`}
         style={{ backgroundColor: categoryColor }}
         aria-hidden="true"
+        data-favicon-fallback
       >
         {initial}
       </div>

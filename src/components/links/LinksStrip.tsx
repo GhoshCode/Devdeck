@@ -3,14 +3,13 @@ import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
 import { buildStrip, relativeAge, type StripLink } from '../../services/search';
 import { Favicon } from '../Favicon';
-import { CategoryMenuIcon } from '../CategoryOverview';
 
 // Header strip of the centre frame (Zone 4, §7 Q7/Q8):
 //   [E][E][E][E] fixed │ more E (auto-picked) … │ F recent … →
 // The first four quick links never move; everything after them shares one
 // horizontal scroller with a fade mask on the right edge.
 
-export const LinksStrip = memo(function LinksStrip({ menuOpen = false, onMenu }: { menuOpen?: boolean; onMenu?: () => void }) {
+export const LinksStrip = memo(function LinksStrip() {
   const quickLinks = useStore((s) => s.quickLinks);
   const sites = useStore((s) => s.sites);
   const autoCount = useStore((s) => s.settings.autoQuickLinkCount);
@@ -35,23 +34,7 @@ export const LinksStrip = memo(function LinksStrip({ menuOpen = false, onMenu }:
   const open = (link: StripLink) => link.siteId && recordVisit(link.siteId);
 
   return (
-    <div data-testid="links-strip" className="flex min-w-0 items-center gap-2 border-b border-white/[0.07] px-3 py-2.5">
-      {onMenu && (
-        <>
-          <button
-            type="button"
-            onClick={onMenu}
-            aria-label="All categories"
-            aria-expanded={menuOpen}
-            aria-controls="category-overview"
-            title="All categories (overview)"
-            className={`category-menu-btn flex size-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${menuOpen ? 'is-open' : ''}`}
-          >
-            <CategoryMenuIcon className="size-[18px] text-white/80" />
-          </button>
-          <span aria-hidden className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-white/25 to-transparent" />
-        </>
-      )}
+    <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-white/10 px-3">
       <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />

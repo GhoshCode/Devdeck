@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLayout } from '../layout/DashboardLayout';
 import { TimeWidget } from './TimeWidget';
 import { DateGreet } from './DateGreet';
 
@@ -17,6 +18,9 @@ interface TopBarProps {
 }
 
 export function TopBar({ weather, search, git, command }: TopBarProps) {
+  // Wide screens: the terminal sits above the news column (level with the
+  // quick-links bar) and the Git box takes the full height here.
+  const { rightInline } = useLayout();
   return (
     <div
       data-topbar-grid
@@ -38,7 +42,7 @@ export function TopBar({ weather, search, git, command }: TopBarProps) {
       </div>
       <div data-widget="git" className="relative z-10 flex min-h-[224px] min-w-0 flex-col gap-2 sm:col-span-2 md:col-span-1 md:min-h-0">
         <div className="relative z-10 min-h-0 flex-1">{git}</div>
-        {command}
+        {!rightInline && command}
       </div>
     </div>
   );

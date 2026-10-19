@@ -69,12 +69,12 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('listbox', { name: 'Search suggestions' })).toHaveCount(0);
 
-    // 4. The links strip is the first child of the centre frame, above the cards
+    // 4. The links strip floats above the centre frame (its own bar, with a gap)
     const frame = page.getByTestId('center-frame');
-    const strip = frame.getByTestId('links-strip');
+    const strip = page.getByTestId('links-strip');
     await expect(strip.locator('[data-chip=fixed]')).toHaveCount(4);
-    const [stripBox, cardBox] = [await strip.boundingBox(), await frame.locator('[data-category-id]').first().boundingBox()];
-    expect(stripBox!.y + stripBox!.height).toBeLessThanOrEqual(cardBox!.y);
+    const [stripBox, frameBox] = [await strip.boundingBox(), await frame.boundingBox()];
+    expect(stripBox!.y + stripBox!.height).toBeLessThan(frameBox!.y);
   });
 
   test('Subcategory navigation has sleek indicator dots; switches smoothly back and forth 10 times; thin scroll space below cards with no scroll buttons', async ({ page }) => {

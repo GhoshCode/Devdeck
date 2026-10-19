@@ -17,6 +17,39 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-20f — latest changes
+
+- **Reminders reach you anywhere in Chrome:**
+  - DevDeck in view: the panel shows in DevDeck.
+  - On any other website (even with DevDeck closed): the same top panel drops onto that site.
+  - On Chrome's own pages (Settings, Extensions, the Web Store) or with Chrome in the background: Chrome's bottom-right notification.
+  - From a website, the buttons still work: Open, Snooze 10m, Mark done (applied when DevDeck next opens, if it's closed).
+- **Bookmarks:**
+  - a floating panel in the middle of the screen (like the Site Map);
+  - deep folders and long names scroll sideways;
+  - **Expand all** opens every folder (smoothly, even with thousands of bookmarks); press it again to collapse.
+- **Tree View:**
+  - readable with real collections: folders that only contain sites stack neatly under their parent instead of one endless row;
+  - it opens at a comfortable zoom (Fit shows everything);
+  - icons come from Chrome's own cache.
+- **Layout:**
+  - the quick-links bar floats above the category cards;
+  - the left and right cards start level with the cards;
+  - the terminal sits above Tech news, and the Git box is taller;
+  - **All categories** is at the bottom-left of the cards container;
+  - the pin badge on top-row tiles is gone;
+  - bigger names and schedule text in Currently processing / Queue.
+
+**Manual test checklist**
+- [ ] With DevDeck closed, on youtube.com: a due reminder drops in at the top; Open / Snooze / Mark done work.
+- [ ] On chrome://settings: a Chrome notification instead.
+- [ ] Bookmarks: the panel is centred; Expand all opens everything without freezing; Collapse all returns; deep rows scroll sideways.
+- [ ] Tree View with your real bookmarks: readable on open; drag sites and folders.
+- [ ] Layout: the left card, the cards and the news card tops line up; the terminal sits level with the quick-links bar.
+- [ ] The console stays clean (DevTools) while browsing, opening the Site Map and opening bookmarks.
+
+---
+
 ## GitHub refresh (round 2026-10-20e)
 
 - The Git widget fetches new data from GitHub every **3 hours** (it was every 30 minutes). Press ↻ for an instant refresh.

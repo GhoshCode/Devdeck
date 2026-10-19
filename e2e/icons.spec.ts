@@ -76,7 +76,7 @@ test.describe('Icons & Favicons Visibility', () => {
 
     // When the image fails, Favicon renders a fallback div badge with initial letter
     // Find all fallback avatars
-    const fallbackBadges = page.locator('div[aria-hidden="true"]');
+    const fallbackBadges = page.locator('[data-favicon-fallback]');
     await expect(fallbackBadges.first()).toBeVisible();
 
     const firstBadgeText = await fallbackBadges.first().textContent();

@@ -180,18 +180,22 @@ export default function App() {
         }
         left={<ProcessingPanel />}
         leftFooter={settingsButton}
+        rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
         center={
-          <div data-testid="center-frame" className="glass flex h-full min-h-0 flex-col overflow-hidden">
-            <LinksStrip menuOpen={overview} onMenu={() => setOverview((o) => !o)} />
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            {/* quick links + recent float above the category cards */}
+            <LinksStrip />
+          <div data-testid="center-frame" className="glass flex min-h-0 flex-1 flex-col overflow-hidden">
             <div data-center-body className="relative flex min-h-0 flex-1 p-3">
               {/* The overview replaces the cards (one view at a time keeps it light). */}
               {overview ? (
                 <CategoryOverview onClose={() => setOverview(false)} />
               ) : (
-                <CategoryGrid onOpenSettings={() => openSettings('library')} />
+                <CategoryGrid onOpenSettings={() => openSettings('library')} onOverview={() => setOverview(true)} />
               )}
               <OfflineBanner />
             </div>
+          </div>
           </div>
         }
         right={<FeedColumn onManage={() => openSettings('scraping')} />}

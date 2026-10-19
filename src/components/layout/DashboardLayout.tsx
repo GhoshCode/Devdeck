@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
@@ -23,7 +24,15 @@ interface DashboardLayoutProps {
   right: ReactNode;
   // Pinned to the foot of the left column (the main settings gear).
   leftFooter?: ReactNode;
+  // Sits above the right column, level with the floating quick-links bar
+  // (the terminal box), so both side columns start where the cards start.
+  rightTop?: ReactNode;
 }
+
+// Lets the top bar know whether the right column (and its terminal slot) is
+// on screen or folded into a drawer.
+export const LayoutContext = createContext<{ rightInline: boolean }>({ rightInline: false });
+export const useLayout = () => useContext(LayoutContext);
 
 type Side = 'left' | 'right';
 
@@ -34,6 +43,7 @@ export function DashboardLayout({
   center,
   right,
   leftFooter,
+  rightTop,
 }: DashboardLayoutProps) {
   const wide = useMediaQuery('(min-width: 1440px)');
   const medium = useMediaQuery('(min-width: 1024px)');
@@ -69,6 +79,7 @@ export function DashboardLayout({
   );
 
   return (
+    <LayoutContext.Provider value={{ rightInline }}>
     <div
       data-testid="dashboard"
       className="relative z-0 flex h-screen w-screen flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 pt-4 pb-4 sm:px-6 lg:overflow-y-hidden"
@@ -87,12 +98,14 @@ export function DashboardLayout({
       <div
         ref={snap.cockpitRef}
         data-zone="cockpit"
-        className={`grid min-h-0 flex-1 max-lg:min-h-[600px] ${rightInline ? '' : 'gap-3'} ${columns}`}
+        className={`grid min-h-0 flex-1 max-lg:min-h-[600px] [--links-bar-h:56px] ${rightInline ? '' : 'gap-3'} ${columns}`}
         style={rightInline ? snap.style : undefined}
       >
         {leftInline && (
-          <aside data-zone="left" aria-label="Currently processing" className="min-h-0">
-            {leftColumn}
+          <aside data-zone="left" aria-label="Currently processing" className="flex min-h-0 flex-col gap-3">
+            {/* breathing space level with the quick-links bar */}
+            <div aria-hidden className="shrink-0" style={{ height: 'var(--links-bar-h)' }} />
+            <div className="min-h-0 flex-1">{leftColumn}</div>
           </aside>
         )}
         {rightInline && <CardSnapHandle side="left" {...snap.handle('left')} />}
@@ -101,8 +114,11 @@ export function DashboardLayout({
         </section>
         {rightInline && <CardSnapHandle side="right" {...snap.handle('right')} />}
         {rightInline && (
-          <aside data-zone="right" aria-label="Tech news and topics" className="min-h-0">
-            {right}
+          <aside data-zone="right" aria-label="Tech news and topics" className="flex min-h-0 flex-col gap-3">
+            <div data-zone="right-top" className="flex shrink-0 items-center" style={{ height: 'var(--links-bar-h)' }}>
+              <div className="w-full">{rightTop}</div>
+            </div>
+            <div className="min-h-0 flex-1">{right}</div>
           </aside>
         )}
       </div>
@@ -149,6 +165,7 @@ export function DashboardLayout({
         )}
       </AnimatePresence>
     </div>
+    </LayoutContext.Provider>
   );
 }
 

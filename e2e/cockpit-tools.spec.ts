@@ -66,7 +66,8 @@ test('pinning a site adds it to the top row; unpinning removes it', async ({ pag
   const name = (await pin.getAttribute('aria-label'))!.replace(/^Add | to the top row$/g, '');
   await pin.click({ force: true });
   await expect(rail).toHaveCount(before + 1);
-  await expect(card.getByRole('button', { name: `Remove ${name} from the top row` })).toHaveCount(2); // list + tile
+  // unpinning is done from the site's row (the tiles carry no badge)
+  await expect(card.getByRole('button', { name: `Remove ${name} from the top row` })).toHaveCount(1);
   await card.getByRole('button', { name: `Remove ${name} from the top row` }).first().click({ force: true });
   await expect(rail).toHaveCount(before);
 });

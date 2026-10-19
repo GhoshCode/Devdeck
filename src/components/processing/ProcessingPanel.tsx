@@ -120,11 +120,11 @@ function ItemRow({ item, now }: { item: ProcessingItem; now: Date }) {
         title={`${item.url}\n${describeSchedule(item.schedule)}`}
         className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-1.5"
       >
-        <Favicon url={item.url} name={item.name} className="size-[18px] shrink-0" />
+        <Favicon url={item.url} name={item.name} className="size-5 shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold text-white/90">{item.name}</span>
+          <span className="block truncate text-[15px] font-semibold text-white/90">{item.name}</span>
           {/* The countdown leads the subtitle so the name keeps the full width. */}
-          <span className="flex min-w-0 items-center gap-1.5 text-[10px] text-white/45">
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-white/55">
             {item.timer && <Countdown timer={item.timer} />}
             {next && !item.timer && (
               <span className="shrink-0 font-mono" title={next.toLocaleString()}>
