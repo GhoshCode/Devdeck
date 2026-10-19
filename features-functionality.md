@@ -45,7 +45,7 @@ wide where layout is involved.
 - [ ] Mark done, Open, Snooze 10m (comes back after 10 min), ✕; hover pauses auto-hide.
 - [ ] 4+ alerts at once: 3 visible + "+N more"; closing one makes the others close up smoothly.
 - [ ] Switch to another tab when a reminder is due: a system notification instead (extension and web), never both.
-- [ ] Dark and light themes, with several accent colours.
+- [ ] Dark and light themes, with several accent colours: the text reads instantly (nothing shows through the card).
 
 ---
 
