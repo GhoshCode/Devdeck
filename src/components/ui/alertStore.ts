@@ -2,21 +2,8 @@
 // Plain data only, so an alert can be persisted for Snooze and re-shown in a
 // later tab. Keys de-duplicate across re-renders, reloads and other tabs.
 
-export type AlertKind = 'processing' | 'queue' | 'todo' | 'overdue';
-
-export interface AlertData {
-  key: string;
-  kind: AlertKind;
-  title: string;
-  sub?: string;
-  eyebrow?: string;
-  url?: string;
-  itemId?: string; // processing item
-  todoId?: string;
-  priority?: 0 | 1 | 2 | 3;
-  counts?: { todos: number; queue: number; processing: number };
-  list?: string[]; // overdue summary: a few names
-}
+import type { AlertData } from '../../lib/alertEvents';
+export type { AlertData, AlertKind } from '../../lib/alertEvents';
 
 export const SNOOZE_MS = 10 * 60_000;
 const SEEN_KEY = 'devdeck.alerts.seen';

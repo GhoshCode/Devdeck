@@ -30,7 +30,8 @@
     "storage",
     "nativeMessaging",
     "bookmarks",
-    "geolocation"
+    "geolocation",
+    "scripting"
   ],
   "host_permissions": [
     "https://api.open-meteo.com/*",
@@ -41,7 +42,8 @@
     "https://dev.to/*",
     "https://remoteok.com/*",
     "https://remotive.com/*",
-    "https://suggestqueries.google.com/*"
+    "https://suggestqueries.google.com/*",
+    "<all_urls>"
   ],
   "optional_host_permissions": [
     "https://*/*"
