@@ -6,12 +6,14 @@ import type { Site } from '../../types';
 import { deriveNameFromUrl, normalizeUrl } from '../../utils';
 import { Favicon } from '../Favicon';
 import { Select } from '../ui/Select';
+import { UNCATEGORIZED_NAME } from '../../lib/categories';
 
 // The one "Add / Edit site" window, shared by Settings → Library and the
 // Site Map. When adding, a recycle bin under the form lists deleted sites so
 // an accidental delete can be put back (into the category picked above).
 
 const GENERAL = '__general__';
+const NONE = '__none__'; // Uncategorized (categoryId '')
 
 export function SiteFormDialog({
   editing = null,
@@ -36,7 +38,7 @@ export function SiteFormDialog({
 
   const [url, setUrl] = useState(editing?.url ?? prefillUrl);
   const [name, setName] = useState(editing?.name ?? (prefillUrl ? deriveNameFromUrl(normalizeUrl(prefillUrl)) : ''));
-  const [cat, setCat] = useState(editing?.categoryId ?? categoryId ?? sorted[0]?.id ?? '');
+  const [cat, setCat] = useState(editing ? editing.categoryId : (categoryId ?? sorted[0]?.id ?? ''));
   const [sub, setSub] = useState<string | null>(editing?.subcategoryId ?? subcategoryId);
   const [isPrimary, setPrimary] = useState(editing?.primary ?? primary);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function SiteFormDialog({
 
   const save = (e: FormEvent) => {
     e.preventDefault();
-    if (!url.trim() || !cat) return;
+    if (!url.trim()) return;
     const normalized = normalizeUrl(url);
     try {
       const parsed = new URL(normalized);
@@ -125,14 +127,17 @@ export function SiteFormDialog({
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-white/70 uppercase">Category</label>
               <Select
-                value={cat}
+                value={cat || NONE}
                 onChange={(v) => {
-                  setCat(v);
+                  setCat(v === NONE ? '' : v);
                   setSub(null);
                 }}
                 ariaLabel="Category"
                 className="w-full"
-                options={sorted.map((c) => ({ value: c.id, label: c.name, icon: <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} /> }))}
+                options={[
+                  ...sorted.map((c) => ({ value: c.id, label: c.name, icon: <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} /> })),
+                  { value: NONE, label: `${UNCATEGORIZED_NAME} (none)` },
+                ]}
               />
             </div>
             <div className="space-y-1.5">
@@ -142,7 +147,7 @@ export function SiteFormDialog({
                 onChange={(v) => setSub(v === GENERAL ? null : v)}
                 ariaLabel="Subcategory"
                 className="w-full"
-                options={[{ value: GENERAL, label: 'General (None)' }, ...subs.map((s) => ({ value: s.id, label: s.name }))]}
+                options={cat ? [{ value: GENERAL, label: 'General (None)' }, ...subs.map((s) => ({ value: s.id, label: s.name }))] : [{ value: GENERAL, label: 'None' }]}
               />
             </div>
           </div>
@@ -162,7 +167,15 @@ export function SiteFormDialog({
             </button>
           </div>
         </form>
-        {!editing && <RecycleBin categoryId={cat} subcategoryId={sub} />}
+        {!editing && (
+          <RecycleBin
+            onUseUrl={(u, n) => {
+              setError(null);
+              setUrl(u);
+              setName(n);
+            }}
+          />
+        )}
       </motion.div>
     </div>,
     document.body,
@@ -176,11 +189,21 @@ const ago = (t: number) => {
   return h < 48 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
 };
 
-// Deleted sites, newest first; Restore puts one back into the section chosen
-// in the form above.
-function RecycleBin({ categoryId, subcategoryId }: { categoryId: string; subcategoryId: string | null }) {
+// Deleted sites, newest first. Each row says where Restore will put it back:
+// its old subcategory; the category's General group if that subcategory is
+// gone; nothing (→ Uncategorized) if the whole category is gone. "Add to URL"
+// copies the site into the form above instead.
+function RecycleBin({ onUseUrl }: { onUseUrl: (url: string, name: string) => void }) {
   const trashed = useStore((s) => s.trash.sites);
   const restoreSite = useStore((s) => s.restoreSite);
+  const categories = useStore((s) => s.categories);
+  const subcategories = useStore((s) => s.subcategories);
+  const destination = (t: (typeof trashed)[number]) => {
+    const c = categories.find((x) => x.id === t.categoryId);
+    if (!c) return null; // category deleted → Uncategorized, no path shown
+    const sc = subcategories.find((x) => x.id === t.subcategoryId && x.categoryId === c.id);
+    return `${c.name} › ${sc ? sc.name : 'General'}`;
+  };
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const shown = trashed.filter((t) => !q.trim() || `${t.name} ${t.url}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -217,14 +240,28 @@ function RecycleBin({ categoryId, subcategoryId }: { categoryId: string; subcate
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12px] text-white/85">{t.name}</span>
                       <span className="block truncate text-[10px] text-white/40">
-                        {t.fromCategory}
-                        {t.fromSubcategory ? ` › ${t.fromSubcategory}` : ''} · {ago(t.deletedAt)}
+                        {destination(t) ? (
+                          <span className="text-white/55">Restores to {destination(t)}</span>
+                        ) : (
+                          <span>{UNCATEGORIZED_NAME}</span>
+                        )}{' '}
+                        · {ago(t.deletedAt)}
                       </span>
                     </span>
                     <button
                       type="button"
-                      onClick={() => restoreSite(t.id, categoryId, subcategoryId)}
+                      onClick={() => onUseUrl(t.url, t.name)}
+                      aria-label={`Put ${t.name} in the URL field`}
+                      title="Fill the form above with this site"
+                      className="bin-use-btn shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold"
+                    >
+                      Add to URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => restoreSite(t.id)}
                       aria-label={`Restore ${t.name}`}
+                      title={destination(t) ? `Back to ${destination(t)}` : `Its category is gone — goes to ${UNCATEGORIZED_NAME}`}
                       className="undo-btn shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold"
                     >
                       Restore

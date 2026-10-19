@@ -10,6 +10,60 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19f — chip last row, inline new category, restore to origin, Uncategorized
+
+### Site Map chips (`SiteMapModal.tsx`)
+- Section chip rows still stretch edge to edge, but the **last row keeps
+  natural widths**. A zero-height `::after` filler with `grow-[999]` takes the
+  leftover space. The Uncategorized card uses the same row.
+
+### New category, inline (`SiteMapModal.tsx` `NewCategoryButton`, `.sitemap-color`)
+- The popover is gone. "+ New Category" turns into an inline header form:
+  - a colour swatch (a native `<input type="color">` behind a round preview);
+  - the name field (autofocus), **Add** and **Cancel**.
+- The colour is preset with `nextFreeColor` (unused by any category) each time
+  the form opens. Enter adds; Esc cancels and doesn't close the Site Map.
+
+### Recycle bin: restore to origin + Add to URL (`SiteFormDialog.tsx`, `store.ts`)
+- **`restoreSite(id)` with no target** restores to where the site came from:
+  - **original subcategory** if it still exists in that category;
+  - **category kept, subcategory deleted** → the category's General group (`subcategoryId null`);
+  - **category deleted** → Uncategorized (`categoryId ''`, `subcategoryId null`).
+  - An explicit `categoryId` (including `''`) still wins.
+  - The old fallback to the first category is gone.
+- **Row text:**
+  - "Restores to Category › Sub" (or "› General") while the category exists;
+  - when the category is gone, there's no restore path, just "Uncategorized" and the age.
+- **"Add to URL"** (`.bin-use-btn`, left of Restore) fills the form's URL and
+  Display Name with that site. It stays in the bin.
+- **Form:**
+  - the category select has "Uncategorized (none)" (`categoryId ''`); its subcategory select offers only "None";
+  - save no longer requires a category;
+  - editing an uncategorized site keeps `''`.
+- **Tests:** 4 new unit tests in `store.test.ts` cover the three cases plus an explicit target.
+
+### Uncategorized sites (`lib/categories.ts`, `UncategorizedTiles.tsx` new, `CategoryGrid.tsx`, `SitemapTab.tsx`, `utils.ts`)
+- **Data model:** `UNCATEGORIZED_ID = ''`, name "Uncategorized", colour `#94a3b8`.
+  It isn't a real category, so nothing is added to `categories`.
+- **Deck:** `UncategorizedTiles` occupies one card-width slot after the last
+  category card, with no card frame: a quiet label, a count, and a grid of
+  favicon tiles (they record visits). The pager counts the slot.
+- **Site Map:** an "Uncategorized / None" `MapCard` without sections. Its chips
+  drag onto any section to file them (`placeSite`).
+- **Settings → Sitemap graph:** an "Uncategorized / None" node with its sites
+  linked straight to it.
+- **Search:** `searchSites` includes uncategorized sites under a pseudo
+  category, so the search bar and Site Map search find them.
+- **Not shown:** Settings → Library still lists only real categories.
+
+### Verification
+- `tsc -b` clean.
+- Vitest 211/211.
+- `build:demo` succeeds.
+- UI not tested yet (testing policy).
+
+---
+
 ## Round 2026-10-19e — zone list, count box, feed reload, switch border, name fit
 
 - **Time-zone search** (`faces2.tsx` `ZoneSearch`):

@@ -391,3 +391,32 @@ describe('placeSite (Site Map / Bookmarks reorder)', () => {
     expect(useStore.getState().sites.find((x) => x.id === b.id)?.subcategoryId).toBe(sub.id);
   });
 });
+
+describe('restoreSite — back to where it came from', () => {
+  const where = (id: string) => {
+    const s = st().sites.find((x) => x.id === id);
+    return s && [s.categoryId, s.subcategoryId];
+  };
+  test('its subcategory still exists → back into it', () => {
+    st().deleteSite('a');
+    st().restoreSite('a');
+    expect(where('a')).toEqual(['c1', 's1']);
+    expect(st().trash.sites.some((t) => t.id === 'a')).toBe(false);
+  });
+  test('subcategory deleted, category kept → the category\'s General group', () => {
+    st().deleteSite('a');
+    st().deleteSubcategory('s1');
+    st().restoreSite('a');
+    expect(where('a')).toEqual(['c1', null]);
+  });
+  test('category deleted → Uncategorized (no category, no subcategory)', () => {
+    st().deleteCategory('c1');
+    st().restoreSite('a');
+    expect(where('a')).toEqual(['', null]);
+  });
+  test('an explicit target still wins', () => {
+    st().deleteSite('a');
+    st().restoreSite('a', 'c2', null);
+    expect(where('a')).toEqual(['c2', null]);
+  });
+});

@@ -17,6 +17,37 @@ wide where layout is involved.
 
 ---
 
+## 00000. Round 2026-10-19f — latest changes
+
+- **Site Map chips:** rows still fill the card, but the last row's chips are only as wide as their names.
+- **New category (Site Map header):** "+ New Category" turns into a colour swatch plus a name field, with Add and Cancel.
+  - The swatch starts with a colour no other category uses; click it to pick another.
+  - Enter adds; Esc cancels.
+- **Deleted / archived sites** (in the Add Site window):
+  - **Restore:** puts a site back where it was:
+    - in its old subcategory;
+    - in its category's **General** group if that subcategory was deleted;
+    - in **Uncategorized** if the whole category was deleted.
+  - **Row text:** "Restores to Category › Sub", or just "Uncategorized" when the category is gone.
+  - **Add to URL** (left of Restore): copies that site's address and name into the form above.
+- **Uncategorized sites:**
+  - On the deck they sit as loose tiles in the empty space after the last category card.
+  - In the Site Map and in the Settings sitemap graph they appear under **Uncategorized / None**, with no subcategories.
+  - Drag one onto any section in the Site Map to file it.
+  - Search finds them too.
+
+**Manual test checklist**
+- [ ] Site Map: a section with 7 chips — the first rows fill edge to edge; the last chip(s) have natural width.
+- [ ] New Category: the swatch colour isn't used by any category; changing the colour works; Enter adds; Esc cancels without closing the Site Map.
+- [ ] Delete a site in a subcategory → the bin shows "Restores to Cat › Sub" → Restore puts it back there.
+- [ ] Delete a site, then delete its subcategory → the bin shows "Cat › General" → Restore lands in General.
+- [ ] Delete a whole category → its sites show "Uncategorized" → Restore puts them in the Uncategorized area (deck, Site Map, Settings sitemap).
+- [ ] Add to URL fills the URL and name fields; the site stays in the bin.
+- [ ] Uncategorized tiles open the site; dragging one in the Site Map onto a section files it; the area disappears when empty.
+- [ ] Edit an uncategorized site: the Category shows "Uncategorized (none)"; saving keeps it there or moves it if you pick a category.
+
+---
+
 ## 0000. Round 2026-10-19e — latest changes
 
 - **Time-zone search:** a much wider dropdown with bigger text. Each result shows the city and the full line of country, zone name and main cities, wrapping if needed.

@@ -19,8 +19,8 @@ import { Favicon } from '../Favicon';
 import { BinGlyph, SiteFormDialog } from '../library/SiteFormDialog';
 import { showUndo } from '../ui/UndoToast';
 import { Masonry } from '../ui/Masonry';
-import { CATEGORY_PALETTE, nextFreeColor } from '../../lib/palette';
-import { AnchoredPopover } from '../ui/AnchoredPopover';
+import { nextFreeColor } from '../../lib/palette';
+import { UNCATEGORIZED_COLOR, UNCATEGORIZED_NAME } from '../../lib/categories';
 
 // Site Map & Hierarchy: every site in the library at a glance.
 //   no query → a grid of category cards; each lists its General sites, then
@@ -111,6 +111,8 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
         };
       });
   }, [categories, subcategories, sites]);
+
+  const uncategorized = useMemo(() => sites.filter((s) => s.categoryId === '').sort((a, b) => a.order - b.order), [sites]);
 
   const processingGroups = useMemo(() => {
     const bySection = new Map<string, typeof processing>();
@@ -355,6 +357,29 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
                     onChipClick={onChipClick}
                   />
                 ))}
+                {uncategorized.length > 0 && (
+                  <MapCard
+                    title={`${UNCATEGORIZED_NAME} / None`}
+                    color={UNCATEGORIZED_COLOR}
+                    count={uncategorized.length}
+                    testId="sitemap-uncategorized"
+                  >
+                    <p className="-mt-1 text-[10.5px] text-white/40">No category — drag a site onto any section to file it.</p>
+                    <div className="flex flex-wrap gap-1.5 after:h-0 after:grow-[999] after:content-['']">
+                      {uncategorized.map((s) => (
+                        <Chip
+                          key={s.id}
+                          name={s.name}
+                          url={s.url}
+                          color={UNCATEGORIZED_COLOR}
+                          siteId={s.id}
+                          onDragState={setDragging}
+                          onClick={(e) => onChipClick(e, s.id)}
+                        />
+                      ))}
+                    </div>
+                  </MapCard>
+                )}
               </Masonry>
             </div>
           )}
@@ -567,87 +592,65 @@ function SiteBin({ categoryName }: { categoryName: string }) {
   );
 }
 
-// + New Category (top of the Site Map, same as Settings → Library): the
-// colour is picked for you — one no category uses yet — and can be swapped
-// for another unused swatch before adding.
+// + New Category (top of the Site Map, like Settings → Library): the button
+// turns into a name field and a colour picker, right there in the header.
+// The colour starts as one no category uses yet; Enter adds, Esc cancels.
 function NewCategoryButton() {
   const categories = useStore((s) => s.categories);
   const addCategory = useStore((s) => s.addCategory);
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
-  const auto = nextFreeColor(categories.map((c) => c.color));
-  const swatches = useMemo(() => {
-    const used = new Set(categories.map((c) => c.color.toLowerCase()));
-    return CATEGORY_PALETTE.filter((c) => !used.has(c)).slice(0, 10);
-  }, [categories]);
-  const chosen = color || auto;
-  const close = () => {
-    setAnchor(null);
+  const start = () => {
+    setColor(nextFreeColor(categories.map((c) => c.color)));
     setName('');
-    setColor('');
+    setOpen(true);
   };
-  return (
-    <>
+  if (!open)
+    return (
       <button
         type="button"
-        onClick={(e) => (anchor ? close() : setAnchor(e.currentTarget))}
-        aria-expanded={!!anchor}
-        className="sitemap-new-cat flex shrink-0 items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium text-white"
+        onClick={start}
+        className="sitemap-new-cat flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium text-white"
       >
-        <span className="size-2.5 rounded-full" style={{ background: auto, boxShadow: `0 0 8px ${auto}` }} />+ New Category
+        + New Category
       </button>
-      {anchor && (
-        <AnchoredPopover anchor={anchor} onClose={close} label="New category" width={300}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!name.trim()) return;
-              addCategory({ name: name.trim(), color: chosen });
-              close();
-            }}
-            className="space-y-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="size-3.5 shrink-0 rounded-full" style={{ background: chosen, boxShadow: `0 0 8px ${chosen}` }} />
-              <input
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Category name"
-                aria-label="New category name"
-                className="sitemap-input min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-[12px] outline-none"
-              />
-            </div>
-            <div>
-              <p className="mb-1.5 text-[10.5px] text-white/50">Colour (only unused colours)</p>
-              <span role="radiogroup" aria-label="Category colour" className="flex flex-wrap gap-1.5">
-                {swatches.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    role="radio"
-                    aria-checked={chosen === c}
-                    aria-label={c}
-                    onClick={() => setColor(c)}
-                    className={`size-5 rounded-full transition-transform hover:scale-110 ${chosen === c ? 'ring-2 ring-white/85 ring-offset-2 ring-offset-transparent' : ''}`}
-                    style={{ background: c }}
-                  />
-                ))}
-              </span>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={close} className="rounded-lg px-3 py-1.5 text-xs text-white/55 hover:bg-white/5">
-                Cancel
-              </button>
-              <button type="submit" className="rounded-lg bg-white/15 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/20">
-                Add Category
-              </button>
-            </div>
-          </form>
-        </AnchoredPopover>
-      )}
-    </>
+    );
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        addCategory({ name: name.trim(), color });
+        setOpen(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      }}
+      className="flex shrink-0 items-center gap-2"
+    >
+      <label className="sitemap-color flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border" title="Category colour">
+        <span className="size-4 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label="Category colour" className="sr-only" />
+      </label>
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Category name"
+        aria-label="New category name"
+        className="sitemap-input h-8 w-48 rounded-lg border px-2.5 text-[12px] outline-none"
+      />
+      <button type="submit" className="h-8 rounded-lg bg-white/15 px-3 text-xs font-semibold text-white hover:bg-white/20">
+        Add
+      </button>
+      <button type="button" onClick={() => setOpen(false)} aria-label="Cancel new category" className="h-8 rounded-lg px-2 text-xs text-white/50 hover:bg-white/5 hover:text-white">
+        Cancel
+      </button>
+    </form>
   );
 }
 
@@ -815,7 +818,7 @@ function Section({
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+      <div className="flex flex-wrap gap-1.5 after:h-0 after:grow-[999] after:content-['']">{children}</div>
     </div>
   );
 }

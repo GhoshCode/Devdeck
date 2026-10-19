@@ -1,3 +1,4 @@
+import { UNCATEGORIZED_COLOR, UNCATEGORIZED_ID, UNCATEGORIZED_NAME } from './lib/categories';
 import type { Category, Site, Subcategory } from './types';
 
 // --- URL & Domain Utilities --------------------------------------------------
@@ -101,6 +102,8 @@ export function fuzzyMatch(pattern: string, target: string): number {
   return -1;
 }
 
+const UNCATEGORIZED: Category = { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME, color: UNCATEGORIZED_COLOR, order: Number.MAX_SAFE_INTEGER };
+
 export function searchSites(
   query: string,
   sites: Site[],
@@ -114,7 +117,7 @@ export function searchSites(
   const scored: ScoredSite[] = [];
 
   for (const site of sites) {
-    const category = catMap.get(site.categoryId);
+    const category = catMap.get(site.categoryId) ?? (site.categoryId === '' ? UNCATEGORIZED : undefined);
     if (!category) continue;
     const subcategory = site.subcategoryId ? subMap.get(site.subcategoryId) ?? null : null;
 

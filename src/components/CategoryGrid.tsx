@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { CategoryCard } from './CategoryCard';
 import { PagerDots, PagerSpacer, useCardPaging } from './CardsPager';
 import { orderWithPin } from '../lib/categories';
+import { UncategorizedTiles } from './UncategorizedTiles';
 
 interface CategoryGridProps {
   onOpenSettings?: () => void;
@@ -15,7 +16,9 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
   const shouldReduceMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortedCategories = useMemo(() => orderWithPin(categories, pinnedId), [categories, pinnedId]);
-  const paging = useCardPaging(scrollRef, sortedCategories.length);
+  const sites = useStore((s) => s.sites);
+  const loose = useMemo(() => sites.filter((s) => s.categoryId === '').sort((a, b) => a.order - b.order), [sites]);
+  const paging = useCardPaging(scrollRef, sortedCategories.length + (loose.length ? 1 : 0));
 
   // Bring the row back to the start when a card is pinned so it is seen landing first.
   useEffect(() => {
@@ -94,6 +97,11 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
                 <CategoryCard category={category} />
               </motion.div>
             ))}
+            {loose.length > 0 && (
+              <div className="w-[330px] sm:w-[370px] lg:w-[400px] shrink-0 h-full flex flex-col min-h-0">
+                <UncategorizedTiles sites={loose} />
+              </div>
+            )}
             <PagerSpacer width={paging.spacer} />
           </motion.div>
           {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
@@ -133,6 +141,11 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
                 <CategoryCard category={category} />
               </motion.div>
             ))}
+            {loose.length > 0 && (
+              <div className="w-[330px] sm:w-[370px] lg:w-[400px] shrink-0 h-full flex flex-col min-h-0">
+                <UncategorizedTiles sites={loose} />
+              </div>
+            )}
             <PagerSpacer width={paging.spacer} />
           </motion.div>
 

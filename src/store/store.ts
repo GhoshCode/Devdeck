@@ -423,17 +423,22 @@ export const useStore = create<Store>()(
           const t = s.trash.sites.find((x) => x.id === id);
           if (!t) return {};
           const { deletedAt: _d, fromCategory: _c, fromSubcategory: _sc, ...site } = t;
-          const cat =
-            (categoryId && s.categories.some((c) => c.id === categoryId) && categoryId) ||
-            (s.categories.some((c) => c.id === site.categoryId) && site.categoryId) ||
-            [...s.categories].sort((a, b) => a.order - b.order)[0]?.id;
-          if (!cat) return {};
-          const sub =
-            cat === categoryId
-              ? subcategoryId
-              : cat === site.categoryId && s.subcategories.some((x) => x.id === site.subcategoryId)
-                ? site.subcategoryId
-                : null;
+          // An explicit target wins ('' = Uncategorized). Otherwise the site goes
+          // back where it came from: its subcategory, or the category's General
+          // group if that subcategory is gone, or Uncategorized if the category
+          // itself is gone.
+          let cat: string;
+          let sub: string | null;
+          if (categoryId !== undefined && (categoryId === '' || s.categories.some((c) => c.id === categoryId))) {
+            cat = categoryId;
+            sub = cat && s.subcategories.some((x) => x.id === subcategoryId && x.categoryId === cat) ? subcategoryId : null;
+          } else if (s.categories.some((c) => c.id === site.categoryId)) {
+            cat = site.categoryId;
+            sub = s.subcategories.some((x) => x.id === site.subcategoryId && x.categoryId === cat) ? site.subcategoryId : null;
+          } else {
+            cat = '';
+            sub = null;
+          }
           const order = nextOrder(s.sites.filter((x) => x.categoryId === cat && x.subcategoryId === sub));
           return {
             sites: [...s.sites, { ...site, categoryId: cat, subcategoryId: sub, order }],

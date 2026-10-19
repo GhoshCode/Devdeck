@@ -2457,3 +2457,24 @@ html[data-theme='light'] .count-value {
   background: color-mix(in srgb, var(--color-accent) 10%, #fff);
 }
 html[data-theme='light'] .count-value .text-white { color: #0f172a; }
+
+/* Site Map: colour picker beside the new-category field */
+.sitemap-color {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.sitemap-color:focus-within,
+.sitemap-color:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+html[data-theme='light'] .sitemap-color { background: #fff; border-color: rgba(60, 60, 67, 0.15); }
+/* Recycle bin: "Add to URL" */
+.bin-use-btn {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.bin-use-btn:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+html[data-theme='light'] .bin-use-btn { color: rgba(60, 60, 67, 0.75); border-color: rgba(60, 60, 67, 0.18); }
