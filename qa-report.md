@@ -22,7 +22,7 @@ Linux Chrome, the primary target, was **not** available on this machine. See §6
 |---|---|
 | TypeScript (`tsc -b`) | Clean |
 | Unit tests (Vitest) | **228 / 228** pass |
-| Browser e2e suite (`chromium`, 93 specs) | **90 / 90** pass (final run, 7.6 min) |
+| Browser e2e suite (`chromium`, 90 tests) | **90 / 90** pass (final run, 7.6 min) |
 | Extension specs (`qa`: extension + bookmarks) | **2 / 2** pass |
 | Scenario: final pass (alerts, resize, paging, Site Map deletes) | **26 / 26** dark · **26 / 26** light |
 | Scenario: bookmarks panel + Tree View (in the extension) | **26 / 26** dark · **26 / 26** light |
