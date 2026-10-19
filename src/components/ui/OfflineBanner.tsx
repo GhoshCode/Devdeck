@@ -6,7 +6,8 @@ import { isExtension } from '../../lib/env';
 
 // When the connection drops, a soft see-through veil (75% transparent) over
 // the category area — the quick-links row above stays clear — with a short
-// note. It leaves on its own when the connection is back.
+// note. While shown it blocks clicks on the sites behind it. It leaves on its
+// own when the connection is back.
 
 // navigator.onLine only notices a dead network adapter; Wi-Fi that is still
 // connected but has no internet reads as online. So we also probe a tiny
@@ -75,7 +76,7 @@ export function OfflineBanner() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="offline-veil pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-b-[inherit] p-6"
+          className="offline-veil pointer-events-auto absolute inset-0 z-30 flex items-center justify-center rounded-b-[inherit] p-6"
         >
           <motion.div
             initial={{ y: 10, scale: 0.97 }}
@@ -88,7 +89,7 @@ export function OfflineBanner() {
             </span>
             <p className="font-display text-[15px] font-semibold text-white">You're offline</p>
             <p className="text-[12px] leading-relaxed text-white/65">
-              No internet connection right now. Your deck still works — sites open, news, weather and GitHub refresh as soon as you're back online.
+              No internet connection right now. Sites can't be opened until you're back online; news, weather and GitHub refresh as soon as the connection returns.
             </p>
             <span className="mt-1 flex items-center gap-1.5 font-mono text-[10.5px] text-white/45">
               <span className="offline-dot size-1.5 rounded-full" /> waiting for connection…

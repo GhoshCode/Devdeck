@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { isExtension } from './env';
+import { markProxyDown, proxyAvailable } from './netFetch';
 
 // Site icons for the extension, without a single failed request in the page:
 // the service worker fetches each icon once and hands back a data: URL, which
@@ -59,7 +59,9 @@ function request(host: string) {
       } else misses[host] = Date.now();
     })
     .catch(() => {
-      misses[host] = Date.now();
+      // the worker isn't reachable (e.g. extension just reloaded): load icons
+      // directly for now instead of calling the site icon-less
+      markProxyDown();
     })
     .finally(() => {
       inFlight.delete(host);
@@ -68,18 +70,23 @@ function request(host: string) {
     });
 }
 
-// The icon for a host: a data: URL once known, otherwise null (show the letter).
+// When the worker can't be reached, icons load directly (the snapshot says so,
+// so every icon re-renders the moment that happens).
+export const DIRECT = 'direct';
+
+// The icon for a host: a data: URL once known, DIRECT when icons should load
+// directly, otherwise null (show the letter while it's fetched).
 export function useProxiedFavicon(host: string): string | null {
   return useSyncExternalStore(
     (fn) => {
       let set = listeners.get(host);
       if (!set) listeners.set(host, (set = new Set()));
       set.add(fn);
-      if (host && !cache[host]) request(host);
+      if (host && !cache[host] && proxyAvailable()) request(host);
       return () => set!.delete(fn);
     },
-    () => (host ? cache[host] ?? null : null),
+    () => (host ? (cache[host] ?? (proxyAvailable() ? null : DIRECT)) : null),
   );
 }
 
-export const proxiedFavicons = () => isExtension() && !!runtime()?.sendMessage;
+export const proxiedFavicons = () => proxyAvailable() && !!runtime()?.sendMessage;

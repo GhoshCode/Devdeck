@@ -10,6 +10,20 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20i — offline banner no longer sticks; offline veil blocks clicks
+
+- `lib/netFetch.ts` is fail-safe: if the service worker can't be reached
+  ("Receiving end does not exist", e.g. after an extension reload) or doesn't
+  answer within 8 s, the page fetches directly and bypasses the proxy for 60 s
+  (`markProxyDown`). A missing worker no longer looks like "you're offline",
+  so feeds, GitHub and weather load.
+- `lib/faviconStore.ts`: a failed favicon request marks the proxy down; while
+  it's down the snapshot returns `DIRECT` and `Favicon` uses the normal image.
+- `ui/OfflineBanner.tsx`: the veil is `pointer-events-auto`, so sites behind
+  it can't be clicked while offline; copy updated.
+- QA specs updated for current UI (due chip "Tomorrow", theme filter pills,
+  contribution-graph label).
+
 ## Round 2026-10-20h — no console errors from refused network requests
 
 - **Cause:** opening Settings → Scraping showed "Failed to load resource: 403". That was not the tab itself. The feed reload hit Hacker News's API (hn.algolia.com), which refuses bursts (the demo build has 210 sources). Chrome logs every refused request made by a page as a console error; GitHub rate limits, weather outages and the offline probe can do the same.

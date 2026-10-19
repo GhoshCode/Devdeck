@@ -21,9 +21,10 @@ Linux Chrome, the primary target, was **not** available on this machine. See §6
 | Check | Result |
 |---|---|
 | TypeScript (`tsc -b`) | Clean |
-| Unit tests (Vitest) | **228 / 228** pass |
-| Browser e2e suite (`chromium`, 90 tests) | **90 / 90** pass (final run, 7.6 min) |
-| Extension specs (`qa`: extension + bookmarks) | **2 / 2** pass |
+| Unit tests (Vitest) | **229 / 229** pass |
+| Browser e2e suite (`chromium`, 90 tests) | **90 / 90** pass (serial re-run after the offline fix; 4 load-related failures in a parallel run passed serially) |
+| QA project (`qa`: baseline, full pass both themes, console-clean, extension, bookmarks, responsive) | **34 / 34** pass |
+| Perf budgets (`qa-perf`) | Dark passes; light: theme switch and Settings open exceed the worst-frame / janky-frame budget on this machine (recorded, not a functional failure) |
 | Scenario: final pass (alerts, resize, paging, Site Map deletes) | **26 / 26** dark · **26 / 26** light |
 | Scenario: bookmarks panel + Tree View (in the extension) | **26 / 26** dark · **26 / 26** light |
 | Browser console errors across all scenarios | **0** |
@@ -123,9 +124,12 @@ Specs made stale by intended UI changes were updated to the current behaviour:
 | 4 | Tree View (light): "+N more" and fold toggles invisible | Low | Fixed |
 | 5 | Settings zone picker didn't match the clock face (28 preset cities, 3 zones, 12-hour) | Medium | Fixed: world search, 2 zones, 24-hour |
 | 6 | 16 e2e specs stale after intended UI changes | — | Updated |
+| 8 | Offline banner stayed after the network returned (worker unreachable → every request failed) | High | Fixed: `netFetch` falls back to direct fetch |
+| 9 | Offline veil let sites behind it be clicked | Low | Fixed: veil blocks clicks |
+| 10 | QA specs stale (due chip, theme pills, graph label) | — | Updated |
 | 7 | e2e flakiness: 2 theme tests timed out under full-suite load; 1 used a fixed 200 ms wait for a view-transition theme change | Low | Fixed (60 s budget; wait for the attribute) |
 
-No High-severity defects are open.
+No High-severity defects are open. Open: light-theme perf budget for theme switch / Settings open (Low).
 
 ## 5. Not covered / for your manual review
 - **Linux Chrome** (the primary platform), including the terminal helper with `python3`.

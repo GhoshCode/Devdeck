@@ -17,6 +17,12 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-20i — offline panel
+
+- After the network returns (or the extension is reloaded), the "You're
+  offline" panel goes away and news, GitHub and icons load again.
+- While the offline panel is showing, the sites behind it can't be clicked.
+
 ## Round 2026-10-20h — clean console while feeds load
 
 - **What was happening:** opening Settings → Scraping (or simply waiting) could show red "403" errors in the browser console. Hacker News's API sometimes refuses requests.

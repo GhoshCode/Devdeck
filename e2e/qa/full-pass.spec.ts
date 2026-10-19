@@ -85,7 +85,7 @@ for (const theme of THEMES) {
       await panel.getByRole('textbox', { name: 'New task' }).press('Enter');
       await step(page, info, 'task added', async () => {});
       await expect(panel.getByText('Write QA report')).toBeVisible();
-      await expect(panel.locator('li', { hasText: 'Write QA report' })).toContainText('Jan 15');
+      await expect(panel.locator('li', { hasText: 'Write QA report' })).toContainText('Tomorrow');
       await auditOpen(page, info, 'to-do overlay', '[role="dialog"][aria-label="All tasks"]');
 
       await t.run('complete slides out', () => panel.getByRole('button', { name: 'Complete "Write QA report"' }).click(), 800);
@@ -178,7 +178,7 @@ for (const theme of THEMES) {
     test('git widget — hover a day for its count', async ({ page }, info) => {
       const git = page.getByTestId('git-widget');
       await expect(git).toBeVisible();
-      const cell = git.locator('[aria-label="Contribution graph"] span').last();
+      const cell = git.locator('[aria-label^="Contribution graph"] > .flex > div:nth-child(10) span').first();
       await expect(cell).toBeVisible({ timeout: 15_000 });
       await cell.hover();
       await step(page, info, 'git day hover readout', async () => {});
@@ -254,7 +254,7 @@ for (const theme of THEMES) {
       await t.run(`switch to ${other}`, () => modal.getByRole('radio', { name: other === 'light' ? 'Light' : 'Dark', exact: true }).click(), 800);
       await expect(page.locator('html')).toHaveAttribute('data-theme', other);
       await t.run('accent Purple', () => modal.getByRole('radio', { name: 'Purple', exact: true }).click(), 500);
-      await t.run('filter dark themes', () => modal.getByRole('tab', { name: /^dark/i }).click(), 400);
+      await t.run('filter dark themes', () => modal.getByRole('tab', { name: /^vibrant/i }).click(), 400);
       await t.run('filter all themes', () => modal.getByRole('tab', { name: /^all/i }).click(), 400);
       await t.run('reduce transparency on', () => modal.getByRole('switch', { name: 'Reduce transparency' }).click(), 500);
       await expect(page.locator('html')).toHaveAttribute('data-reduce-transparency', '');

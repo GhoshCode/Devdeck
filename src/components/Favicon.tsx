@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import { getHostname } from '../utils';
-import { proxiedFavicons, useProxiedFavicon } from '../lib/faviconStore';
+import { DIRECT, useProxiedFavicon } from '../lib/faviconStore';
+import { isExtension } from '../lib/env';
 
 interface FaviconProps {
   url: string;
@@ -60,8 +61,9 @@ export const Favicon = memo(function Favicon({
   const cached = browser ? browserFaviconUrl(url) : null;
   // Extension: the service worker fetches the icon, so the page never makes a
   // request that can fail (and log an error).
-  const proxy = !cached && proxiedFavicons();
-  const proxied = useProxiedFavicon(proxy && domain && !missing.has(domain) ? domain : '');
+  const wantProxy = !cached && isExtension();
+  const proxied = useProxiedFavicon(wantProxy && domain && !missing.has(domain) ? domain : '');
+  const proxy = wantProxy && proxied !== DIRECT;
   const [hasError, setHasError] = useState(() => missing.has(domain));
   const initial = (name.trim()[0] || '?').toUpperCase();
 
