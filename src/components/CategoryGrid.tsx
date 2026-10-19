@@ -5,14 +5,12 @@ import { CategoryCard } from './CategoryCard';
 import { PagerDots, PagerSpacer, useCardPaging } from './CardsPager';
 import { orderWithPin } from '../lib/categories';
 import { UncategorizedTiles } from './UncategorizedTiles';
-import { CategoryMenuIcon } from './CategoryOverview';
 
 interface CategoryGridProps {
   onOpenSettings?: () => void;
-  onOverview?: () => void; // "All categories" (the overview)
 }
 
-export function CategoryGrid({ onOpenSettings, onOverview }: CategoryGridProps) {
+export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
   const categories = useStore((s) => s.categories);
   const pinnedId = useStore((s) => s.pinnedCategoryId);
   const shouldReduceMotion = useReducedMotion();
@@ -107,25 +105,9 @@ export function CategoryGrid({ onOpenSettings, onOverview }: CategoryGridProps) 
             <PagerSpacer width={paging.spacer} />
           </motion.div>
           {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
-          {/* Footer: All categories on the left, page dots in the middle */}
-          <div className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center pt-1.5">
-            <span className="flex items-center">
-              {onOverview && (
-                <button
-                  type="button"
-                  onClick={onOverview}
-                  aria-label="All categories"
-                  aria-controls="category-overview"
-                  title="All categories (overview)"
-                  className="category-menu-btn flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] font-semibold text-white/85 transition-colors"
-                >
-                  <CategoryMenuIcon className="size-3.5" />
-                  All categories
-                </button>
-              )}
-            </span>
+          {/* Footer: page dots in the middle */}
+          <div className="flex shrink-0 items-center justify-center pt-1.5">
             <PagerDots pages={paging.pages} page={paging.page} goTo={paging.goTo} />
-            <span />
           </div>
         </div>
       ) : (
@@ -171,25 +153,9 @@ export function CategoryGrid({ onOpenSettings, onOverview }: CategoryGridProps) 
           </motion.div>
 
           {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
-          {/* Footer: All categories on the left, page dots in the middle */}
-          <div className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center pt-1.5">
-            <span className="flex items-center">
-              {onOverview && (
-                <button
-                  type="button"
-                  onClick={onOverview}
-                  aria-label="All categories"
-                  aria-controls="category-overview"
-                  title="All categories (overview)"
-                  className="category-menu-btn flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] font-semibold text-white/85 transition-colors"
-                >
-                  <CategoryMenuIcon className="size-3.5" />
-                  All categories
-                </button>
-              )}
-            </span>
+          {/* Footer: page dots in the middle */}
+          <div className="flex shrink-0 items-center justify-center pt-1.5">
             <PagerDots pages={paging.pages} page={paging.page} goTo={paging.goTo} />
-            <span />
           </div>
         </section>
       )}

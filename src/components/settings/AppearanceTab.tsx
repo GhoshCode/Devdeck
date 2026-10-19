@@ -432,8 +432,14 @@ export function AppearanceTab() {
           })}
         </div>
         <Toggle
+          label="On this day in tech"
+          hint="A tech or computing event from today's date in history, under the greeting. Hover it and press ↻ for another."
+          checked={settings.showOnThisDay ?? true}
+          onChange={(v) => updateSettings({ showOnThisDay: v })}
+        />
+        <Toggle
           label="Daily motivational quote"
-          hint="A new quote every day under the greeting — hover it and press ↻ for another."
+          hint="A new quote every day under the greeting, from a public quotes library — hover it and press ↻ for another."
           checked={settings.showQuote ?? true}
           onChange={(v) => updateSettings({ showQuote: v })}
         />

@@ -9,7 +9,7 @@ import { switchModePatch } from './lib/appearance';
 import { withThemeTransition } from './lib/themeTransition';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
-import { CategoryOverview } from './components/CategoryOverview';
+import { CategoryMenuIcon, CategoryOverview } from './components/CategoryOverview';
 import { UndoToast } from './components/ui/UndoToast';
 import { LinkPeek } from './components/ui/LinkPeek';
 import { OfflineBanner } from './components/ui/OfflineBanner';
@@ -183,15 +183,32 @@ export default function App() {
         rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
         center={
           <div className="flex h-full min-h-0 flex-col gap-3">
-            {/* quick links + recent float above the category cards */}
-            <LinksStrip />
+            {/* All categories stands on its own, left of the quick links + recent
+                bar; it moves with the bar as the centre column resizes. */}
+            <div className="flex min-w-0 shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOverview((v) => !v)}
+                aria-label="All categories"
+                aria-controls="category-overview"
+                aria-pressed={overview}
+                title="All categories (overview)"
+                className="category-menu-btn glass-raised flex h-[var(--links-bar-h,56px)] shrink-0 items-center gap-1.5 rounded-2xl border px-2 text-[12px] font-semibold text-white/85 transition-colors"
+              >
+                <CategoryMenuIcon className="size-6" />
+                <span className="hidden xl:inline">All categories</span>
+              </button>
+              <div className="min-w-0 flex-1">
+                <LinksStrip />
+              </div>
+            </div>
           <div data-testid="center-frame" className="glass flex min-h-0 flex-1 flex-col overflow-hidden">
             <div data-center-body className="relative flex min-h-0 flex-1 p-3">
               {/* The overview replaces the cards (one view at a time keeps it light). */}
               {overview ? (
                 <CategoryOverview onClose={() => setOverview(false)} />
               ) : (
-                <CategoryGrid onOpenSettings={() => openSettings('library')} onOverview={() => setOverview(true)} />
+                <CategoryGrid onOpenSettings={() => openSettings('library')} />
               )}
               <OfflineBanner />
             </div>

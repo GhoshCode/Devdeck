@@ -63,6 +63,7 @@ export interface Settings {
   geminiMode?: boolean; // AI mode: the search bar sends plain text to the chosen AI instead of Google
   aiProvider?: 'gemini' | 'chatgpt' | 'claude' | 'perplexity' | 'custom'; // default gemini
   aiCustomUrl?: string; // custom AI: URL template with {q}
+  showOnThisDay?: boolean; // "On this day" tech history line under the greeting (default on)
   showQuote?: boolean; // the greeting shows a daily motivational quote (default on)
   leftSplit?: number; // 0–1: share of the left column given to Focus (rest: Queue / To-do)
   feedSplit?: number; // 0–1: share of the right column given to Tech news (rest: Dev jobs)

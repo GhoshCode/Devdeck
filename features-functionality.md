@@ -17,6 +17,12 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-20j — On this day and quotes
+
+- Under the greeting, above the quote: **On this day**, one tech or computing event from today's date in history. Hover and press ↻ for another event from the same day; click it to open the Wikipedia article. You can turn it off in Appearance.
+- The daily quote comes from an online library of more than 1,400 quotes. It's the same all day; ↻ gives a random one.
+- **All categories** is its own button to the left of the quick-links bar, and moves with the bar.
+
 ## Round 2026-10-20i — offline panel
 
 - After the network returns (or the extension is reloaded), the "You're

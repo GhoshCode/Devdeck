@@ -16,12 +16,21 @@
     "qa:headed": "npm run build && playwright test --project=qa --headed",
     "qa:perf": "playwright test --project=qa-perf --no-deps --workers=1",
     "qa:report": "playwright show-report",
-    "qa:extension": "npm run build && playwright test --project=qa e2e/qa/extension.spec.ts"
+    "qa:extension": "npm run build && playwright test --project=qa e2e/qa/extension.spec.ts",
+    "package": "npm run build && node scripts/package-extension.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@fontsource/dancing-script": "^5.3.0",
+    "@fontsource/great-vibes": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/playfair-display": "^5.3.0",
+    "@fontsource/rajdhani": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
     "@vvo/tzdb": "^6.201.1",
     "@xyflow/react": "^12.11.2",
     "dseg": "^0.46.0",

@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
 import { formatDateLine, greetingFor } from '../../lib/time';
-import { quoteFor } from '../../lib/greeting';
+import { quoteFor, type Quote } from '../../lib/greeting';
+import { cachedQuote, fetchQuote } from '../../services/quotes';
+import { fetchOnThisDay, type DayEvent } from '../../services/onThisDay';
 import { GREET_STYLES, NAME_FONTS, type NameFont } from '../../types';
 
 // The uppercase date line, under the clock.
@@ -77,6 +79,74 @@ function AddName({ onSave }: { onSave: (name: string) => void }) {
   );
 }
 
+// "On this day": one tech/computing event from today's date in history
+// (Wikipedia); ↻ shows the next one. Hidden when there's nothing for today
+// or the feed can't be reached.
+const OnThisDay = memo(function OnThisDay() {
+  const now = useNow(60_000);
+  const day = `${now.getMonth()}-${now.getDate()}`;
+  const [events, setEvents] = useState<DayEvent[]>([]);
+  const [at, setAt] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    fetchOnThisDay(new Date())
+      .then((list) => {
+        if (!alive) return;
+        setEvents(list);
+        setAt(list.length ? Math.floor(Math.random() * list.length) : 0);
+      })
+      .catch(() => alive && setEvents([]));
+    return () => {
+      alive = false;
+    };
+  }, [day]);
+  if (!events.length) return null;
+  const ev = events[at % events.length];
+  const label = ev.kind === 'born' ? 'Born: ' : ev.kind === 'died' ? 'Died: ' : '';
+  return (
+    <div className="group/otd relative max-w-[calc(100%-1.75rem)]">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p
+          key={`${ev.year}${ev.text}`}
+          data-testid="on-this-day"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.25 }}
+          title={`On this day in ${ev.year}: ${label}${ev.text}`}
+          className="line-clamp-1 text-[13px] leading-snug text-white/80"
+        >
+          <span className="otd-label mr-1.5 font-mono text-[10.5px] font-semibold tracking-[0.14em] text-white/45 uppercase">On this day</span>
+          <span className="font-semibold text-white/90">{ev.year}</span>
+          <span className="text-white/40"> — </span>
+          {ev.url ? (
+            <a href={ev.url} target="_blank" rel="noreferrer" className="hover:underline">
+              {label}
+              {ev.text}
+            </a>
+          ) : (
+            <>
+              {label}
+              {ev.text}
+            </>
+          )}
+        </motion.p>
+      </AnimatePresence>
+      {events.length > 1 && (
+        <button
+          type="button"
+          onClick={() => setAt((n) => n + 1)}
+          aria-label="Another event from this day"
+          title={`Another event (${(at % events.length) + 1} of ${events.length})`}
+          className="absolute top-0 -right-6 flex size-5 items-center justify-center rounded-md text-[11px] text-white/50 opacity-0 transition-opacity group-hover/otd:opacity-100 hover:bg-white/10 hover:text-white focus-visible:opacity-100"
+        >
+          ↻
+        </button>
+      )}
+    </div>
+  );
+});
+
 // GREET (top-centre of the top bar, above the search): the time-of-day
 // greeting with your name and a daily motivational quote (Appearance →
 // Greeting can turn it off; hover it for another).
@@ -90,8 +160,19 @@ export const DateGreet = memo(function DateGreet() {
   // Click the greeting for the next style, right-click for the previous one.
   const at = Math.max(0, GREET_STYLES.findIndex((g) => g.id === greetStyle));
   const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
-  const [shuffle, setShuffle] = useState(0);
-  const quote = quoteFor(now, shuffle);
+  const showOnThisDay = useStore((s) => s.settings.showOnThisDay ?? true);
+  // Quote from the quotes API (kept for the day); the built-in list only
+  // fills in until it arrives, or offline.
+  const [quote, setQuote] = useState<Quote>(() => cachedQuote(new Date()) ?? quoteFor(new Date()));
+  const qday = `${now.getMonth()}-${now.getDate()}`;
+  useEffect(() => {
+    let alive = true;
+    void fetchQuote(new Date()).then((q) => alive && setQuote(q));
+    return () => {
+      alive = false;
+    };
+  }, [qday]);
+  const nextQuote = () => void fetchQuote(new Date(), true).then(setQuote);
   // Your name: click for the next typeface, right-click for the previous one,
   // double-click to rename it right here.
   const nameFont = useStore((s) => s.settings.nameFont ?? 'grotesk');
@@ -177,6 +258,7 @@ export const DateGreet = memo(function DateGreet() {
       </h1>
       {!name.trim() && <AddName onSave={(n) => updateSettings({ greetingName: n })} />}
       </div>
+      {showOnThisDay && <OnThisDay />}
       {showQuote && (
         <figure className="group/quote relative max-w-[calc(100%-1.75rem)]">
           <AnimatePresence mode="wait" initial={false}>
@@ -198,7 +280,7 @@ export const DateGreet = memo(function DateGreet() {
           </AnimatePresence>
           <button
             type="button"
-            onClick={() => setShuffle((n) => n + 1)}
+            onClick={nextQuote}
             aria-label="Another quote"
             title="Another quote"
             className="absolute top-0 -right-6 flex size-5 items-center justify-center rounded-md text-[11px] text-white/50 opacity-0 transition-opacity group-hover/quote:opacity-100 hover:bg-white/10 hover:text-white focus-visible:opacity-100"

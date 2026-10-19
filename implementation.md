@@ -10,6 +10,21 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20j — On this day, API quotes, All categories by the links bar, store packaging
+
+- **On this day** (`services/onThisDay.ts`, `DateGreet.tsx` `OnThisDay`):
+  - Wikipedia's On this day feed (`/api/rest_v1/feed/onthisday/all/MM/DD`), cached per day in `devdeck.onthisday.v1`;
+  - filtered to tech: events matching `TECH_EVENT` first, then births/deaths of computer scientists, programmers and tech inventors; YouTube personalities excluded;
+  - one at a time, 13 px (quote is 12 px); ↻ on hover shows the next; the text links to the Wikipedia article;
+  - hidden when there's nothing for today or the feed fails; toggle in Appearance (`showOnThisDay`).
+- **Quotes** (`services/quotes.ts`): DummyJSON quotes API (1,454 quotes). Today's quote is `/quotes/{id-from-date}`, cached for the day in `devdeck.quote.v1`; ↻ fetches `/quotes/random`. The built-in list is only an offline fallback.
+- **All categories**: a standalone `glass-raised` button left of the quick-links bar in `App.tsx`, the same height as the bar (24 px icon, `px-2`; label from `xl` up). It sits in the same row as the bar, so it moves as the centre column resizes. Toggles the overview. Removed from the cards footer.
+- **Store readiness:**
+  - fonts are bundled with `@fontsource` (`src/fonts.ts`), so there's no Google Fonts request;
+  - the manifest has `host_permissions` `<all_urls>` only, no `optional_host_permissions`, no `extension_ids` on web-accessible resources, plus `short_name`, `minimum_chrome_version` 116 and a new description;
+  - `npm run package` builds and zips `dist/` to `release/devdeck-<version>.zip` with root-level, forward-slash paths;
+  - `PRIVACY.md` and `STORE_LISTING.md` added.
+
 ## Round 2026-10-20i — offline banner no longer sticks; offline veil blocks clicks
 
 - `lib/netFetch.ts` is fail-safe: if the service worker can't be reached
