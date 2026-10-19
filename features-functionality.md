@@ -17,6 +17,20 @@ wide where layout is involved.
 
 ---
 
+## 00000000. Round 2026-10-19i — latest changes
+
+- **Terminal box:**
+  - on Linux it shows `$` and "run a command in your terminal…"; PowerShell only appears on Windows;
+  - opened from localhost (not as the extension), it explains why commands can't run.
+- **Location:** a bigger map pin in the accent colour, centred beside the area and city lines.
+- **Greeting:** sits a little lower.
+
+**Manual test checklist:** see `qa-strategy.md` §10 (T1–T10) for the terminal, plus:
+- [ ] Location pin: about 18 px, centred against both lines (area + city) and against "Locating…" / "Set location".
+- [ ] Greeting: lower, still clear of the search bar at 1366×768.
+
+---
+
 ## 0000000. Round 2026-10-19h — latest changes
 
 - **Deleting a subcategory:** no prompt. Its sites move to Deleted / archived sites, and an undo bar shows for 5 s ("Deleted Tools — 3 sites moved to the recycle bin"). Undo brings the subcategory and its sites back.

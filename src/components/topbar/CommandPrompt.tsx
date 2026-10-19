@@ -10,7 +10,10 @@ import { runInTerminal, type TerminalResult } from '../../services/terminal';
 // Built-in commands (calc, open, gh…) live in the search bar.
 
 const HISTORY_LIMIT = 30;
-const SHELL = { windows: 'PowerShell', mac: 'Terminal', linux: 'the terminal' } as const;
+// Only the label: the helper opens the OS's own terminal (on Linux the first
+// of x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, kitty,
+// alacritty, xterm) and runs the command with bash.
+const SHELL = { windows: 'PowerShell', mac: 'Terminal', linux: 'your terminal' } as const;
 
 type Notice = { kind: 'ok' | 'error' | 'setup'; message: string };
 

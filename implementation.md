@@ -10,6 +10,18 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19i — terminal wording, location pin, greeting offset, QA strategy
+
+- **Terminal box** (`CommandPrompt.tsx`, `services/terminal.ts`): no behaviour change; the investigation is below.
+  - The shell label and prompt sign come from `detectPlatform()` (the user agent): Windows → `PS>` / "PowerShell", macOS → `$` / "Terminal", Linux → `$` / "your terminal" (was "the terminal").
+  - The not-extension message now says the page isn't running as the installed extension (e.g. localhost). That was the cause of the reported "nothing happens": the page was the dev server, where `chrome.runtime.id` is absent and native messaging can't be reached.
+  - `e2e/topbar.spec.ts` expectation updated.
+- **Location pin** (`WeatherUV.tsx`): the 10 px 📍 emoji is replaced by an 18 px SVG `MapPinGlyph` in the accent colour. The place lines sit in a column beside it, so the pin is vertically centred on them; the `pl-[15px]` indents are gone. The "Set location" button uses the same glyph.
+- **Greeting:** the centre column's top padding goes from `pt-3` to `pt-7`, so the greeting sits about 16 px lower.
+- **`qa-strategy.md` (new):** environments (Linux first), test levels and commands, data sets, risk priorities, feature-area → checklist map, entry/exit criteria, defect format, known gaps, terminal test cases T1–T10.
+
+---
+
 ## Round 2026-10-19h — subcategory delete → bin + undo, QA fixes, card polish
 
 - **Subcategory delete** (`store.ts` `deleteSubcategory`, new `reinsertSubcategory`; `library/deleteSubcategory.ts` new):

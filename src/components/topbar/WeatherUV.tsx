@@ -114,9 +114,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
           data-testid="weather-uv"
           className={`${row} hover:bg-white/[0.04]`}
         >
-          <span aria-hidden className="text-sm leading-none">
-            📍
-          </span>
+          <MapPinGlyph className="size-[18px] shrink-0 text-[var(--color-accent)]" />
           <span className="text-[11px] leading-tight font-semibold text-white/90">Set location</span>
           <span className="text-[10px] leading-tight text-white/50">for weather &amp; UV</span>
         </button>
@@ -196,33 +194,35 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
       <span
         {...handlers}
         data-testid="weather-place"
-        className="flex max-w-full min-w-0 cursor-pointer flex-col items-start gap-0.5 leading-tight font-medium text-white/80 select-none"
+        className="flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 leading-tight font-medium text-white/80 select-none"
       >
+        {/* the pin sits centred beside the place lines */}
+        <MapPinGlyph className="size-[18px] shrink-0 text-[var(--color-accent)]" />
         {data ? (
-          <>
-            <span className="flex max-w-full min-w-0 items-center gap-1 text-[11px] text-white/75">
-              <span aria-hidden className="text-[10px]">
-                📍
-              </span>
-              <span className="truncate">{data.area ?? data.place}</span>
-            </span>
+          <span className="flex min-w-0 flex-col items-start gap-0.5">
+            <span className="max-w-full truncate text-[11px] text-white/75">{data.area ?? data.place}</span>
             {data.area && (
-              <span className="max-w-full truncate pl-[15px] text-[14.5px] text-white/90">
+              <span className="max-w-full truncate text-[14.5px] text-white/90">
                 {data.place}
                 {data.postcode && <span className="font-mono text-[11.5px] text-white/60">, {data.postcode}</span>}
               </span>
             )}
-            {!data.area && data.postcode && <span className="pl-[15px] font-mono text-[11.5px] text-white/60">{data.postcode}</span>}
-          </>
-        ) : (
-          <span className="flex items-center gap-1 text-[11px]">
-            <span aria-hidden className="text-[10px]">
-              📍
-            </span>
-            {error ? 'Unavailable' : 'Locating…'}
+            {!data.area && data.postcode && <span className="font-mono text-[11.5px] text-white/60">{data.postcode}</span>}
           </span>
+        ) : (
+          <span className="text-[11px]">{error ? 'Unavailable' : 'Locating…'}</span>
         )}
       </span>
     </div>
   );
 });
+
+// Map pin for the place line (replaces the small emoji).
+function MapPinGlyph({ className = 'size-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}

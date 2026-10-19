@@ -82,7 +82,7 @@ test('terminal box explains the desktop helper on the website; admin toggles', a
   const prompt = page.getByRole('textbox', { name: 'Command prompt' });
   await prompt.fill('ipconfig');
   await prompt.press('Enter');
-  await expect(page.getByTestId('command-result')).toContainText('DevDeck browser extension');
+  await expect(page.getByTestId('command-result')).toContainText('installed DevDeck extension');
   await page.getByRole('button', { name: 'Administrator mode' }).click();
   await expect(page.getByRole('button', { name: 'Administrator mode' })).toHaveAttribute('aria-pressed', 'true');
   await expect(prompt).toHaveAttribute('placeholder', /as administrator/);

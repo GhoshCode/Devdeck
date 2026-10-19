@@ -43,7 +43,7 @@ const NO_HELPER = /not found|not installed|specified native messaging host|forbi
 
 export async function runInTerminal(cmd: string, admin: boolean): Promise<TerminalResult> {
   if (!isExtension()) {
-    return { ok: false, reason: 'not-extension', message: 'Running commands needs the DevDeck browser extension with its desktop helper.' };
+    return { ok: false, reason: 'not-extension', message: 'This page is not running as the installed DevDeck extension (e.g. opened from localhost), so it cannot reach the desktop helper. Commands run from the extension’s new tab once the helper is set up.' };
   }
   try {
     const res = await native({ cmd, admin });
