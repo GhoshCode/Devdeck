@@ -28,7 +28,8 @@
     "alarms",
     "notifications",
     "storage",
-    "nativeMessaging"
+    "nativeMessaging",
+    "bookmarks"
   ],
   "host_permissions": [
     "https://api.open-meteo.com/*",
