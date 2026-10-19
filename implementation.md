@@ -4,13 +4,44 @@ Technical record of what was built, where it lives and why. Newest round first.
 User-facing behaviour and the manual test checklist are in
 [features-functionality.md](features-functionality.md).
 
-Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
+Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 `localStorage["devdeck"]`), Tailwind v4, motion/react, dnd-kit, MV3 extension
 (`npm run build` → `dist/`, load unpacked).
 
 ---
 
+## Round 2026-10-20m — layout tidy-ups, smooth work panel, OS-matched terminal, v3.0.0 (branch `vfinal2.0`)
+
+Commits `fdcee53` and `0ccb3b0` on `vfinal2.0` (pushed; not merged into `main` — a week of local testing first).
+
+- **Quick-links bar** (`links/LinksStrip.tsx`):
+  - `.links-bar` gets `overflow-hidden`. Before, the four fixed chips had `shrink-0` and spilled out of the bar into the terminal next to it on narrower centre columns.
+  - The fixed group is now `min-w-0 shrink overflow-x-auto scrollbar-none`: when room runs out, extra chips stay inside the bar and scroll sideways instead of overlapping.
+- **Centre column** (`App.tsx`):
+  - The outer `glass` frame (`data-testid="center-frame"`) is now a plain flex container; the Sonoma light-skin override for it in `index.css` was removed. The cards' own pager panel (`glass-raised`, with the dots) is the only box left.
+  - Cards body padding `p-3` → `px-3 pb-3`, so the cards sit 12 px under the links bar (was 24 px).
+- **Top-row offset (7 px):** the links row (`App.tsx`), the Calendar bar row in the left column (`App.tsx`) and the right column's terminal slot (`DashboardLayout.tsx`, `data-zone="right-top"`) each get `mt-[7px]`. All three columns stay level: at 1920×1080 the cards, the Calendar bar and Tech news all start at the same y.
+- **Git widget** (`topbar/GitWidget.tsx`): the tiles-and-stats row gets `pt-2`, so the contribution tiles sit lower inside the box.
+- **Work panel switching** (`processing/WorkBoard.tsx`):
+  - *Cause of the jank:* the old version used a smooth `scrollTo` on a scroll-snap row, and its `scroll` listener rounded the scroll position back into the active tab on every frame. A jump from tab 1 to tab 3 therefore flickered through tab 2 while the highlight pill retargeted mid-flight.
+  - *Fix:* the three panes sit in one `.work-track` (`w-[300%]`) moved by `translate3d(-tab × 33.333%)`. The track and the tab pill (`.work-pill`) share one transition: `transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)`. There is no scroll listener, so the target can't change mid-flight. The scroll effect, `ResizeObserver` and scroller ref are gone.
+  - Inactive panes are `inert` (not focusable, not read by screen readers) and dim to `opacity: 0.35`; the active one fades to 1.
+  - *Swipes:* a sideways trackpad swipe (or Shift + wheel) over the lists adds up `deltaX`. Past 60 px it moves exactly one tab, then locks for 550 ms, so one gesture never skips two tabs. Vertical scrolling inside a list is unaffected.
+  - Tabs, dots and ←/→ still switch. With `prefers-reduced-motion` the slide is instant.
+  - *Tab label:* "Currently processing" when the tab bar is at least 640 px wide (container query), otherwise "Processing", so it's never cut to "CURRENTLY PROCES…".
+  - Verified in the browser through the animation API: one 500 ms transform transition each for the track and the pill, running in sync with a single target.
+- **Terminal** (`topbar/CommandPrompt.tsx`, `.term*` in `index.css`):
+  - Restyled as a small console. Dark body `#0b1016 → #05080c` with 1-in-3 px scanlines, an accent-tinted 1 px border, and a 3 px accent focus ring plus glow while typing.
+  - A powerline-style prompt segment `.term-seg` (accent background, chevron cut with `clip-path`) shows `PS ❯ ~` on Windows and `$ ❯ ~` on macOS and Linux.
+  - The input has its own text colour, an accent block caret (`caret-shape: block`) and a faint glow.
+  - *Window chrome matches the OS* (`detectPlatform()`): macOS shows the three traffic-light dots; Windows and Linux show a `>_` terminal mark (`.term-mark`, `data-os`). No macOS-only decoration on other systems.
+  - *Administrator mode* (`data-admin`): the border and glow turn amber, the prompt segment turns amber and shows `#`, and the cursor and text glow turn amber (`caret-color: #fbbf24`).
+- **Version:** `public/manifest.json` `version` 2.0.0 → 3.0.0 (the format was already `manifest_version: 3`). `npm run package` writes `release/devdeck-3.0.0.zip`.
+- **Housekeeping:** deleted the reference images (two Gemini PNGs, `screenshots/`) and Playwright's recorded videos and reports (`test-results/`, `playwright-report/`; they come back on the next test run). The design prototype `pro_workspace_command_calendar.tsx` is kept, untracked.
+- **Tests:** 252 unit tests and 90/90 Chromium end-to-end tests pass. `e2e/topbar.spec.ts` and `e2e/cockpit-tools.spec.ts` were updated for the work panel; `e2e/processing.spec.ts` passes because the Queue expand button sits before the cog, which keeps its bottom-right corner.
+
 ## Round 2026-10-20l — work panel, AI shortcut, alert polish (branch `vfinal2.0`)
+
 
 - **Work panel** (`processing/WorkBoard.tsx`, `lib/workBoard.ts`):
   - Opened with `openBoard({ tab, focus?, archive?, focusInput? })`, an event that `WorkBoardHost` (mounted in `App`) listens for.

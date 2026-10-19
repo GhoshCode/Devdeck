@@ -22,7 +22,19 @@ wide where layout is involved.
 - The quick-links bar no longer spills into the terminal; extra chips stay inside the bar.
 - No outer frame around the category cards.
 - Work panel tabs slide smoothly (one animation); a sideways swipe moves one tab.
-- The terminal looks like a small console: traffic lights, a coloured PS ❯ ~ prompt, scanlines and a glow while typing.
+- The terminal looks like a small console: a coloured prompt (PS ❯ ~ on Windows, $ ❯ ~ on Mac and Linux), scanlines and a glow while typing. Its window mark matches your system: three traffic-light dots on a Mac, a >_ mark on Windows and Linux.
+- Administrator mode turns the terminal amber: border, prompt (#) and the text cursor.
+- The quick-links bar and the buttons beside it sit a little lower, with all three columns level; the Git tiles sit lower inside their box.
+- Extension version 3.0.0.
+
+**Manual test checklist**
+- [ ] Narrow the window: the quick-links chips never cover the terminal; extra chips scroll inside the bar.
+- [ ] No outer box around the category cards; the cards sit just under the links bar.
+- [ ] The links bar, Calendar bar and terminal row are level, and the cards, Calendar bar and Tech news start at the same height.
+- [ ] Work panel: clicking Currently processing → To-do slides straight across with no flicker, and the highlight slides with it; a sideways swipe moves one tab; the first tab shows "Currently processing" in full on wide screens.
+- [ ] Terminal on Windows shows >_ and PS; on Linux >_ and $; on a Mac the three dots and $.
+- [ ] Turn on Administrator mode: the border, the prompt (#) and the blinking cursor are amber; turn it off and they return to the accent.
+
 
 ## Round 2026-10-20l — work panel, AI shortcut, alert polish
 
