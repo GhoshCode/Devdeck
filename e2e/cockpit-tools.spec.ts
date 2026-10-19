@@ -125,7 +125,7 @@ test('deleting a to-do shows an undo bar that brings it back', async ({ page }) 
   await page.getByRole('tab', { name: /^To-do/ }).click();
   await page.getByRole('textbox', { name: 'New task' }).fill('Write the changelog');
   await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: 'Expand' }).click();
+  await page.getByRole('button', { name: 'Expand', exact: true }).click();
   await page.getByRole('button', { name: 'Delete "Write the changelog"' }).last().click();
   const bar = page.getByTestId('undo-bar');
   await expect(bar).toContainText('Write the changelog');

@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import { openInNewTab } from '../../lib/openTab';
 import { Favicon } from '../Favicon';
-import { dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, type AlertData } from './alertStore';
+import { useNow } from '../../hooks/useNow';
+import { openBoard } from '../../lib/workBoard';
+import { CALENDAR_SNOOZE_MS } from '../../lib/alertEvents';
+import { CATEGORY_COLOR, countdown } from '../../lib/calendar';
+import { clearAllAlerts, dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, type AlertData } from './alertStore';
 
 // The alert stack: solid, matte banners tinted with the theme accent that drop
 // from the top edge of the window — opaque so the text reads at a glance. Each source has its own shape:
@@ -12,25 +16,52 @@ import { dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, type AlertData }
 //   Queue                → slim "up next" pill
 //   To-do                → checklist card with Mark done
 //   Overdue on open      → summary sheet with counts
+//   Calendar event       → glass capsule with a live countdown; stays until
+//                          acknowledged, snoozed or jumped to
 // Up to three show at once (newest on top); the rest wait behind "+N more".
+// With two or more up, a Clear all pill sits under the stack. A thin line
+// along each card's bottom shrinks right → left as its time on screen runs
+// out (paused on hover). While any alert is up, a frosted shield sits behind
+// the stack: the busy top-middle of the page is blurred and can't be clicked.
 
 const VISIBLE = 3;
-const LIFE_MS = { processing: 12_000, queue: 12_000, todo: 12_000, overdue: 20_000 } as const;
+const LIFE_MS = { processing: 12_000, queue: 12_000, todo: 12_000, overdue: 20_000, calendar: null } as const;
+const CLEAR_STAGGER_S = 0.04;
 
 export function AlertCenter() {
   const list = useSyncExternalStore(subscribeAlerts, getAlerts);
   const [showAll, setShowAll] = useState(false);
+  const [clearing, setClearing] = useState(false);
   useEffect(() => {
     if (list.length <= VISIBLE) setShowAll(false);
+    if (!list.length) setClearing(false);
   }, [list.length]);
+  // Render once with the staggered exit in place, then empty the stack.
+  const clearAll = () => {
+    setClearing(true);
+    requestAnimationFrame(() => clearAllAlerts());
+  };
   const shown = showAll ? list : list.slice(0, VISIBLE);
   const hidden = list.length - shown.length;
   return createPortal(
     <div
       role="region"
       aria-label="Reminders"
-      className="pointer-events-none fixed inset-x-0 top-0 z-[110] flex flex-col items-center gap-2.5 px-4 pt-3"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[110] isolate flex flex-col items-center gap-2.5 px-4 pt-3 pb-4"
     >
+      <AnimatePresence>
+        {list.length > 0 && !clearing && (
+          <motion.div
+            key="alert-shield"
+            data-testid="alert-shield"
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            className="alert-shield pointer-events-auto absolute top-0 left-1/2 -z-10 h-full w-[min(980px,100vw)] -translate-x-1/2"
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence initial={false} mode="popLayout">
         {shown.map((a, i) => (
           <motion.div
@@ -38,7 +69,11 @@ export function AlertCenter() {
             layout
             initial={{ y: -140, opacity: 0, scale: 0.96 }}
             animate={{ y: 0, opacity: 1, scale: 1 - Math.min(i, 2) * 0.012 }}
-            exit={{ y: -60, opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
+            exit={
+              clearing
+                ? { x: 90, opacity: 0, transition: { duration: 0.2, delay: i * CLEAR_STAGGER_S, ease: 'easeIn' } }
+                : { y: -60, opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
+            }
             transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.9 }}
             className="pointer-events-auto max-w-full"
           >
@@ -59,6 +94,27 @@ export function AlertCenter() {
             +{hidden} more reminder{hidden === 1 ? '' : 's'}
           </motion.button>
         )}
+        {list.length > 1 && !clearing && (
+          <motion.div
+            key="clear-all"
+            layout
+            initial={{ opacity: 0, y: -6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.15 } }}
+            className="alert-clear pointer-events-auto flex items-center gap-2 rounded-full border py-1 pr-1 pl-3 backdrop-blur-md"
+          >
+            <span className="alert-clear-count font-mono text-[11px] font-semibold tracking-wider tabular-nums">{list.length} ACTIVE</span>
+            <button
+              type="button"
+              onClick={clearAll}
+              data-testid="alerts-clear-all"
+              className="alert-clear-btn flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-semibold tabular-nums"
+            >
+              <SweepIcon />
+              Clear all ({list.length})
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>,
     document.body,
@@ -68,21 +124,23 @@ export function AlertCenter() {
 function AlertCard({ a }: { a: AlertData }) {
   // Auto-hide, paused while the pointer is on it.
   const [hover, setHover] = useState(false);
-  const left = useRef<number>(LIFE_MS[a.kind]);
+  const life = LIFE_MS[a.kind];
+  const left = useRef<number>(life ?? 0);
   useEffect(() => {
-    if (hover) return;
+    if (hover || life === null) return;
     const started = Date.now();
     const t = setTimeout(() => dismissAlert(a.key), left.current);
     return () => {
       clearTimeout(t);
       left.current -= Date.now() - started;
     };
-  }, [hover, a.key]);
+  }, [hover, a.key, life]);
 
   const open = () => {
     dismissAlert(a.key);
-    if (a.url) openInNewTab(a.url);
-    else window.dispatchEvent(new CustomEvent('devdeck:show-todo', { detail: { id: a.todoId, focus: a.kind === 'overdue' ? 'overdue' : undefined } }));
+    if (a.kind === 'overdue') openBoard({ tab: 'todo', focus: 'overdue' }); // Review: the work panel, overdue first
+    else if (a.url) openInNewTab(a.url);
+    else window.dispatchEvent(new CustomEvent('devdeck:show-todo', { detail: { id: a.todoId } }));
   };
   const snooze = () => snoozeAlert(a);
   const close = () => dismissAlert(a.key);
@@ -91,7 +149,18 @@ function AlertCard({ a }: { a: AlertData }) {
     dismissAlert(a.key);
   };
 
-  const common = { onMouseEnter: () => setHover(true), onMouseLeave: () => setHover(false), 'data-alert-kind': a.kind, role: 'alert' as const };
+  const common = {
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
+    'data-alert-kind': a.kind,
+    // Time-left line (CSS ::after): runs for the whole life, paused with the timer.
+    'data-life': life === null ? undefined : '',
+    'data-paused': hover ? 'true' : undefined,
+    style: life === null ? undefined : ({ '--life': `${life}ms` } as CSSProperties),
+    role: 'alert' as const,
+  };
+
+  if (a.kind === 'calendar') return <CalendarPill a={a} common={common} />;
 
   if (a.kind === 'queue') {
     return (
@@ -184,7 +253,72 @@ function AlertCard({ a }: { a: AlertData }) {
   );
 }
 
+// Custom calendar events: a full capsule with a category-coloured glowing
+// ring, a ringing bell and a live countdown.
+function CalendarPill({ a, common }: { a: AlertData; common: Record<string, unknown> }) {
+  const now = useNow(1000).getTime();
+  const color = CATEGORY_COLOR[a.category ?? 'meeting'];
+  const when = a.startsAt && a.endsAt ? countdown(a.startsAt, a.endsAt, now) : '';
+  const live = when === 'Now';
+  const jump = () => {
+    dismissAlert(a.key);
+    window.dispatchEvent(new CustomEvent('devdeck:open-calendar', { detail: { date: a.date, eventId: a.eventId } }));
+  };
+  return (
+    <div {...common} className={`cal-alert ${live ? 'is-live' : ''} rounded-full p-[1.5px]`} style={{ '--cat': color } as CSSProperties}>
+      <div className="cal-alert-inner flex max-w-[min(760px,94vw)] items-center gap-3 rounded-full p-1.5 backdrop-blur-xl">
+        <span className="cal-alert-icon flex size-11 shrink-0 items-center justify-center rounded-full">
+          <BellIcon />
+        </span>
+        <div className="min-w-0 flex-1 pr-1">
+          <p className="flex items-center gap-2">
+            <span className="cal-alert-eyebrow truncate font-mono text-[10.5px] font-bold tracking-[0.14em]">{a.eyebrow ?? 'CALENDAR'}</span>
+            {when && (
+              <span data-testid="cal-alert-countdown" className="cal-alert-when shrink-0 rounded-full px-2 py-px font-mono text-[10.5px] font-bold tabular-nums">
+                {when}
+              </span>
+            )}
+          </p>
+          <p className="cal-alert-title truncate text-[15px] leading-snug font-semibold">{a.title}</p>
+          {a.sub && <p className="cal-alert-sub truncate text-[12px] font-medium tabular-nums">{a.sub}</p>}
+        </div>
+        <span className="flex shrink-0 items-center gap-1">
+          <PillBtn primary onClick={() => dismissAlert(a.key)}>Acknowledge</PillBtn>
+          <PillBtn onClick={() => snoozeAlert(a, CALENDAR_SNOOZE_MS)}>Snooze 5m</PillBtn>
+          <PillBtn onClick={jump}>Jump to slot</PillBtn>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PillBtn({ primary, onClick, children }: { primary?: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className={`cal-alert-btn rounded-full px-3 py-1.5 text-[12.5px] font-semibold whitespace-nowrap ${primary ? 'is-primary' : ''}`}>
+      {children}
+    </button>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="cal-alert-bell size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+function SweepIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
+    </svg>
+  );
+}
+
 function Count({ label, n }: { label: string; n: number }) {
+
   return (
     <div className={`alert-count rounded-md px-3 py-2 ${n ? '' : 'is-zero'}`}>
       <p className="alert-sub truncate text-[12.5px] font-medium">{label}</p>

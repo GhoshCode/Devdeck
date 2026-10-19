@@ -14,6 +14,7 @@ import { Countdown } from '../ui/Countdown';
 import { TimerPanel } from '../ui/TimerPanel';
 import { AnchoredPopover } from '../ui/AnchoredPopover';
 import { SlidersIcon } from '../ui/icons';
+import { openBoard } from '../../lib/workBoard';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
 // the first section ("Currently processing" by default). The lower card scrolls sideways
@@ -37,6 +38,15 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
       <SplitPanes setting="leftSplit" label="Resize Currently processing and Queue" fitHint="fit Currently processing to its sites">
       <section aria-label={`Processing: ${top.name}`} className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pt-9">
         <PanelNotch title={top.name} count={top.items.length} />
+        <button
+          type="button"
+          onClick={() => openBoard({ tab: 'processing' })}
+          aria-label="Expand currently processing"
+          title="Expand currently processing"
+          className="manage-btn absolute top-1.5 right-2 flex size-7 items-center justify-center rounded-lg"
+        >
+          <ExpandGlyph />
+        </button>
         <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />
       </section>
 
@@ -57,10 +67,19 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
         <span className="font-mono text-[11px] text-white/45">{rest.reduce((n, g) => n + g.items.length, 0)} queued</span>
         <button
           type="button"
+          onClick={() => openBoard({ tab: 'queue' })}
+          aria-label="Expand queue"
+          title="Expand queue"
+          className="manage-btn ml-auto flex size-8 items-center justify-center rounded-lg"
+        >
+          <ExpandGlyph />
+        </button>
+        <button
+          type="button"
           onClick={() => setManagerOpen(true)}
           aria-label="Manage currently processing"
           title="Add/remove sites and set reminders"
-          className="manage-btn group ml-auto flex size-8 items-center justify-center rounded-lg"
+          className="manage-btn group flex size-8 items-center justify-center rounded-lg"
         >
           <SlidersIcon className="size-6" />
         </button>
@@ -219,7 +238,15 @@ function NotificationPrompt({ items }: { items: ProcessingItem[] }) {
   );
 }
 
-function ProcessingManager({ onClose }: { onClose: () => void }) {
+function ExpandGlyph() {
+  return (
+    <svg className="size-[15px]" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M7.5 1.5h3v3M4.5 10.5h-3v-3M10.5 1.5 7 5M1.5 10.5 5 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function ProcessingManager({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);

@@ -17,7 +17,56 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-20l — work panel, AI shortcut, alert polish
+
+- **Work panel:** the expand buttons on the Currently processing card and on the Queue / To-do card open one big panel with three tabs: Currently processing, Queue and To-do. It opens on the tab you came from. Switch with the tabs, the dots, a sideways swipe or ←/→. **Review** on the overdue alert opens it on To-do with overdue tasks first.
+- **Ctrl+Enter** in the search bar asks your AI (Alt+Enter works too).
+- The clock is a bit bigger; the UV index sits under the temperature; On this day has a small refresh icon at the end.
+- Settings → Appearance → Greeting: checkboxes to show or hide the On this day and quote lines.
+- Alerts show a thin line that shrinks as their time runs out. While alerts are up, the area behind them is blurred and can't be clicked by mistake.
+- Mini calendar: double-click the month or year for side-by-side Month and Year wheels.
+
+**Manual test checklist**
+- [ ] The Currently processing expand button opens the panel on Currently processing; the Queue expand opens Queue; the To-do expand opens To-do. Tabs, dots, swipe and ←/→ all switch; Esc closes.
+- [ ] Processing / Queue cards: Open, Set timer, Move, Remove (Undo) work; Manage opens the editor.
+- [ ] Overdue alert → Review → To-do tab, overdue first.
+- [ ] Type a query and press Ctrl+Enter → your AI opens with the text.
+- [ ] Clock is larger; UV under the temperature; the refresh icon is at the end of the On this day line.
+- [ ] The two Greeting checkboxes hide and show their lines.
+- [ ] An alert's line shrinks right → left and pauses on hover; clicks behind the stack do nothing.
+- [ ] Mini calendar: double-click the month or year → two wheels; picking changes the month; Esc closes the wheels, then the calendar.
+
+## Round 2026-10-20k — type to search, Clear all, Command Calendar
+
+
+- **Type anywhere to search:** with nothing selected, just start typing (or paste) and the text lands in the search bar. Long or multi-line text shows a small expand button at the bottom-right of the bar. Expanded, it becomes a roomy composer: Shift+Enter for a new line, Enter to search or ask the AI, Esc to collapse. Your text is kept.
+- **Clear all:** when two or more reminders are on screen, a "Clear all (N)" pill appears under them and sweeps them away.
+- **Command Calendar:** click the **Calendar** bar above Currently processing. It opens full screen:
+  - Day, Week, Month and Agenda views, with your to-dos, Currently processing and Queue items that have a due date, plus your own events: meetings, calls, VIP, deep work, deadlines and travel;
+  - click or drag on the grid to schedule; **New item** creates an event, to-do, Queue or Processing item, or schedules an existing one;
+  - today's briefing pills (click one to show only that kind), the conflict radar with **Auto-resolve**, **Focus Shield** (blocks your next free 2 hours), a second time-zone rail, and the alert stack on the right;
+  - keys: D/W/M/A, ←/→, T, N, F, /, B, Esc.
+- The calendar takes your theme: its colours follow your accent and its glass shows your backdrop through it, in light and dark.
+- **Mini calendar:** the small calendar button next to the Calendar bar opens a simple glass month calendar, just dates. Use the arrows to move, PgUp/PgDn to change month, T for today and Esc to close.
+- **Calendar alerts:** events alert as a rounded capsule with a live countdown and Acknowledge / Snooze 5m / Jump to slot; it stays until you act. To-do, Queue and Processing alerts keep their usual look.
+
+**Manual test checklist**
+- [ ] Click an empty spot, type "react": the search bar fills, the caret is at the end, and suggestions show. Ctrl+V on an empty spot pastes into it. Typing inside other fields or dialogs is unaffected; `/` and `,` still work.
+- [ ] Paste 4 lines: the expand button appears; expand → full-width drawer with the line count; Shift+Enter adds a line; Esc collapses with the text kept.
+- [ ] Two or more alerts → "Clear all (N)" under the stack; click it → cards slide out; with one left the pill disappears.
+- [ ] The Calendar bar shows the next item and the meeting count; it opens full screen; Esc closes it and focus returns to the bar.
+- [ ] Day: Now line and time pill; overlaps side by side; conflict badges; drag 10:00–11:30 → modal prefilled; save → the block flashes.
+- [ ] To-do checkbox on a card completes it (Undo works); Queue cards are dashed amber; Processing cards pulse.
+- [ ] Week: per-day item count and load bar; Month: green/amber/red top edges and "+ N more"; Agenda: three lanes.
+- [ ] Conflict radar → Auto-resolve moves the colliding to-do/Queue/Processing due dates; Focus Shield adds a 2 h deep-work block.
+- [ ] An event with "5 min before": the capsule alert appears on time; Snooze 5m brings it back; Jump to slot opens the calendar on it. On another website (extension) the same capsule shows.
+- [ ] Light theme: every calendar surface is readable.
+- [ ] Change the accent colour in Appearance: the calendar's buttons, today marker, Now line badges and launcher follow it.
+- [ ] Mini calendar: opens beside the bar, today glows in the accent, week numbers are right, PgDn/PgUp change month, Esc and clicking outside close it.
+
+
 ## Round 2026-10-20j — On this day and quotes
+
 
 - Under the greeting, above the quote: **On this day**, one tech or computing event from today's date in history. Hover and press ↻ for another event from the same day; click it to open the Wikipedia article. You can turn it off in Appearance.
 - The daily quote comes from an online library of more than 1,400 quotes. It's the same all day; ↻ gives a random one.

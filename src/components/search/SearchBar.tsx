@@ -1,11 +1,13 @@
 import { openInNewTab } from '../../lib/openTab';
-import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import { searchSites, getHostname } from '../../utils';
 import { destinationFor, fetchSuggestions, googleSearchUrl, looksLikeUrl } from '../../services/search';
 import { aiProvider, askAi, type AiProvider } from '../../services/ai';
 import { COMMANDS, detectPlatform, parseCommand, runCommand, type CommandResult } from '../../services/commands';
 import { useSpeechInput } from '../../hooks/useSpeechInput';
+import { useTypeToCapture } from '../../hooks/useTypeToCapture';
 import { Favicon } from '../Favicon';
 
 // Always-visible search (Zone 3, §7 Q12) with a three-tier dropdown:
@@ -19,10 +21,17 @@ import { Favicon } from '../Favicon';
 // SEARCH button) from Google to a new chat with the AI chosen in Settings →
 // Profile (Gemini, ChatGPT, Claude, Perplexity or a custom URL), text sent;
 // Google suggestions are hidden then, your sites still match.
+//
+// Type-to-capture: a printable key (or a paste) anywhere outside a field lands
+// here. Long or multi-line text reveals a small expand button; the expanded
+// composer grows to 280px (Shift+Enter new line, Enter submits) and collapses
+// back without losing the text.
 
 const SITE_LIMIT = 5;
 const WEB_LIMIT = 5;
 const SUGGEST_DEBOUNCE_MS = 150;
+const LONG_TEXT = 65; // characters before the composer offers to expand
+const SUGGEST_MAX = 120; // longer text reads as a prompt: no Google suggestions
 
 type Item =
   | { kind: 'site'; key: string; siteId: string; name: string; url: string; meta: string }
@@ -33,7 +42,7 @@ type Item =
   | { kind: 'add'; key: string; text: string; url: string };
 
 interface SearchBarProps {
-  inputRef: RefObject<HTMLInputElement | null>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   // Opens Settings → Library with the URL prefilled.
   onAddSite: (url: string) => void;
 }
@@ -54,8 +63,53 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   const [active, setActive] = useState(-1);
   const [web, setWeb] = useState<{ q: string; items: string[] }>({ q: '', items: [] });
   const [notice, setNotice] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const caretToEnd = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const q = query.trim();
+  const multiline = !!query && (query.includes('\n') || query.length > LONG_TEXT || overflowing);
+  const lines = query ? query.split('\n').length : 0;
+
+  useTypeToCapture((text) => {
+    caretToEnd.current = true;
+    setQuery((cur) => cur + text);
+    setActive(-1);
+    setOpen(true);
+    inputRef.current?.focus();
+  });
+
+  // Compact: one row that scrolls sideways. Expanded: grows with the text up
+  // to the composer's max height, then scrolls inside.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    if (expanded) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    } else {
+      el.style.height = '';
+      setOverflowing(el.scrollWidth > el.clientWidth + 1);
+    }
+    if (caretToEnd.current) {
+      caretToEnd.current = false;
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+      el.scrollTop = el.scrollHeight;
+      el.scrollLeft = el.scrollWidth;
+    }
+  }, [query, expanded, inputRef]);
+
+  useEffect(() => {
+    if (!query) setExpanded(false);
+  }, [query]);
+
+  const toggleExpanded = () => {
+    caretToEnd.current = true;
+    setExpanded((v) => !v);
+    setOpen(false);
+    inputRef.current?.focus();
+  };
 
   const speech = useSpeechInput((text, final) => {
     setQuery(text);
@@ -73,7 +127,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
 
   // Tier 2, debounced; stale responses are dropped by comparing the query.
   useEffect(() => {
-    if (!q || looksLikeUrl(q) || geminiMode) return;
+    if (!q || looksLikeUrl(q) || geminiMode || q.length > SUGGEST_MAX || q.includes('\n')) return;
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       fetchSuggestions(q, WEB_LIMIT + 1, ctrl.signal)
@@ -168,6 +222,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   };
 
   const go = (item: Item | undefined, newTab: boolean) => {
+    setExpanded(false);
     if (item?.kind === 'command' || (!item && command)) {
       void runBuiltin((item?.kind === 'command' ? item : (command as Extract<Item, { kind: 'command' }>)).result, newTab);
       return;
@@ -191,9 +246,11 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     openInNewTab(url);
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      if (!items.length) return;
+      // Multi-line text: the arrows move the caret between lines.
+      if (!items.length || expanded || query.includes('\n')) return;
       e.preventDefault();
       setOpen(true);
       // -1 is "the input itself"; wrapping passes through it in both directions.
@@ -205,10 +262,18 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
         return next;
       });
     } else if (e.key === 'Enter') {
+      if (e.shiftKey) return; // new line
       e.preventDefault();
-      go(active >= 0 ? items[active] : undefined, e.ctrlKey || e.metaKey);
+      // Ctrl/⌘+Enter (or Alt+Enter) sends the text to the chosen AI, whatever the mode.
+      if ((e.ctrlKey || e.metaKey || e.altKey) && q) {
+        toGemini(q, false);
+        setExpanded(false);
+        return;
+      }
+      go(active >= 0 && !expanded ? items[active] : undefined, false);
     } else if (e.key === 'Escape') {
-      if (open && q) setOpen(false);
+      if (expanded) setExpanded(false);
+      else if (open && q) setOpen(false);
       else {
         setQuery('');
         e.currentTarget.blur();
@@ -216,26 +281,95 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     }
   };
 
-  const showDropdown = open && items.length > 0;
+  const showDropdown = open && items.length > 0 && !expanded;
+
   const firstWeb = items.findIndex((i) => i.kind === 'web');
   const goIndex = items.findIndex((i) => i.kind === 'go');
 
+  // Clear, voice, AI mode and Search: in the bar, or in the composer footer when expanded.
+  const actions = (
+    <div className="flex shrink-0 items-center gap-2.5">
+      {query ? (
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('');
+            inputRef.current?.focus();
+          }}
+          aria-label="Clear search"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs text-white/40 hover:bg-white/10 hover:text-white"
+        >
+          ✕
+        </button>
+      ) : (
+        <kbd className="hidden shrink-0 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/45 sm:inline">
+          /
+        </kbd>
+      )}
+      {speech.supported && (
+        <button
+          type="button"
+          onClick={() => (speech.listening ? speech.stop() : void speech.start())}
+          aria-label={speech.listening ? 'Stop voice input' : 'Search by voice'}
+          aria-pressed={speech.listening}
+          title={speech.listening ? 'Stop listening' : 'Search by voice'}
+          className={`relative flex size-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
+            speech.listening ? 'mic-live bg-red-500/20 text-red-300' : 'text-white/45 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <MicIcon className="size-[18px]" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          updateSettings({ geminiMode: !geminiMode });
+          inputRef.current?.focus();
+        }}
+        aria-label={`${ai.name} mode`}
+        aria-pressed={geminiMode}
+        title={geminiMode ? `${ai.name} mode on — Enter asks ${ai.name}` : `Ask ${ai.name} instead of searching Google`}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
+          geminiMode
+            ? 'border-[#9b72cb]/50 bg-[#9b72cb]/20'
+            : 'border-transparent opacity-60 grayscale hover:bg-white/10 hover:opacity-100 hover:grayscale-0'
+        }`}
+      >
+        <AiIcon provider={ai} className="size-[18px]" />
+      </button>
+      <button
+        type="button"
+        onClick={() => (q ? go(undefined, false) : inputRef.current?.focus())}
+        aria-label={geminiMode ? `Ask ${ai.name} now` : 'Search the web'}
+        className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 min-[1700px]:px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
+      >
+        <SearchIcon className="size-4" />
+        <span className="hidden min-[1700px]:inline">SEARCH</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div ref={rootRef} className="relative min-w-0 flex-1 max-sm:basis-full">
+    <div ref={rootRef} className={`h-[52px] min-w-0 flex-1 max-sm:basis-full ${expanded ? '' : 'relative'}`}>
       <div
         data-gemini={geminiMode || undefined}
         data-ai={geminiMode ? ai.id : undefined}
-        className={`glass-raised relative isolate flex h-[52px] items-center gap-2.5 rounded-2xl pr-1.5 pl-4 transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
+        data-composer={expanded ? 'expanded' : 'compact'}
+        className={`glass-raised isolate flex flex-col rounded-2xl transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
           geminiMode ? 'gemini-ring' : ''
-        }`}
+        } ${expanded ? 'search-composer absolute inset-x-0 top-0 z-40 max-h-[280px] bg-[var(--color-base-elevated)]/95' : 'relative h-[52px]'}`}
       >
+       <div className={`flex min-h-0 gap-2.5 pl-4 ${expanded ? 'flex-1 items-start pt-2 pr-3' : 'h-[52px] items-center pr-1.5'}`}>
         {geminiMode ? (
-          <AiIcon provider={ai} className="size-5 shrink-0" />
+          <AiIcon provider={ai} className={`size-5 shrink-0 ${expanded ? 'mt-2.5' : ''}`} />
         ) : (
-          <SearchIcon className="size-5 shrink-0 text-white/45" />
+          <SearchIcon className={`size-5 shrink-0 text-white/45 ${expanded ? 'mt-2.5' : ''}`} />
         )}
-        <input
+        <div className={`relative flex min-h-0 min-w-0 flex-1 self-stretch ${expanded ? 'pt-1.5 pb-1' : 'items-center'}`}>
+        <textarea
           ref={inputRef}
+          rows={1}
+          wrap={expanded ? 'soft' : 'off'}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -245,7 +379,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
           onFocus={() => q && setOpen(true)}
           onKeyDown={onKeyDown}
           placeholder={
-            speech.listening ? 'Listening…' : geminiMode ? `Ask ${ai.name} anything…` : 'Search your sites or the web…'
+            speech.listening ? 'Listening…' : geminiMode ? `Ask ${ai.name} anything…` : `Search the web or your sites — Ctrl+Enter asks ${ai.name}`
           }
           aria-label="Search"
           role="combobox"
@@ -253,67 +387,57 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
           aria-controls="search-suggestions"
           aria-activedescendant={active >= 0 ? `search-opt-${active}` : undefined}
           aria-autocomplete="list"
+          aria-multiline={expanded}
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-white placeholder-white/40 outline-none"
-        />
-        {query ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery('');
-              inputRef.current?.focus();
-            }}
-            aria-label="Clear search"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs text-white/40 hover:bg-white/10 hover:text-white"
-          >
-            ✕
-          </button>
-        ) : (
-          <kbd className="hidden shrink-0 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/45 sm:inline">
-            /
-          </kbd>
-        )}
-        {speech.supported && (
-          <button
-            type="button"
-            onClick={() => (speech.listening ? speech.stop() : void speech.start())}
-            aria-label={speech.listening ? 'Stop voice input' : 'Search by voice'}
-            aria-pressed={speech.listening}
-            title={speech.listening ? 'Stop listening' : 'Search by voice'}
-            className={`relative flex size-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
-              speech.listening ? 'mic-live bg-red-500/20 text-red-300' : 'text-white/45 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <MicIcon className="size-[18px]" />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            updateSettings({ geminiMode: !geminiMode });
-            inputRef.current?.focus();
-          }}
-          aria-label={`${ai.name} mode`}
-          aria-pressed={geminiMode}
-          title={geminiMode ? `${ai.name} mode on — Enter asks ${ai.name}` : `Ask ${ai.name} instead of searching Google`}
-          className={`flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
-            geminiMode
-              ? 'border-[#9b72cb]/50 bg-[#9b72cb]/20'
-              : 'border-transparent opacity-60 grayscale hover:bg-white/10 hover:opacity-100 hover:grayscale-0'
+          className={`block w-full min-w-0 resize-none bg-transparent text-[15px] leading-6 font-medium text-white placeholder-white/40 outline-none ${
+            expanded ? 'composer-scroll max-h-[214px] overflow-y-auto pr-2' : `h-6 overflow-hidden ${multiline ? 'pr-6' : ''}`
           }`}
-        >
-          <AiIcon provider={ai} className="size-[18px]" />
-        </button>
-        <button
-          type="button"
-          onClick={() => (q ? go(undefined, false) : inputRef.current?.focus())}
-          aria-label={geminiMode ? `Ask ${ai.name} now` : 'Search the web'}
-          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 min-[1700px]:px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
-        >
-          <SearchIcon className="size-4" />
-          <span className="hidden min-[1700px]:inline">SEARCH</span>
-        </button>
+        />
+        <AnimatePresence>
+          {multiline && !expanded && (
+            <motion.button
+              key="expand"
+              type="button"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={{ duration: 0.14 }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={toggleExpanded}
+              aria-label="Expand search composer"
+              title={`Expand (${lines} line${lines === 1 ? '' : 's'} · ${query.length} chars)`}
+              data-testid="composer-expand"
+              className="composer-toggle absolute right-0 bottom-[3px] flex h-[15px] items-center gap-0.5 rounded-[5px] border border-white/15 px-1 text-white/60 hover:border-white/30 hover:text-white"
+            >
+              <ExpandIcon className="size-[10px]" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+        </div>
+        {!expanded && actions}
+       </div>
+        {expanded && (
+          <div className="flex shrink-0 items-center gap-3 border-t border-white/10 py-1.5 pr-1.5 pl-4 font-mono text-[10.5px] whitespace-nowrap text-white/45 tabular-nums">
+            <span data-testid="composer-lines">
+              {lines} line{lines === 1 ? '' : 's'} · {query.length} chars
+            </span>
+            <span className="hidden min-[1800px]:inline">⇧↵ new line · ↵ {geminiMode ? `ask ${ai.name}` : `search · Ctrl+↵ ask ${ai.name}`} · Esc collapse</span>
+            <span className="ml-auto" />
+            {actions}
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={toggleExpanded}
+              aria-label="Collapse search composer"
+              title="Collapse (Esc) · Shift+Enter adds a line"
+              data-testid="composer-collapse"
+              className="composer-toggle flex size-8 items-center justify-center rounded-xl border border-white/15 text-white/60 hover:border-white/30 hover:text-white"
+            >
+              <CollapseIcon className="size-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {hint && !showDropdown && (
@@ -403,6 +527,12 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
               </button>
             </div>
           ))}
+          {!geminiMode && (
+            <p data-testid="search-ai-hint" className="mx-3 mt-1 flex items-center justify-end gap-1.5 border-t border-white/[0.07] pt-1.5 font-mono text-[10px] text-white/40">
+              <AiIcon provider={ai} className="size-3" />
+              <kbd className="rounded border border-white/15 px-1 text-white/55">Ctrl</kbd>+<kbd className="rounded border border-white/15 px-1 text-white/55">Enter</kbd> asks {ai.name}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -453,7 +583,24 @@ function GeminiSparkle({ className }: { className: string }) {
   );
 }
 
+function ExpandIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" />
+    </svg>
+  );
+}
+
+function CollapseIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M13.5 6.5h-4v-4M9.5 6.5 14 2M2.5 9.5h4v4M6.5 9.5 2 14" />
+    </svg>
+  );
+}
+
 function MicIcon({ className }: { className: string }) {
+
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <rect x="9" y="3" width="6" height="11" rx="3" />

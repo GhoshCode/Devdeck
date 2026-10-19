@@ -16,7 +16,7 @@
 
 import { nextFireTime } from './lib/schedule';
 import { REMINDERS_STORAGE_KEY, type ReminderItem } from './lib/reminders-shared';
-import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, PENDING_ACTIONS_KEY, notificationText, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
+import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, CALENDAR_SNOOZE_MS, PENDING_ACTIONS_KEY, notificationText, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
 import { renderAlertOverlay, type OverlayTheme } from './lib/alertOverlay';
 import type { ProcessingItem } from './types';
 
@@ -192,13 +192,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // ---- actions --------------------------------------------------------------
 
 const devdeckUrl = (todoId?: string) => chrome.runtime.getURL('index.html') + (todoId ? `#todo=${todoId}` : '');
+// "Jump to slot": DevDeck opens its calendar on the event.
+const calendarUrl = (a: AlertData) => chrome.runtime.getURL('index.html') + `#cal=${a.date ?? ''}:${a.eventId ?? ''}`;
 
 async function act(action: string, alert: AlertData) {
   if (action === 'open') {
-    chrome.tabs.create({ url: alert.url ?? devdeckUrl(alert.todoId) });
+    // Review on the overdue summary opens DevDeck's work panel (#review).
+    const url = alert.kind === 'calendar' ? calendarUrl(alert) : alert.kind === 'overdue' ? `${devdeckUrl()}#review` : (alert.url ?? devdeckUrl(alert.todoId));
+    chrome.tabs.create({ url });
   } else if (action === 'snooze') {
     const all = (await loadSnoozes()).filter((x) => x.alert.key !== alert.key);
-    const until = Date.now() + SNOOZE_MS;
+    const until = Date.now() + (alert.kind === 'calendar' ? CALENDAR_SNOOZE_MS : SNOOZE_MS);
+
     all.push({ until, alert });
     await chrome.storage.local.set({ [SNOOZES_KEY]: all });
     chrome.alarms.create(SNOOZE_PREFIX + alert.key, { when: until });

@@ -23,6 +23,9 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { FeedColumn } from './components/feeds/FeedColumn';
 import { SearchBar } from './components/search/SearchBar';
 import { BookmarkButton } from './components/search/BookmarkDrawer';
+import { CalendarButton } from './components/calendar/CommandCalendar';
+import { MiniCalendarButton } from './components/calendar/MiniCalendar';
+import { WorkBoardHost } from './components/processing/WorkBoard';
 import { SiteMapButton } from './components/search/SiteMapModal';
 import { LinksStrip } from './components/links/LinksStrip';
 import SettingsModal, { type SettingsTabId } from './components/settings/SettingsModal';
@@ -32,7 +35,7 @@ export default function App() {
   useDragOutToWindow();
   const accentColor = useStore((s) => s.settings.accentColor);
 
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLTextAreaElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [overview, setOverview] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTabId>('library');
@@ -178,7 +181,15 @@ export default function App() {
             command={<CommandPrompt onSetup={() => openSettings('profile')} />}
           />
         }
-        left={<ProcessingPanel />}
+        left={
+          <>
+            <div className="flex shrink-0 gap-2">
+              <CalendarButton />
+              <MiniCalendarButton />
+            </div>
+            <ProcessingPanel />
+          </>
+        }
         leftFooter={settingsButton}
         rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
         center={
@@ -220,6 +231,7 @@ export default function App() {
 
       <UndoToast />
       <AlertCenter />
+      <WorkBoardHost />
       <LinkPeek />
 
       {/* Settings Overlay */}

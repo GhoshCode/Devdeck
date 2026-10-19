@@ -83,6 +83,35 @@ export interface Settings {
   gradientStudio?: GradientStudio; // last design in Appearance → Gradient Studio
   weatherSource?: string; // "auto" (default), a built-in provider id, or a custom source id
   customWeatherSources?: CustomWeatherSource[];
+  calendar?: CalendarPrefs; // Command Calendar: last view and the second time-zone rail
+}
+
+export type CalendarView = 'day' | 'week' | 'month' | 'agenda';
+
+export interface CalendarPrefs {
+  view: CalendarView;
+  showSecondZone: boolean;
+  secondZone: string; // IANA zone for the second time rail, e.g. 'UTC'
+}
+
+export type EventCategory = 'meeting' | 'call' | 'vip' | 'deep-work' | 'deadline' | 'travel';
+export type EventPriority = 'low' | 'normal' | 'high' | 'critical';
+
+// A custom calendar event (meetings, calls, focus blocks, flights…), as
+// opposed to the to-do / Queue / Currently processing items the calendar also shows.
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // 'YYYY-MM-DD'
+  start: string; // 'HH:mm'
+  end: string; // 'HH:mm', later than start on the same day
+  category: EventCategory;
+  priority: EventPriority;
+  attendees: string[]; // people or tags
+  location: string;
+  notes: string;
+  remindMins: number | null; // alert this many minutes before the start; null = no alert
+  createdAt: number; // epoch ms
 }
 
 // A to-do carries at most one due moment: a date, optionally with a time.
@@ -137,6 +166,8 @@ export interface ProcessingItem {
   schedule: Schedule;
   createdAt?: number; // epoch ms; timers count from here
   timer?: Timer | null;
+  dueDate?: string | null; // 'YYYY-MM-DD', set from the calendar
+  dueTime?: string | null; // 'HH:mm' — only meaningful with dueDate
 }
 
 // The top Processing section (formerly "Focus").
@@ -185,7 +216,9 @@ export interface PersistedState {
   feeds: FeedsConfig;
   // Deleted sites and removed Focus/Queue items, restorable until purged.
   trash: Trash;
+  events: CalendarEvent[]; // Command Calendar events
 }
+
 
 export interface TrashedSite extends Site {
   deletedAt: number;

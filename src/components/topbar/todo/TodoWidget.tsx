@@ -8,13 +8,12 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useStore } from '../../../store';
 import { useNow } from '../../../hooks/useNow';
-import { useIdleTimeout } from '../../../hooks/useIdleTimeout';
+import { openBoard } from '../../../lib/workBoard';
 import { isOverdue, matchesView, sortActive, sortArchived, type TodoView, matchesFocus, needsAction, type TodoFocus } from '../../../lib/todos';
 import { localDateKey } from '../../../lib/time';
 import { parseQuickAdd } from '../../../lib/todoParse';
@@ -26,14 +25,12 @@ import type { Priority } from '../../../types';
 import { PRIORITY_LABEL, TodoRow } from './TodoRow';
 import { DateTimePicker, describeDue, type DueValue } from './DateTimePicker';
 
-// TO DO widget (spec §3.4), embedded in the left column's lower card:
-//   inline   — smart quick-add + the task list; Red Danger Zone on top
-//   expanded — a large box in the middle of the screen (like the site map):
-//              views (All, Today, Upcoming, Overdue) with counts, search,
-//              drag to reorder, per-task details (notes, subtasks, priority,
-//              tags); closes after 30 s without interaction, on Esc or a
-//              click outside
-//   archive  — completed tasks: restore, delete, purge (inside the box)
+// TO DO widget (spec §3.4), in two places:
+//   inline — the left column's lower card: smart quick-add + the task list
+//   board  — the To-do tab of the big work panel (WorkBoard): views (All,
+//            Today, Upcoming, Overdue) with counts, search, drag to reorder,
+//            per-task details (notes, subtasks, priority, tags), and the
+//            archive (restore, delete, purge)
 // Quick add understands "Ship notes #launch !p1 tomorrow 5pm" and previews
 // what it understood; ⚑ and 📅 set the priority and due moment explicitly.
 
@@ -51,19 +48,27 @@ const VIEWS: Array<{ id: TodoView; label: string }> = [
 const ROW_PAGE = 40;
 const ANIMATE_UP_TO = 60; // above this, rows skip the layout animation
 
-export const TodoWidget = memo(function TodoWidget() {
+interface TodoWidgetProps {
+  board?: boolean; // render as the work panel's To-do tab
+  onClose?: () => void; // board: close the panel
+  initialFocus?: TodoFocus | null; // board: e.g. overdue first (alert Review)
+  initialArchive?: boolean; // board: open on the archive
+  focusInput?: boolean; // board: cursor in quick add
+}
+
+export const TodoWidget = memo(function TodoWidget({ board = false, onClose, initialFocus = null, initialArchive = false, focusInput = false }: TodoWidgetProps) {
   const todos = useStore((s) => s.todos);
   const reorder = useStore((s) => s.reorder);
   // Re-evaluate overdue state every 15 s so items turn red on time.
   const now = useNow(15_000).getTime();
-  const [mode, setMode] = useState<Mode>('collapsed');
+  const [mode, setMode] = useState<Mode>(board ? (initialArchive ? 'archive' : 'expanded') : 'collapsed');
   const [view, setView] = useState<TodoView>('all');
   const [query, setQuery] = useState('');
   // Long lists render in pages: every row is a drag target with a layout
   // animation, so 200+ rows made each add take ~300 ms. "Show more" adds a page.
   const [limit, setLimit] = useState(ROW_PAGE);
   // Footer chip toggled on: its tasks go to the top of the list.
-  const [focus, setFocus] = useState<TodoFocus | null>(null);
+  const [focus, setFocus] = useState<TodoFocus | null>(initialFocus);
   // The overdue alert's "Review" floats overdue tasks to the top.
   useEffect(() => {
     const onShow = (e: Event) => {
@@ -72,7 +77,6 @@ export const TodoWidget = memo(function TodoWidget() {
     window.addEventListener('devdeck:show-todo', onShow);
     return () => window.removeEventListener('devdeck:show-todo', onShow);
   }, []);
-  const cardRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,7 +91,6 @@ export const TodoWidget = memo(function TodoWidget() {
   );
   const todayKey = localDateKey(new Date(now));
   const doneToday = archived.filter((t) => localDateKey(new Date(t.archivedAt!)) === todayKey).length;
-  const open = mode !== 'collapsed';
 
   const q = query.trim().toLowerCase();
   const filtered = useMemo(
@@ -103,14 +106,10 @@ export const TodoWidget = memo(function TodoWidget() {
     [active, view, now, q],
   );
 
-  useIdleTimeout(cardRef, open, TODO_IDLE_MS, () => setMode('collapsed'));
-
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMode('collapsed');
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+    if (board && focusInput) requestAnimationFrame(() => modalInputRef.current?.focus());
+  }, [board, focusInput]);
+  const close = () => (board ? onClose?.() : setMode('collapsed'));
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const onDragEnd = ({ active: dragged, over }: DragEndEvent) => {
@@ -122,10 +121,7 @@ export const TodoWidget = memo(function TodoWidget() {
     reorder('todo', arrayMove(all, from, to));
   };
 
-  const expandAndFocus = () => {
-    setMode('expanded');
-    requestAnimationFrame(() => modalInputRef.current?.focus());
-  };
+  const expandAndFocus = () => openBoard({ tab: 'todo', focusInput: true });
 
   // The list, shared by the inline card and the big box.
   const list = (expanded: boolean, all: typeof active) => {
@@ -192,16 +188,7 @@ export const TodoWidget = memo(function TodoWidget() {
         >
           +
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setMode('collapsed')}
-          aria-label="Close tasks"
-          className="flex size-7 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white"
-        >
-          ✕
-        </button>
-      )}
+      ) : null}
     </div>
   );
 
@@ -209,7 +196,7 @@ export const TodoWidget = memo(function TodoWidget() {
     <div data-card-footer className="todo-footer mt-auto flex h-9 shrink-0 items-center gap-1.5 border-t border-white/[0.06] pl-1">
       {inBox || active.length === 0 ? (
         <span data-testid={inBox ? 'todo-status-box' : 'todo-status'} className="truncate font-mono text-[11px] text-white/50">
-          {inBox ? (mode === 'archive' ? `${archived.length} archived` : 'Closes after 30 s idle · Esc') : 'Zero pending'}
+          {inBox ? (mode === 'archive' ? `${archived.length} archived` : `${active.length} open · ${doneToday} done today`) : 'Zero pending'}
         </span>
       ) : (
         <div data-testid="todo-status" role="group" aria-label="Task summary" className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden">
@@ -232,11 +219,11 @@ export const TodoWidget = memo(function TodoWidget() {
       <IconButton
         label={mode === 'archive' && inBox ? 'Back to tasks' : `Archive (${archived.length})`}
         active={mode === 'archive' && inBox}
-        onClick={() => setMode(mode === 'archive' ? 'expanded' : 'archive')}
+        onClick={() => (inBox ? setMode(mode === 'archive' ? 'expanded' : 'archive') : openBoard({ tab: 'todo', archive: true }))}
       >
         <ArchiveIcon />
       </IconButton>
-      <IconButton label={inBox ? 'Collapse' : 'Expand'} active={false} onClick={() => setMode(inBox ? 'collapsed' : 'expanded')}>
+      <IconButton label={inBox ? 'Collapse' : 'Expand'} active={false} onClick={() => (inBox ? close() : openBoard({ tab: 'todo' }))}>
         <svg className="size-[15px]" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
           {inBox ? (
             <path d="M4.5 1.5v3h-3M7.5 10.5v-3h3M1.5 4.5 4.5 1.5M10.5 7.5l-3 3" strokeLinecap="round" strokeLinejoin="round" />
@@ -248,6 +235,55 @@ export const TodoWidget = memo(function TodoWidget() {
     </div>
   );
 
+  if (board) {
+    const shown = focus ? [...filtered.filter((t) => matchesFocus(t, focus, now)), ...filtered.filter((t) => !matchesFocus(t, focus, now))] : filtered;
+    return (
+      <div data-testid="todo-board" role="region" aria-label={mode === 'archive' ? 'Archived tasks' : 'All tasks'} className="todo-box @container flex h-full min-h-0 flex-col">
+        {header(true)}
+        {mode === 'archive' ? (
+          <ArchiveList />
+        ) : (
+          <>
+            <div className="mt-3 shrink-0">
+              <Composer inputRef={modalInputRef} />
+            </div>
+            <div className="mt-2.5 flex shrink-0 items-center gap-2 px-0.5">
+              <div role="tablist" aria-label="Task views" className="segmented flex rounded-md p-0.5">
+                {VIEWS.map((v) => {
+                  const count = active.filter((t) => matchesView(t, v.id, now)).length;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={view === v.id}
+                      onClick={() => setView(v.id)}
+                      className={`rounded px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
+                        view === v.id ? 'segmented-on text-white' : 'text-white/55 hover:text-white/85'
+                      } ${v.id === 'overdue' && count ? 'text-red-300' : ''}`}
+                    >
+                      {v.label} <span className="font-mono text-white/45">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search tasks, #tags, notes"
+                aria-label="Search tasks"
+                className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[12px] text-white placeholder-white/35 outline-none focus:border-white/25"
+              />
+            </div>
+            {list(true, shown)}
+          </>
+        )}
+        {footer(true)}
+      </div>
+    );
+  }
+
   return (
     <div data-testid="todo-widget" className="@container relative flex h-full min-h-0 flex-col">
       <div role="region" aria-label="To-do" className="@container/todo flex h-full min-h-0 flex-col">
@@ -258,79 +294,6 @@ export const TodoWidget = memo(function TodoWidget() {
         {list(false, focused)}
         {footer(false)}
       </div>
-
-      {createPortal(
-        <AnimatePresence>
-          {open && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                onClick={() => setMode('collapsed')}
-                className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
-              />
-              <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center px-4 pt-[7vh] pb-6">
-                <motion.div
-                  ref={cardRef}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label={mode === 'archive' ? 'Archived tasks' : 'All tasks'}
-                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                  className="todo-box @container pointer-events-auto flex h-[min(78vh,720px)] w-full max-w-[760px] flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[var(--color-base-elevated)]/[0.97] px-4 pt-4 pb-2 shadow-2xl backdrop-blur-2xl"
-                >
-                  {header(true)}
-                  {mode === 'archive' ? (
-                    <ArchiveList />
-                  ) : (
-                    <>
-                      <div className="mt-3 shrink-0">
-                        <Composer inputRef={modalInputRef} />
-                      </div>
-                      <div className="mt-2.5 flex shrink-0 items-center gap-2 px-0.5">
-                        <div role="tablist" aria-label="Task views" className="segmented flex rounded-md p-0.5">
-                          {VIEWS.map((v) => {
-                            const count = active.filter((t) => matchesView(t, v.id, now)).length;
-                            return (
-                              <button
-                                key={v.id}
-                                type="button"
-                                role="tab"
-                                aria-selected={view === v.id}
-                                onClick={() => setView(v.id)}
-                                className={`rounded px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
-                                  view === v.id ? 'segmented-on text-white' : 'text-white/55 hover:text-white/85'
-                                } ${v.id === 'overdue' && count ? 'text-red-300' : ''}`}
-                              >
-                                {v.label} <span className="font-mono text-white/45">{count}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <input
-                          type="search"
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                          placeholder="Search tasks, #tags, notes"
-                          aria-label="Search tasks"
-                          className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[12px] text-white placeholder-white/35 outline-none focus:border-white/25"
-                        />
-                      </div>
-                      {list(true, filtered)}
-                    </>
-                  )}
-                  {footer(true)}
-                </motion.div>
-              </div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
     </div>
   );
 });

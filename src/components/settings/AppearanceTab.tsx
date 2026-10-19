@@ -410,6 +410,20 @@ export function AppearanceTab() {
             );
           })}
         </div>
+        <div role="group" aria-label="Lines under the greeting" className="flex flex-wrap gap-x-5 gap-y-2 px-0.5 pt-0.5">
+          <CheckLine
+            label="Show “On this day” line"
+            hint="A tech event from today's date in history; ↻ shows another"
+            checked={settings.showOnThisDay ?? true}
+            onChange={(v) => updateSettings({ showOnThisDay: v })}
+          />
+          <CheckLine
+            label="Show quote line"
+            hint="A daily quote from a public quotes library; ↻ shows another"
+            checked={settings.showQuote ?? true}
+            onChange={(v) => updateSettings({ showQuote: v })}
+          />
+        </div>
         <p className="pt-1 text-[11px] font-semibold tracking-wider text-white/60 uppercase">Name font</p>
         <div role="radiogroup" aria-label="Name font" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {NAME_FONTS.map((f) => {
@@ -431,18 +445,6 @@ export function AppearanceTab() {
             );
           })}
         </div>
-        <Toggle
-          label="On this day in tech"
-          hint="A tech or computing event from today's date in history, under the greeting. Hover it and press ↻ for another."
-          checked={settings.showOnThisDay ?? true}
-          onChange={(v) => updateSettings({ showOnThisDay: v })}
-        />
-        <Toggle
-          label="Daily motivational quote"
-          hint="A new quote every day under the greeting, from a public quotes library — hover it and press ↻ for another."
-          checked={settings.showQuote ?? true}
-          onChange={(v) => updateSettings({ showQuote: v })}
-        />
       </Section>
 
       <div className="flex justify-end">
@@ -1169,5 +1171,15 @@ function ZonePicker({ zones, onChange }: { zones: string[]; onChange: (z: string
         />
       )}
     </div>
+  );
+}
+
+// A compact checkbox with a one-line hint (Greeting → which lines show).
+function CheckLine({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label title={hint} className="flex cursor-pointer items-center gap-2 text-[12px] font-medium text-white/80 select-none">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 cursor-pointer rounded accent-[var(--color-accent)]" />
+      {label}
+    </label>
   );
 }

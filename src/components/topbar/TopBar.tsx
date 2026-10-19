@@ -28,7 +28,7 @@ export function TopBar({ weather, search, git, command }: TopBarProps) {
     >
       {/* Left: clock, then the date with weather + UV on its line, and the place under it (click the clock to change its face). */}
       <div data-widget="time-cluster" className="flex min-w-0 flex-col items-start gap-1.5 px-3 pt-1 sm:col-span-2 md:col-span-1">
-        <div data-widget-card="clock-weather" className="flex h-[132px] w-[380px] max-w-full min-w-0 shrink-0 overflow-hidden">
+        <div data-widget-card="clock-weather" className="flex h-[148px] w-[424px] max-w-full min-w-0 shrink-0 overflow-hidden">
           <TimeWidget />
         </div>
         {weather}

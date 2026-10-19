@@ -10,7 +10,65 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20l — work panel, AI shortcut, alert polish (branch `vfinal2.0`)
+
+- **Work panel** (`processing/WorkBoard.tsx`, `lib/workBoard.ts`):
+  - Opened with `openBoard({ tab, focus?, archive?, focusInput? })`, an event that `WorkBoardHost` (mounted in `App`) listens for.
+  - Holds three panes (Currently processing → Queue → To-do) in a snap scroller; tabs (sliding pill), dots, horizontal wheel/swipe and ←/→ switch between them. 1080 × 86vh; closes on Esc, a click outside or after 30 s idle.
+  - Processing / Queue panes are `WorkList` + `WorkCard`: favicon, host, due/overdue, next reminder + schedule, live timer, age; Open / Timer / Move to Queue ↔ Start processing / Remove (undo); stats chips; Manage opens `ProcessingManager` (now exported).
+  - The To-do pane is `TodoWidget board`, which renders the old pop-up's content and accepts `initialFocus`, `initialArchive` and `focusInput`. The old to-do pop-up and its idle/Esc logic were removed.
+  - Expand buttons: on the Currently processing card (top-right), and in the Queue footer (before the cog). The to-do card's expand, + and archive buttons open the To-do tab.
+  - The overdue alert's Review opens the To-do tab with overdue tasks first. On other websites, the worker opens `index.html#review`.
+- **Search:** Ctrl/⌘+Enter (or Alt+Enter) sends the text to the chosen AI. Hints appear in the placeholder, the suggestions footer and the composer footer.
+- **Top bar:**
+  - The clock box is 424 × 148 (was 380 × 132), or 312 × 102 on short screens.
+  - The UV badge is stacked under the temperature.
+  - On this day has an always-visible refresh icon at the line end, dimmed when there's only one event.
+- **Settings → Greeting:** "Show On this day line" and "Show quote line" checkboxes now sit under the style picker; the old toggles were removed.
+- **Alerts:**
+  - A time-left line (`[data-life]::after`, `--life`) shrinks right → left over the card's life and pauses on hover.
+  - `.alert-shield` (frosted, masked, `pointer-events-auto`) sits behind the stack while any alert is up.
+- **Mini calendar:** double-clicking the month or year opens Month and Year wheels side by side (1900–2200, snap-centred, › ‹ marker). A click sets the value; double-click/Enter closes the wheels; Esc closes the wheels first.
+
+## Round 2026-10-20k — type-to-capture search, Clear all, Command Calendar (branch `vfinal2.0`)
+
+
+- **Type-to-capture** (`hooks/useTypeToCapture.ts`): a window `keydown` listener. `capturedText()` ignores focused fields (input / textarea / select / contentEditable), named keys (Shift, F1–F12, Escape, Tab, arrows, Enter…), Ctrl/⌘/Alt shortcuts (AltGr still types), the page hotkeys `/` and `,`, and Space on a focused button. A `paste` listener handles Ctrl/⌘+V outside a field. Nothing is captured while a dialog is open.
+- **Search composer** (`SearchBar.tsx`): the input is now an auto-sizing `<textarea>` (still `role="combobox"`, `aria-label="Search"`). Over 65 characters, a newline or horizontal overflow shows a small expand button at the bottom-right. Expanded, the drawer covers the whole search row (max 280 px, own scrollbar, line/char count) with the actions in its footer. Shift+Enter adds a line, Enter submits, Esc collapses, and the text is kept. Long or multi-line text skips Google suggestions.
+- **Clear all** (`AlertCenter.tsx`, `alertStore.clearAllAlerts`): a glass pill under the stack while 2+ alerts are up. The cards slide out with a 40 ms stagger (200 ms each), and the pill fades out at ≤1 alert. Cleared alerts stay gone after reload because every alert is marked seen when pushed.
+- **Calendar data**:
+  - `CalendarEvent` (title, date, start/end, category meeting/call/vip/deep-work/deadline/travel, priority, attendees/tags, location, notes, `remindMins`) lives in persisted `events`; it is normalised on load and import.
+  - `ProcessingItem` gains `dueDate`/`dueTime`; Queue = any section other than Currently processing.
+  - Store actions: `addEvent`, `updateEvent`, `deleteEvent` (with undo) and `reinsertEvent`.
+  - `settings.calendar` remembers the view and the second time zone.
+- **Engine** (`lib/calendar.ts`, React-free, unit-tested):
+  - `collectItems` merges events, dated to-dos, Processing/Queue dues and daily/weekly/monthly reminder occurrences (minute/hourly reminders stay off the grid);
+  - `layoutColumns` places overlaps side by side;
+  - `findConflicts` flags overlaps involving an event, plus local hours with more than 3 dues;
+  - `freeGaps` and `focusShieldSlot` find a 2-hour block ending by 23:45;
+  - `briefing` gives the KPIs: focus = free 30-minute-plus gaps in 08–20 plus remaining deep work; risk = booked share plus conflicts and a pile of dues;
+  - `workload` drives the month heat;
+  - `agenda` groups items into next 2h / later today / deadlines, with a passed due time listed once as overdue;
+  - `autoResolve` moves colliding dues to the next free same-length slot, never meetings.
+- **Command Calendar UI** (`components/calendar/`, styled after `pro_workspace_command_calendar.tsx`):
+  - opens full screen from the launcher bar above Currently processing;
+  - command bar: filter box `/`, Focus Shield, New item, alert-stack toggle;
+  - KPI strip: clickable filter pills, conflict radar with Auto-resolve, dual time zone, view switcher;
+  - canvas: day chips, legend filters, Day/Week time grid (72/52 px per hour, Now line, hover hint, click or drag to create), Month capacity heatmap and the three-lane Agenda;
+  - `AlertStack` side panel: live alerts plus the next 24 h;
+  - centred `CalendarComposer`: new event / to-do / Queue / Processing item, scheduling of existing items, and item details;
+  - scoped `--cc-*` tokens built from the theme: frosted glass over the live backdrop (`--color-base` / `--color-base-elevated`), with every primary colour derived from `--color-accent`. Meetings wear the accent; the other categories keep their own colours.
+- **Mini calendar** (`MiniCalendar.tsx`): a square button beside the Calendar bar opens a plain month calendar in macOS-style glass (traffic lights, accent-glow today, ISO week numbers, live clock, picked-day footer). It isn't bound to events. Keys: arrows, PgUp/PgDn, T; Esc closes.
+
+- **Calendar alerts**:
+  - `AlertKind 'calendar'` from `upcomingEvents(…, events)`, firing at start − `remindMins`;
+  - in-page `CalendarPill` (rounded-full, spinning category ring, ringing bell, live countdown, Acknowledge / Snooze 5m / Jump to slot) that stays until acted on;
+  - the same capsule in `alertOverlay.ts` for other websites;
+  - the worker snoozes calendar alerts for 5 minutes and opens `index.html#cal=date:id`.
+  - Processing/Queue due times fire through the existing spotlight/pill designs (`· DUE`).
+
 ## Round 2026-10-20j — On this day, API quotes, All categories by the links bar, store packaging
+
 
 - **On this day** (`services/onThisDay.ts`, `DateGreet.tsx` `OnThisDay`):
   - Wikipedia's On this day feed (`/api/rest_v1/feed/onthisday/all/MM/DD`), cached per day in `devdeck.onthisday.v1`;

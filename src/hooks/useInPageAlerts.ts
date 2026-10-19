@@ -53,6 +53,7 @@ function notifyWeb(d: AlertData) {
 export function useInPageAlerts() {
   const processing = useStore((s) => s.processing);
   const todos = useStore((s) => s.todos);
+  const events = useStore((s) => s.events);
   const lastCheck = useRef(Date.now());
   const ext = isExtension();
 
@@ -61,7 +62,7 @@ export function useInPageAlerts() {
     let timer: ReturnType<typeof setTimeout>;
     const plan = () => {
       const now = Date.now();
-      const fired = upcomingEvents(processing, todos, lastCheck.current - 1).filter((e) => e.at > lastCheck.current - 1 && e.at <= now + 250);
+      const fired = upcomingEvents(processing, todos, lastCheck.current - 1, events).filter((e) => e.at > lastCheck.current - 1 && e.at <= now + 250);
       lastCheck.current = now;
       for (const e of fired) {
         if (visible()) pushAlert(e.data);
@@ -75,7 +76,7 @@ export function useInPageAlerts() {
         if (visible()) pushAlert(d, true);
         else if (!ext) notifyWeb(d);
       }
-      const next = upcomingEvents(processing, todos, now)[0]?.at ?? null;
+      const next = upcomingEvents(processing, todos, now, events)[0]?.at ?? null;
       const snoozeNext = takeDueSnoozes(now).next;
       const at = Math.min(next ?? Infinity, snoozeNext ?? Infinity, now + MAX_WAIT);
       timer = setTimeout(plan, Math.max(250, at - now));
@@ -91,7 +92,7 @@ export function useInPageAlerts() {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [processing, todos, ext]);
+  }, [processing, todos, events, ext]);
 
   // Extension: give the service worker the upcoming to-do / timer alerts (it
   // already has the scheduled reminders) and the theme colours for the overlay.
@@ -99,9 +100,9 @@ export function useInPageAlerts() {
     const storage = chromeApi()?.storage?.local;
     if (!ext || !storage) return;
     const now = Date.now();
-    const events = upcomingEvents(processing, todos, now).filter((e) => !e.reminder && e.at < now + MIRROR_DAYS * 864e5).slice(0, 200);
-    void storage.set({ [ALERT_EVENTS_KEY]: events });
-  }, [processing, todos, ext]);
+    const upcoming = upcomingEvents(processing, todos, now, events).filter((e) => !e.reminder && e.at < now + MIRROR_DAYS * 864e5).slice(0, 200);
+    void storage.set({ [ALERT_EVENTS_KEY]: upcoming });
+  }, [processing, todos, events, ext]);
   useEffect(() => {
     const storage = chromeApi()?.storage?.local;
     if (!ext || !storage) return;

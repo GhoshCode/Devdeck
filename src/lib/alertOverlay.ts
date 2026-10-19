@@ -1,8 +1,9 @@
 // The top alert panel drawn on OTHER websites (injected by the service worker
 // with chrome.scripting). It must be completely self-contained: Chrome copies
 // this function's source into the page, so it can't use imports or anything
-// outside its own body. It renders the same four matte designs as the in-page
-// AlertCenter, inside a shadow root so the site's CSS can't touch it.
+// outside its own body. It renders the same designs as the in-page
+// AlertCenter (including the calendar capsule), inside a shadow root so the
+// site's CSS can't touch it.
 
 import type { AlertData } from './alertEvents';
 
@@ -65,6 +66,23 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
     .more { pointer-events: auto; all: unset; cursor: pointer; pointer-events: auto; font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 6px;
       background: ${bg}; color: ${L ? '#0f172a' : '#f1f5f9'}; border: 1px solid color-mix(in srgb, ${A} 50%, transparent); }
     .brand { font: 600 10.5px/1 ui-monospace, monospace; letter-spacing: .14em; opacity: .55; margin-left: auto; }
+    .cal { border-radius: 999px; padding: 1.5px; border: 0; background: conic-gradient(from var(--a, 0deg), var(--cat), transparent 35%, var(--cat) 70%, transparent);
+      box-shadow: 0 0 22px -4px var(--cat), 0 14px 34px -14px rgba(0,0,0,${L ? 0.35 : 0.7}); }
+    .cal-in { display: flex; align-items: center; gap: 12px; border-radius: 999px; padding: 6px; max-width: min(760px, 94vw);
+      background: ${L ? 'rgba(255,255,255,.92)' : 'rgba(14,13,20,.9)'}; backdrop-filter: blur(18px); }
+    .cal-ico { width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; flex: none; color: var(--cat);
+      background: color-mix(in srgb, var(--cat) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat) 55%, transparent); }
+    .cal-ico svg { animation: ring 2.4s ease-in-out infinite; transform-origin: 50% 10%; }
+    @keyframes ring { 0%, 70%, 100% { transform: none; } 75% { transform: rotate(14deg); } 80% { transform: rotate(-12deg); } 85% { transform: rotate(8deg); } 90% { transform: rotate(-4deg); } }
+    .cal-eye { display: flex; align-items: center; gap: 8px; font: 700 10.5px/1.2 ui-monospace, monospace; letter-spacing: .14em; color: var(--cat); margin: 0; }
+    .cal-when { padding: 1px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; color: ${L ? '#0f172a' : '#fff'}; background: color-mix(in srgb, var(--cat) 30%, transparent); }
+    .cal .title { font-size: 15px; margin: 1px 0 0; }
+    .cal .sub { font-size: 12px; margin: 0; font-variant-numeric: tabular-nums; }
+    .pb { all: unset; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+      color: ${L ? '#0f172a' : '#f1f5f9'}; background: ${L ? 'rgba(15,23,42,.06)' : 'rgba(255,255,255,.08)'}; }
+    .pb:hover { background: ${L ? 'rgba(15,23,42,.12)' : 'rgba(255,255,255,.16)'}; }
+    .pb.pri { color: #fff; background: var(--cat); }
+    @media (prefers-reduced-motion: reduce) { .cal-ico svg { animation: none; } }
   `;
 
   const host = document.createElement('div');
@@ -139,7 +157,42 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
     };
     let c: HTMLElement;
     const x = xIcon();
-    if (a.kind === 'queue') {
+    if (a.kind === 'calendar') {
+      const COLORS: Record<string, string> = { meeting: A, call: '#6366f1', vip: '#eab308', 'deep-work': '#94a3b8', deadline: '#f43f5e', travel: '#f97316' };
+      c = el('div', 'card cal');
+      c.style.setProperty('--cat', COLORS[a.category ?? 'meeting'] ?? A);
+      const inner = el('div', 'cal-in');
+      const ico = el('span', 'cal-ico');
+      ico.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+      const t = el('div');
+      t.style.cssText = 'flex:1;min-width:0';
+      const eye = el('p', 'cal-eye');
+      const when = el('span', 'cal-when');
+      eye.append(el('span', 'trunc', a.eyebrow ?? 'CALENDAR'), when);
+      const tick = () => {
+        const now = Date.now();
+        const s = a.startsAt ?? now;
+        const e = a.endsAt ?? now;
+        const mins = Math.ceil((s - now) / 60000);
+        when.textContent = now < s ? `Starts in ${mins >= 60 ? `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}` : `${mins}m`}` : now < e ? 'Now' : 'Ended';
+        if (!c.isConnected && c.dataset.mounted) clearInterval(iv);
+      };
+      const iv = setInterval(tick, 1000);
+      tick();
+      c.dataset.mounted = '1';
+      t.append(eye, el('p', 'title trunc', a.title), ...(a.sub ? [el('p', 'sub trunc', a.sub)] : []));
+      const pill = (label: string, action: string, pri = false) => {
+        const b = el('button', pri ? 'pb pri' : 'pb', label) as HTMLButtonElement;
+        b.onclick = () => {
+          clearInterval(iv);
+          if (action !== 'ack') send(action, a);
+          remove(a, c);
+        };
+        return b;
+      };
+      inner.append(ico, t, pill('Acknowledge', 'ack', true), pill('Snooze 5m', 'snooze'), pill('Jump to slot', 'open'));
+      c.append(inner);
+    } else if (a.kind === 'queue') {
       c = el('div', 'card pill row');
       const text = el('div', 'trunc');
       text.style.minWidth = '0';
@@ -190,6 +243,15 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
       c.append(ico, t, btn('Open', 'open', true), btn('Snooze 10m', 'snooze'), x);
     }
     x.onclick = () => remove(a, c);
+    if (a.kind === 'calendar') {
+      // stays until acknowledged, snoozed or opened
+      c.setAttribute('role', 'alert');
+      c.addEventListener('animationend', () => {
+        if (!c.classList.contains('out')) c.style.animation = 'none';
+      });
+      return c;
+    }
+
     c.setAttribute('role', 'alert');
     // drop in once; re-ordering the stack later must not replay it
     c.addEventListener('animationend', () => {

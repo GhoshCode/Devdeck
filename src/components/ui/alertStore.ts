@@ -63,12 +63,21 @@ export function dismissAlert(key: string) {
   emit();
 }
 
+// Every alert was marked seen when it was pushed, so cleared ones stay gone
+// after a reload; pending snoozes are left alone.
+export function clearAllAlerts() {
+  if (!alerts.length) return;
+  alerts = [];
+  emit();
+}
+
 // ---- snooze: survives reloads; any open DevDeck tab re-shows it when due ----
 type Snoozed = { until: number; data: AlertData };
-export function snoozeAlert(a: AlertData) {
+export function snoozeAlert(a: AlertData, ms = SNOOZE_MS) {
   dismissAlert(a.key);
   const list = read<Snoozed[]>(SNOOZE_KEY, []).filter((s) => s.data.key !== a.key);
-  list.push({ until: Date.now() + SNOOZE_MS, data: a });
+  list.push({ until: Date.now() + ms, data: a });
+
   write(SNOOZE_KEY, list);
 }
 // Due snoozes are taken out of storage (so only one tab shows them) and returned.

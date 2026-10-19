@@ -5,6 +5,9 @@ import { REPEAT_LABEL, nextRepeatDate } from '../lib/todos';
 import { normalizeTimer, type TimerUnit } from '../lib/timer';
 import { persist } from 'zustand/middleware';
 import type {
+  CalendarEvent,
+  EventCategory,
+  EventPriority,
   Category,
   FeedSource,
   FeedsConfig,
@@ -112,6 +115,32 @@ const normalizeProcessing = (raw: unknown, i: number): ProcessingItem | null => 
     schedule: { ...defaultSchedule(), ...(asRecord(p.schedule) as Partial<Schedule>) },
     createdAt: typeof p.createdAt === 'number' ? p.createdAt : undefined,
     timer: normalizeTimer(p.timer, typeof p.createdAt === 'number' ? p.createdAt : Date.now()),
+    dueDate: isDateKey(p.dueDate) ? p.dueDate : null,
+    dueTime: isDateKey(p.dueDate) && isHHMM(p.dueTime) ? p.dueTime : null,
+  };
+};
+
+const isDateKey = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isHHMM = (v: unknown): v is string => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+const EVENT_CATEGORY_IDS: readonly EventCategory[] = ['meeting', 'call', 'vip', 'deep-work', 'deadline', 'travel'];
+const EVENT_PRIORITY_IDS: readonly EventPriority[] = ['low', 'normal', 'high', 'critical'];
+
+const normalizeEvent = (raw: unknown): CalendarEvent | null => {
+  const e = asRecord(raw);
+  if (typeof e.id !== 'string' || typeof e.title !== 'string' || !isDateKey(e.date) || !isHHMM(e.start) || !isHHMM(e.end)) return null;
+  return {
+    id: e.id,
+    title: e.title,
+    date: e.date,
+    start: e.start,
+    end: e.end,
+    category: EVENT_CATEGORY_IDS.includes(e.category as EventCategory) ? (e.category as EventCategory) : 'meeting',
+    priority: EVENT_PRIORITY_IDS.includes(e.priority as EventPriority) ? (e.priority as EventPriority) : 'normal',
+    attendees: toArray<unknown>(e.attendees).filter((x): x is string => typeof x === 'string'),
+    location: typeof e.location === 'string' ? e.location : '',
+    notes: typeof e.notes === 'string' ? e.notes : '',
+    remindMins: typeof e.remindMins === 'number' && e.remindMins >= 0 ? Math.round(e.remindMins) : null,
+    createdAt: typeof e.createdAt === 'number' ? e.createdAt : Date.now(),
   };
 };
 
@@ -147,6 +176,7 @@ export function normalizePersisted(input: unknown): PersistedState {
       sites: toArray<TrashedSite>(asRecord(obj.trash).sites).filter((x) => x && typeof x.id === 'string' && typeof x.url === 'string'),
       processing: toArray<TrashedProcessing>(asRecord(obj.trash).processing).filter((x) => x && typeof x.id === 'string'),
     },
+    events: toArray<unknown>(obj.events).map(normalizeEvent).filter(notNull),
   };
 }
 
@@ -196,6 +226,8 @@ export type NewProcessingItem = {
   section?: string;
   schedule?: Partial<Schedule>;
 };
+export type NewEvent = Omit<CalendarEvent, 'id' | 'createdAt' | 'attendees' | 'location' | 'notes' | 'priority' | 'remindMins'> &
+  Partial<Pick<CalendarEvent, 'attendees' | 'location' | 'notes' | 'priority' | 'remindMins'>>;
 export type NewTopic = { label: string; query: string };
 export type NewFeedSource = Omit<FeedSource, 'id' | 'enabled'> & { enabled?: boolean };
 
@@ -248,6 +280,11 @@ export interface StoreActions {
   updateProcessingItem: (id: string, patch: Partial<Omit<ProcessingItem, 'id'>>) => void;
   deleteProcessingItem: (id: string) => void;
   reinsertProcessingItem: (item: ProcessingItem) => void; // undo a delete
+
+  addEvent: (input: NewEvent) => CalendarEvent;
+  updateEvent: (id: string, patch: Partial<Omit<CalendarEvent, 'id' | 'createdAt'>>) => void;
+  deleteEvent: (id: string) => void;
+  reinsertEvent: (event: CalendarEvent) => void; // undo a delete
   // Feed topics (J)
   addTopic: (input: NewTopic) => Topic;
   updateTopic: (id: string, patch: Partial<Omit<Topic, 'id'>>) => void;
@@ -295,6 +332,7 @@ const pickPersisted = (s: Store): PersistedState => ({
   processing: s.processing,
   feeds: s.feeds,
   trash: s.trash,
+  events: s.events,
 });
 
 // The seed's bookmark library only — no settings and no v2 collections.
@@ -641,6 +679,25 @@ export const useStore = create<Store>()(
             : { processing: [...s.processing, item], trash: { ...s.trash, processing: s.trash.processing.filter((p) => p.id !== item.id) } },
         ),
 
+      // ---- Calendar events -----------------------------------------------
+      addEvent: (input) => {
+        const event: CalendarEvent = {
+          attendees: [],
+          location: '',
+          notes: '',
+          priority: 'normal',
+          remindMins: 10,
+          ...input,
+          id: newId(),
+          createdAt: Date.now(),
+        };
+        set((s) => ({ events: [...s.events, event] }));
+        return event;
+      },
+      updateEvent: (id, patch) => set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
+      deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
+      reinsertEvent: (event) => set((s) => (s.events.some((e) => e.id === event.id) ? s : { events: [...s.events, event] })),
+
       // ---- Feed topics ---------------------------------------------------
       addTopic: ({ label, query }) => {
         const topic: Topic = { id: newId(), label: label.replace(/^#/, ''), query };
@@ -703,6 +760,7 @@ export const useStore = create<Store>()(
           ...next,
           todos: Array.isArray(record.todos) ? next.todos : cur.todos,
           processing: Array.isArray(record.processing) ? next.processing : cur.processing,
+          events: Array.isArray(record.events) ? next.events : cur.events,
           feeds: record.feeds ? next.feeds : cur.feeds,
           settings: {
             ...next.settings,
@@ -760,7 +818,8 @@ export const useStore = create<Store>()(
           };
         }),
       loadBenchmark200: () =>
-        set((s) => ({ ...getBenchmark200State(), settings: s.settings, todos: s.todos, processing: s.processing, feeds: s.feeds })),
+        set((s) => ({ ...getBenchmark200State(), settings: s.settings, todos: s.todos, processing: s.processing, feeds: s.feeds, events: s.events })),
+
     }),
     {
       name: STORAGE_KEY,
