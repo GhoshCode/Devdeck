@@ -17,6 +17,13 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-20m — tidy-ups
+
+- The quick-links bar no longer spills into the terminal; extra chips stay inside the bar.
+- No outer frame around the category cards.
+- Work panel tabs slide smoothly (one animation); a sideways swipe moves one tab.
+- The terminal looks like a small console: traffic lights, a coloured PS ❯ ~ prompt, scanlines and a glow while typing.
+
 ## Round 2026-10-20l — work panel, AI shortcut, alert polish
 
 - **Work panel:** the expand buttons on the Currently processing card and on the Queue / To-do card open one big panel with three tabs: Currently processing, Queue and To-do. It opens on the tab you came from. Switch with the tabs, the dots, a sideways swipe or ←/→. **Review** on the overdue alert opens it on To-do with overdue tasks first.

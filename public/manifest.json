@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DevDeck",
   "short_name": "DevDeck",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A developer new tab: your sites by category, to-dos with reminders, GitHub activity, tech news and jobs.",
   "minimum_chrome_version": "116",
   "chrome_url_overrides": {

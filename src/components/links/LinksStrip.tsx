@@ -34,8 +34,8 @@ export const LinksStrip = memo(function LinksStrip() {
   const open = (link: StripLink) => link.siteId && recordVisit(link.siteId);
 
   return (
-    <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-white/10 px-3">
-      <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
+    <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-3">
+      <div data-strip="fixed" className="scrollbar-none flex min-w-0 shrink items-center gap-2 overflow-x-auto">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />
         ))}

@@ -183,7 +183,7 @@ export default function App() {
         }
         left={
           <>
-            <div className="flex shrink-0 gap-2">
+            <div className="mt-[7px] flex shrink-0 gap-2">
               <CalendarButton />
               <MiniCalendarButton />
             </div>
@@ -196,7 +196,7 @@ export default function App() {
           <div className="flex h-full min-h-0 flex-col gap-3">
             {/* All categories stands on its own, left of the quick links + recent
                 bar; it moves with the bar as the centre column resizes. */}
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <div className="mt-[7px] flex min-w-0 shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setOverview((v) => !v)}
@@ -213,8 +213,8 @@ export default function App() {
                 <LinksStrip />
               </div>
             </div>
-          <div data-testid="center-frame" className="glass flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div data-center-body className="relative flex min-h-0 flex-1 p-3">
+          <div data-testid="center-frame" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div data-center-body className="relative flex min-h-0 flex-1 px-3 pb-3">
               {/* The overview replaces the cards (one view at a time keeps it light). */}
               {overview ? (
                 <CategoryOverview onClose={() => setOverview(false)} />

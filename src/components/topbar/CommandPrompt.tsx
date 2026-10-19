@@ -81,12 +81,24 @@ export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?
   return (
     <div ref={rootRef} className="relative">
       <div
-        className={`glass flex h-9 items-center gap-2 rounded-xl pr-1 pl-3 font-mono text-xs transition-colors ${
-          admin ? 'border-amber-400/60 shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_0_18px_rgba(251,191,36,0.15)]' : ''
-        }`}
+        data-admin={admin || undefined}
+        className="term flex h-10 items-center gap-2 rounded-xl pr-1 pl-2.5 font-mono text-xs"
       >
-        <span aria-hidden className={`${busy ? 'animate-pulse' : ''} ${admin ? 'font-bold text-amber-300' : 'text-[var(--color-accent)]'}`}>
-          {admin ? '#' : platform === 'windows' ? 'PS>' : '$'}
+        {/* Window chrome that matches the OS: traffic lights on macOS, a terminal mark elsewhere. */}
+        {platform === 'mac' ? (
+          <span aria-hidden className="term-dots flex shrink-0 gap-1">
+            <i />
+            <i />
+            <i />
+          </span>
+        ) : (
+          <span aria-hidden data-os={platform} className="term-mark flex h-5 shrink-0 items-center justify-center rounded-[5px] px-1 text-[10px] font-bold">
+            &gt;_
+          </span>
+        )}
+        <span aria-hidden className={`term-seg flex h-6 shrink-0 items-center gap-1 pr-3 pl-2 text-[11px] font-bold ${busy ? 'animate-pulse' : ''}`}>
+          {admin ? '#' : platform === 'windows' ? 'PS' : '$'}
+          <span className="term-seg-path font-medium">❯ ~</span>
         </span>
         <input
           value={value}
@@ -99,7 +111,7 @@ export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?
           autoComplete="off"
           aria-label="Command prompt"
           placeholder={admin ? `run in ${shell} as administrator…` : `run a command in ${shell}…`}
-          className="min-w-0 flex-1 bg-transparent text-white/90 outline-none placeholder:text-white/30"
+          className="term-input min-w-0 flex-1 bg-transparent outline-none"
         />
         <button
           type="button"

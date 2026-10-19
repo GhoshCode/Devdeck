@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
@@ -64,7 +64,7 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
   const todoCount = useStore((s) => s.todos.filter((t) => t.archivedAt === null).length);
   const now = useNow(30_000);
   const cardRef = useRef<HTMLDivElement>(null);
-  const scroller = useRef<HTMLDivElement>(null);
+  const swipe = useRef({ sum: 0, lock: 0 });
   const [tab, setTab] = useState<number>(() => Math.max(0, TABS.findIndex((t) => t.id === req.tab)));
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -76,41 +76,13 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
 
   useIdleTimeout(cardRef, true, TODO_IDLE_MS, onClose);
 
-  const go = useCallback((i: number, smooth = true) => {
-    const el = scroller.current;
-    if (!el) return;
-    const n = Math.max(0, Math.min(TABS.length - 1, i));
-    el.scrollTo({ left: n * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
-    setTab(n);
-  }, []);
+  const go = useCallback((i: number) => setTab(Math.max(0, Math.min(TABS.length - 1, i))), []);
 
   // Land on the requested tab (again when another request arrives while open).
   useEffect(() => {
     const i = Math.max(0, TABS.findIndex((t) => t.id === req.tab));
-    requestAnimationFrame(() => go(i, false));
+    go(i);
   }, [req.nonce, req.tab, go]);
-
-  // Swipes / horizontal scrolling pick the tab under the viewport; a resize keeps the tab in view.
-  useEffect(() => {
-    const el = scroller.current;
-    if (!el) return;
-    let width = el.clientWidth;
-    const ro = new ResizeObserver(() => {
-      if (el.clientWidth === width) return;
-      width = el.clientWidth;
-      el.scrollLeft = tabRef.current * width;
-    });
-    ro.observe(el);
-    const onScroll = () => {
-      if (el.clientWidth !== width) return;
-      setTab(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      ro.disconnect();
-      el.removeEventListener('scroll', onScroll);
-    };
-  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -132,6 +104,18 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
 
   const flip = (d: number) => {
     if (Math.abs(d) > 4) go(tabRef.current + (d > 0 ? 1 : -1));
+  };
+  // A sideways trackpad swipe / shift-wheel over the lists: one tab per gesture.
+  const onSwipe = (e: ReactWheelEvent) => {
+    const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+    if (!dx) return;
+    const now = Date.now();
+    if (now < swipe.current.lock) return;
+    swipe.current.sum += dx;
+    if (Math.abs(swipe.current.sum) > 60) {
+      go(tabRef.current + (swipe.current.sum > 0 ? 1 : -1));
+      swipe.current = { sum: 0, lock: now + 550 };
+    }
   };
 
   return (
@@ -159,7 +143,7 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
             >
               <span
                 aria-hidden
-                className="pane-switch-pill absolute top-1 bottom-1 left-1 w-[calc((100%-8px)/3)] rounded-xl transition-transform duration-300 ease-out motion-reduce:transition-none"
+                className="pane-switch-pill work-pill absolute top-1 bottom-1 left-1 w-[calc((100%-8px)/3)] rounded-xl motion-reduce:transition-none"
                 style={{ transform: `translateX(${tab * 100}%)` }}
               />
               {TABS.map((t, i) => (
@@ -172,7 +156,16 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
                   className={`pane-tab relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2 font-display text-[12px] font-semibold tracking-[0.06em] uppercase transition-colors ${tab === i ? 'is-on' : ''}`}
                 >
                   <TabIcon id={t.id} />
-                  <span className="truncate">{t.label}</span>
+                  <span className="truncate">
+                    {t.id === 'processing' ? (
+                      <>
+                        <span className="hidden @min-[640px]:inline">Currently processing</span>
+                        <span className="@min-[640px]:hidden">Processing</span>
+                      </>
+                    ) : (
+                      t.label
+                    )}
+                  </span>
                   <span className="pane-tab-count min-w-5 rounded-md px-1.5 py-px font-mono text-[10.5px] tracking-normal">{counts[i]}</span>
                 </button>
               ))}
@@ -183,16 +176,18 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
             </button>
           </header>
 
-          <div ref={scroller} data-testid="work-board-scroller" className="scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden">
-            <section aria-label="Currently processing" className="h-full w-full shrink-0 snap-start px-5 pb-2">
+          <div data-testid="work-board-scroller" onWheel={onSwipe} className="relative min-h-0 flex-1 overflow-hidden">
+           <div className="work-track flex h-full w-[300%]" style={{ transform: `translate3d(${(-tab * 100) / 3}%, 0, 0)` }}>
+            <section aria-label="Currently processing" inert={tab !== 0} className={`work-pane h-full w-1/3 shrink-0 px-5 pb-2 ${tab === 0 ? 'is-on' : ''}`}>
               <WorkList kind="processing" items={doing} now={now} onManage={onManage} />
             </section>
-            <section aria-label="Queue" className="h-full w-full shrink-0 snap-start px-5 pb-2">
+            <section aria-label="Queue" inert={tab !== 1} className={`work-pane h-full w-1/3 shrink-0 px-5 pb-2 ${tab === 1 ? 'is-on' : ''}`}>
               <WorkList kind="queue" items={queued} now={now} onManage={onManage} />
             </section>
-            <section aria-label="To-do" className="h-full w-full shrink-0 snap-start px-5 pb-2">
+            <section aria-label="To-do" inert={tab !== 2} className={`work-pane h-full w-1/3 shrink-0 px-5 pb-2 ${tab === 2 ? 'is-on' : ''}`}>
               <TodoWidget board onClose={onClose} initialFocus={req.focus ?? null} initialArchive={!!req.archive} focusInput={!!req.focusInput} key={req.nonce} />
             </section>
+           </div>
           </div>
 
           <div data-pane-dots onWheel={(e) => flip(Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY)} className="flex shrink-0 justify-center gap-1.5 pt-1 pb-3">

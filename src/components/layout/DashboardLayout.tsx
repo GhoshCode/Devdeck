@@ -115,7 +115,7 @@ export function DashboardLayout({
         {rightInline && <CardSnapHandle side="right" {...snap.handle('right')} />}
         {rightInline && (
           <aside data-zone="right" aria-label="Tech news and topics" className="flex min-h-0 flex-col gap-3">
-            <div data-zone="right-top" className="flex shrink-0 items-center" style={{ height: 'var(--links-bar-h)' }}>
+            <div data-zone="right-top" className="mt-[7px] flex shrink-0 items-center" style={{ height: 'var(--links-bar-h)' }}>
               <div className="w-full">{rightTop}</div>
             </div>
             <div className="min-h-0 flex-1">{right}</div>
