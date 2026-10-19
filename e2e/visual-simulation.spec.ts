@@ -196,8 +196,8 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     await page.keyboard.press('Escape');
 
     // Open and close the G1 bookmarks drawer
-    await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-    await expect(page.getByRole('dialog', { name: 'Bookmarks and site map' })).toBeVisible();
+    await page.getByRole('button', { name: 'Browser bookmarks' }).click();
+    await expect(page.getByRole('dialog', { name: 'Browser bookmarks' })).toBeVisible();
     await page.keyboard.press('Escape');
 
     // Switch subcategories back and forth

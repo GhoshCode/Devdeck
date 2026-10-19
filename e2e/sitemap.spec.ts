@@ -10,9 +10,9 @@ test.beforeEach(async ({ page }) => {
   await page.locator('[data-category-id]').first().waitFor({ state: 'visible' });
 });
 
-test('button sits left of Bookmarks and opens the map', async ({ page }) => {
+test('button sits left of the bookmarks button and opens the map', async ({ page }) => {
   const map = page.getByRole('button', { name: 'Site Map & Hierarchy' });
-  const bookmarks = page.getByRole('button', { name: 'Bookmarks and site map' });
+  const bookmarks = page.getByRole('button', { name: 'Browser bookmarks' });
   const [a, b] = await Promise.all([map.boundingBox(), bookmarks.boundingBox()]);
   expect(a!.x + a!.width).toBeLessThanOrEqual(b!.x);
 

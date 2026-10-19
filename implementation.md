@@ -10,6 +10,41 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20b (vfinal-qa-fixes) — glass reminder alerts, zone picker unified, QA fixes
+
+- **Alert store** (`ui/alertStore.ts`): plain-data alerts, `AlertKind = processing | queue | todo | overdue`.
+  - `pushAlert` de-duplicates by key, both while on screen and once seen. Seen keys live in `localStorage["devdeck.alerts.seen"]` for 7 days, so reloads and other tabs don't repeat an alert.
+  - `snoozeAlert` stores the alert plus `until` (10 min) in `devdeck.alerts.snoozed`. `takeDueSnoozes` removes due ones, so only one tab re-shows them.
+- **Alert UI** (`ui/AlertCenter.tsx`, mounted in `App`): a portal at the top centre, `z-[110]`.
+  - Motion: each alert drops in from y −140 with a spring (stiffness 380, damping 30); exit lifts up and fades. `AnimatePresence mode="popLayout"`, so the rest close up smoothly when one leaves.
+  - Stack: newest on top, at most 3, then a "+N more reminders" pill that expands the list.
+  - Timing: auto-hides after 12 s (overdue summary 20 s); paused on hover.
+  - **Four designs:**
+    - **Currently processing** — spotlight banner: favicon in an accent ring, "CURRENTLY PROCESSING · NOW", "Time to work on …", schedule and host.
+    - **Queue** — "Up next" pill.
+    - **To-do** — checklist card: tick to complete, priority stripe (P1 red, P2 amber, P3 blue), eyebrow "TO-DO DUE · P1" or "TIMER ENDED".
+    - **Overdue** — summary sheet: total, a few names, and count tiles for To-dos, Queue and Currently processing.
+  - Actions: **Open** (new tab for sites; for to-dos it shows the To-do pane and flashes the row), **Snooze 10m**, **Dismiss**. To-dos also get **Mark done**; the summary gets **Review** (To-do pane with the overdue filter).
+  - Styles (`.alert-glass`): `backdrop-filter: blur(28px) saturate(170%)`, background `color-mix(accent 13%, rgba(22,20,32,.66))`, 0.5 px border `color-mix(accent 42%, white 14%)`, inset top highlight, soft shadow. Light theme: accent 9% over white 72%.
+- **Triggers** (`hooks/useInPageAlerts.ts`):
+  - Events:
+    - scheduled reminders (`nextFireTime`), styled Currently processing or Queue by section;
+    - to-do due date + time;
+    - timers that run out, for to-dos and Queue/Currently processing items;
+    - an overdue summary about 1.5 s after a tab opens, at most every 30 min (`devdeck.alerts.overdueAt`).
+  - One timeout aims at the next event (re-planned at most hourly, and on `visibilitychange`). Events since the last check fire too, so a sleeping laptop catches up.
+  - **No doubles:** a visible tab shows the glass alert. A hidden tab sends a system notification instead: `chrome.notifications` in the extension, `Notification` on the web, with the key as tag. Extension reminders are left to the service worker.
+  - The service worker (`background.ts`) now asks first: `runtime.sendMessage({type:'devdeck:reminder-due'})`. A visible DevDeck tab shows the alert and replies `{shown:true}`, and then no notification is sent.
+  - `useWebReminders` is retired (folded in).
+- **To-do jumps:** `devdeck:show-todo` events. `QueueAndTodo` scrolls to the To-do pane and flashes `[data-todo-id]` (`.todo-flash`); `TodoWidget` sets the overdue focus for Review.
+- **Settings zone picker** (`AppearanceTab` `ZonePicker`): unified with the clock face. It uses the same world-wide `ZoneSearch` (exported from `faces2.tsx`), a 2-city limit and 24-hour times. Before, it used the curated 28-city list and allowed 3.
+- **Tests:**
+  - 7 new unit tests (`useInPageAlerts.test.ts`); Vitest 228/228.
+  - New `e2e/qa/bookmarks.spec.ts` (extension) and the scenario scripts `e2e/qa/final-pass.manual.mjs` and `bookmarks.manual.mjs`.
+  - Stale e2e specs updated for intended UI changes. See `qa-report.md`.
+
+---
+
 ## Round 2026-10-20a — browser bookmarks panel + Tree View
 
 - **Data** (`services/bookmarks.ts`): live, two-way access to the browser's own bookmarks via `chrome.bookmarks`. The manifest gets the `"bookmarks"` permission.

@@ -312,6 +312,26 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
   }, []);
 
   const go = (i: 0 | 1) => ref.current?.scrollTo({ left: i * ref.current.clientWidth, behavior: 'smooth' });
+
+  // An alert's Open / Review: show the to-do pane and flash the task.
+  useEffect(() => {
+    const onShow = (e: Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      ref.current?.scrollTo({ left: ref.current.clientWidth, behavior: 'smooth' });
+      if (!id) return;
+      setTimeout(() => {
+        const row = document.querySelector<HTMLElement>(`[data-todo-id="${CSS.escape(id)}"]`);
+        if (!row) return;
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        row.classList.remove('todo-flash');
+        void row.offsetWidth;
+        row.classList.add('todo-flash');
+        setTimeout(() => row.classList.remove('todo-flash'), 1600);
+      }, 450);
+    };
+    window.addEventListener('devdeck:show-todo', onShow);
+    return () => window.removeEventListener('devdeck:show-todo', onShow);
+  }, []);
   const tabs = [
     { label: queueTitle, count: queueCount },
     { label: 'To-do', count: todoCount },

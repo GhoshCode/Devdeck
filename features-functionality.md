@@ -17,6 +17,38 @@ wide where layout is involved.
 
 ---
 
+## Reminder alerts (round 2026-10-20b)
+
+- **What they are:** reminders drop in from the top of the page as frosted-glass cards tinted with your theme colour, with a hairline border.
+- **When they appear:**
+  - a Currently processing or Queue reminder time arrives;
+  - a to-do reaches its due date and time;
+  - any timer runs out;
+  - when you open a tab, one summary if anything is overdue (at most every 30 minutes).
+- **Four looks:**
+  - **Currently processing** — a wide banner with the site's icon in a glowing ring.
+  - **Queue** — a slim "Up next" pill.
+  - **To-do** — a checklist card with a priority stripe and a tick to complete.
+  - **Overdue summary** — counts for To-dos, Queue and Currently processing.
+- **Buttons:**
+  - **Open** opens the site in a new tab; for to-dos it shows the To-do list and highlights the task.
+  - **Snooze 10m** brings it back in 10 minutes, even in another tab.
+  - **✕** dismisses it. To-dos also have **Mark done**; the summary has **Review**.
+- **Stacking and timing:** up to 3 show at once (newest on top); more wait behind "+N more reminders". They hide after 12 s unless you hover.
+- **No doubles:** while a DevDeck tab is in view you get the glass alert; otherwise a system notification.
+- **Settings → Appearance → Multi-Timezone:** adding a city now uses the same world-wide search as the clock, with 2 cities in 24-hour time.
+
+**Manual test checklist**
+- [ ] Set a to-do timer to 1 minute: the to-do card drops in when it ends, with the priority stripe colour right.
+- [ ] A Queue / Currently processing timer of 1 minute: pill and spotlight designs.
+- [ ] An overdue to-do, then a new tab: the summary appears once; another new tab within 30 min doesn't repeat it.
+- [ ] Mark done, Open, Snooze 10m (comes back after 10 min), ✕; hover pauses auto-hide.
+- [ ] 4+ alerts at once: 3 visible + "+N more"; closing one makes the others close up smoothly.
+- [ ] Switch to another tab when a reminder is due: a system notification instead (extension and web), never both.
+- [ ] Dark and light themes, with several accent colours.
+
+---
+
 ## Browser bookmarks (round 2026-10-20a)
 
 - **Opening:** the bookmark button (beside Site Map) now opens **your browser's bookmarks**, live and two-way: changes here change the browser, and changes in the browser appear here instantly.

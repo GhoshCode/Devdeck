@@ -1,7 +1,9 @@
 import { useDragOutToWindow } from './hooks/useDragOutToWindow';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ProcessingPanel } from './components/processing/ProcessingPanel';
-import { useReminderMirror, useWebReminders } from './lib/reminders';
+import { useReminderMirror } from './lib/reminders';
+import { useInPageAlerts } from './hooks/useInPageAlerts';
+import { AlertCenter } from './components/ui/AlertCenter';
 import { skinFor } from './lib/skin';
 import { switchModePatch } from './lib/appearance';
 import { withThemeTransition } from './lib/themeTransition';
@@ -46,7 +48,7 @@ export default function App() {
   const themeMode = useStore((s) => s.settings.themeMode ?? 'dark');
   const processing = useStore((s) => s.processing);
   useReminderMirror(processing);
-  useWebReminders(processing);
+  useInPageAlerts(); // glass alerts in view, system notifications otherwise
 
   const skin = useStore((s) => skinFor(s.settings));
 
@@ -196,6 +198,7 @@ export default function App() {
       />
 
       <UndoToast />
+      <AlertCenter />
       <LinkPeek />
 
       {/* Settings Overlay */}

@@ -57,8 +57,8 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await expect(shell.getByRole('button', { name: 'Search the web' })).toBeVisible();
 
     // 2. G1 bookmark button sits outside the search shell, to its right
-    const g1 = page.getByRole('button', { name: 'Bookmarks and site map' });
-    await expect(shell.getByRole('button', { name: 'Bookmarks and site map' })).toHaveCount(0);
+    const g1 = page.getByRole('button', { name: 'Browser bookmarks' });
+    await expect(shell.getByRole('button', { name: 'Browser bookmarks' })).toHaveCount(0);
     const [shellBox, g1Box] = [await shell.boundingBox(), await g1.boundingBox()];
     expect(g1Box!.x).toBeGreaterThan(shellBox!.x + shellBox!.width - 1);
 
@@ -109,8 +109,8 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     }
     await page.waitForTimeout(200);
 
-    // 5. The thin cards scrollbar sits below the cards
-    await expect(page.getByTestId('cards-scrollbar')).toBeVisible();
+    // 5. Page dots sit below the cards
+    await expect(page.getByTestId('cards-pager')).toBeVisible();
 
     // Verify page window still has zero scroll
     const pageScroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
@@ -209,7 +209,7 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     expect(pageMetrics.docScrollHeight).toBeLessThanOrEqual(pageMetrics.docClientHeight);
     expect(pageMetrics.docScrollWidth).toBeLessThanOrEqual(pageMetrics.docClientWidth);
 
-    // 4. The deck ignores the wheel; dragging its thin scrollbar moves it
+    // 4. The deck ignores sideways wheel; the page dots move it a page at a time
     const track = page.locator('[role="region"][aria-label="Scrollable category cards"]');
     await expect(track).toBeVisible();
     const tBox = (await track.boundingBox())!;
@@ -218,15 +218,10 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await page.waitForTimeout(300);
     expect(await track.evaluate((el) => el.scrollLeft)).toBe(0);
 
-    const bar = page.getByTestId('cards-scrollbar');
-    await expect(bar).toBeVisible();
-    const thumb = (await bar.locator('div').first().boundingBox())!;
-    await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + thumb.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(thumb.x + thumb.width / 2 + 200, thumb.y + thumb.height / 2, { steps: 6 });
-    await page.mouse.up();
-    await page.waitForTimeout(300);
-    expect(await track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+    const pager = page.getByTestId('cards-pager');
+    await expect(pager).toBeVisible();
+    await pager.getByRole('tab').nth(1).click();
+    await expect.poll(() => track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 
     // 5. Scroll to the last category card and verify its rendering
     const lastCard = cards.last();

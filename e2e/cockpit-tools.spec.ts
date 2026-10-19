@@ -46,10 +46,12 @@ test('a Focus site timer shows months left', async ({ page }) => {
 });
 
 test('category overview lists every category and jumps to one', async ({ page }) => {
+  // the overview replaces the cards, so count them before opening it
+  const count = await page.locator('[data-category-id]').count();
+  expect(count).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'All categories' }).click();
   const overview = page.getByTestId('category-overview');
   await expect(overview).toBeVisible();
-  const count = await page.locator('[data-category-id]').count();
   await expect(overview.getByRole('button', { name: /sites — jump to card$/ })).toHaveCount(count);
   await overview.getByText('Security & Auth', { exact: true }).click(); // the name, not a site icon inside the tile
   await expect(overview).toHaveCount(0);
@@ -173,20 +175,3 @@ test('sites reorder in the Site Map by dropping onto another site', async ({ pag
   expect(after.slice(1)).toEqual([before[0], before[1], ...before.slice(3)]);
 });
 
-test('sites reorder in the Bookmarks drawer by dropping onto another site', async ({ page }) => {
-  await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-  const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
-  await drawer.getByRole('textbox', { name: 'Filter bookmarks' }).fill('re');
-  const leaves = drawer.locator('[data-site-leaf]');
-  const names = async () => (await leaves.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))));
-  const before = await names();
-  // two leaves of the same folder section: drag the second onto the first
-  const from = (await leaves.nth(1).boundingBox())!;
-  const to = (await leaves.nth(0).boundingBox())!;
-  await page.mouse.move(from.x + 40, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(from.x + 50, from.y - 4, { steps: 4 });
-  await page.mouse.move(to.x + 60, to.y + to.height / 2, { steps: 8 });
-  await page.mouse.up();
-  await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)]);
-});

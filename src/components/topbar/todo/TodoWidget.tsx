@@ -64,6 +64,14 @@ export const TodoWidget = memo(function TodoWidget() {
   const [limit, setLimit] = useState(ROW_PAGE);
   // Footer chip toggled on: its tasks go to the top of the list.
   const [focus, setFocus] = useState<TodoFocus | null>(null);
+  // The overdue alert's "Review" floats overdue tasks to the top.
+  useEffect(() => {
+    const onShow = (e: Event) => {
+      if ((e as CustomEvent<{ focus?: TodoFocus }>).detail?.focus === 'overdue') setFocus('overdue');
+    };
+    window.addEventListener('devdeck:show-todo', onShow);
+    return () => window.removeEventListener('devdeck:show-todo', onShow);
+  }, []);
   const cardRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);

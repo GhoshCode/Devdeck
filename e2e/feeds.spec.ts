@@ -61,17 +61,24 @@ test('news shows items 1–4 and jobs 5–8, numbered and newest first', async (
 });
 
 test('topic chips filter both panels; "ai" does not match "email"', async ({ page }) => {
-  const chips = page.getByRole('radiogroup', { name: 'Filter feeds by topic' });
-  await expect(chips.getByRole('radio', { name: 'All' })).toHaveAttribute('aria-checked', 'true');
+  const chips = page.getByRole('group', { name: 'Filter feeds by topic' });
+  await expect(chips.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
 
-  await chips.getByRole('radio', { name: '#AI' }).click();
+  await chips.getByRole('button', { name: '#AI' }).click();
   const news = page.getByRole('region', { name: 'Tech news' });
   await expect(news.locator('[data-feed-item]')).toHaveCount(1);
   await expect(news).toContainText('New AI agents');
   await expect(news).not.toContainText('email');
   await expect(page.getByRole('region', { name: 'Developer jobs' }).locator('[data-feed-item]')).toHaveCount(1);
 
-  await chips.getByRole('radio', { name: 'All' }).click();
+  // several topics at once: an item matching any of them shows
+  await chips.getByRole('button', { name: '#Frontend' }).click();
+  await expect(chips.getByRole('button', { name: '#AI' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(chips.getByRole('button', { name: '#Frontend' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(news).toContainText('2 topics');
+
+  await chips.getByRole('button', { name: 'All' }).click();
+  await expect(chips.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
   await expect(news.locator('[data-feed-item]')).toHaveCount(4);
 });
 
@@ -83,7 +90,7 @@ test('a topic added in Settings → Scraping appears as a chip', async ({ page }
   await modal.getByRole('button', { name: 'Add', exact: true }).click();
   await page.keyboard.press('Escape');
 
-  await page.getByRole('radiogroup', { name: 'Filter feeds by topic' }).getByRole('radio', { name: '#Rust' }).click();
+  await page.getByRole('group', { name: 'Filter feeds by topic' }).getByRole('button', { name: '#Rust' }).click();
   const jobs = page.getByRole('region', { name: 'Developer jobs' });
   await expect(jobs.locator('[data-feed-item]')).toHaveCount(1);
   await expect(jobs).toContainText('Rust Engineer');

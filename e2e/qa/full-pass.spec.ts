@@ -120,17 +120,14 @@ for (const theme of THEMES) {
       await t.done();
     });
 
-    test('bookmarks drawer — open, expand folder, filter, close', async ({ page }, info) => {
+    test('bookmarks panel — opens, explains the extension, closes', async ({ page }, info) => {
       const t = transitions(page, info);
-      await t.run('drawer slides in', () => page.getByRole('button', { name: 'Bookmarks and site map' }).click());
-      const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
+      await t.run('panel slides in', () => page.getByRole('button', { name: 'Browser bookmarks' }).click());
+      const drawer = page.getByRole('dialog', { name: 'Browser bookmarks' });
       await expect(drawer).toBeVisible();
-      await t.run('expand Frontend folder', () => drawer.getByRole('treeitem', { name: 'Frontend' }).getByRole('button', { name: 'Expand folder' }).click());
-      await expect(drawer.getByRole('treeitem', { name: 'GitHub' }).first()).toBeVisible();
-      await auditOpen(page, info, 'bookmarks drawer', '[role="dialog"][aria-label="Bookmarks and site map"]');
-      await t.run('filter as you type', () => drawer.getByRole('textbox', { name: 'Filter bookmarks' }).pressSequentially('postgres', { delay: 50 }));
-      await expect(drawer.getByRole('treeitem', { name: 'PostgreSQL' })).toBeVisible();
-      await t.run('drawer slides out', () => page.keyboard.press('Escape'));
+      await expect(drawer).toContainText('need the DevDeck extension');
+      await auditOpen(page, info, 'bookmarks panel', '[role="dialog"][aria-label="Browser bookmarks"]');
+      await t.run('panel slides out', () => page.keyboard.press('Escape'));
       await expect(drawer).toHaveCount(0);
       await t.done();
     });
@@ -229,7 +226,7 @@ for (const theme of THEMES) {
       await expect(dialog.getByText(/Next reminder:/)).toBeVisible();
       await auditOpen(page, info, 'processing editor', '[role="dialog"][aria-label="Manage currently processing"]');
       await t.run('editor closes', () => page.keyboard.press('Escape'));
-      await expect(page.getByRole('region', { name: 'Processing: Focus' }).getByText('Supabase')).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Processing: Currently processing' }).getByText('Supabase')).toBeVisible();
       await t.done();
     });
 
@@ -237,10 +234,11 @@ for (const theme of THEMES) {
       const t = transitions(page, info);
       const news = page.getByRole('region', { name: 'Tech news' });
       await expect(news.locator('[data-feed-item]').first()).toBeVisible({ timeout: 15_000 });
-      const chips = page.getByRole('radiogroup', { name: 'Filter feeds by topic' });
+      const chips = page.getByRole('group', { name: 'Filter feeds by topic' });
       for (const chip of ['#AI', '#Frontend', '#DevOps', 'All']) {
-        await t.run(`topic ${chip}`, () => chips.getByRole('radio', { name: chip }).click(), 400);
-        await expect(chips.getByRole('radio', { name: chip })).toHaveAttribute('aria-checked', 'true');
+        if (chip !== 'All' && (await chips.getByRole('button', { name: chip }).getAttribute('aria-pressed')) === 'true') continue;
+        await t.run(`topic ${chip}`, () => chips.getByRole('button', { name: chip }).click(), 400);
+        await expect(chips.getByRole('button', { name: chip })).toHaveAttribute('aria-pressed', 'true');
       }
       await t.run('refresh feeds', () => page.getByRole('button', { name: 'Refresh feeds' }).click(), 2500);
       await t.done();
