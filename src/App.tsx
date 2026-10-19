@@ -1,3 +1,4 @@
+import { useDragOutToWindow } from './hooks/useDragOutToWindow';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ProcessingPanel } from './components/processing/ProcessingPanel';
 import { useReminderMirror, useWebReminders } from './lib/reminders';
@@ -26,6 +27,7 @@ import SettingsModal, { type SettingsTabId } from './components/settings/Setting
 import { useStore } from './store';
 
 export default function App() {
+  useDragOutToWindow();
   const accentColor = useStore((s) => s.settings.accentColor);
 
   const searchRef = useRef<HTMLInputElement>(null);

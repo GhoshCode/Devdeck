@@ -60,7 +60,7 @@ test('search lists sites with their category → subcategory path', async ({ pag
 });
 
 test('empty results say so; Enter opens the highlighted site', async ({ page }) => {
-  await page.route('https://tailwindcss.com/**', (route) => route.fulfill({ body: 'tailwind' }));
+  await page.context().route('https://tailwindcss.com/**', (route) => route.fulfill({ body: 'tailwind' }));
   await page.getByRole('button', { name: 'Site Map & Hierarchy' }).click();
   const dialog = page.getByRole('dialog', { name: 'Site Map & Hierarchy' });
   const input = dialog.getByRole('combobox', { name: 'Search the site map' });
@@ -69,7 +69,8 @@ test('empty results say so; Enter opens the highlighted site', async ({ page }) 
   await expect(dialog.getByText('No sites match')).toBeVisible();
 
   await input.fill('tailwind');
-  await Promise.all([page.waitForURL(/tailwindcss\.com/), input.press('Enter')]);
+  const [tab] = await Promise.all([page.waitForEvent('popup'), input.press('Enter')]);
+  await tab.waitForURL(/tailwindcss\.com/);
 });
 
 test('clicking the backdrop closes the map', async ({ page }) => {

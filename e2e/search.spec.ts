@@ -83,12 +83,14 @@ test.describe('Links strip (E/F)', () => {
 
   test('opening a site puts it at the head of the Recent strip', async ({ page }) => {
     // Stub the destination so following the link stays offline.
-    await page.route('https://redis.io/**', (route) => route.fulfill({ body: 'redis' }));
+    await page.context().route('https://redis.io/**', (route) => route.fulfill({ body: 'redis' }));
     await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
     const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
     await drawer.getByRole('textbox', { name: 'Filter bookmarks' }).fill('redis');
-    await drawer.getByRole('treeitem', { name: 'Redis' }).getByRole('link').click();
-    await page.waitForURL(/redis\.io/);
+    // DevDeck stays put; the site opens in a new tab.
+    const [tab] = await Promise.all([page.waitForEvent('popup'), drawer.getByRole('treeitem', { name: 'Redis' }).getByRole('link').click()]);
+    await tab.waitForURL(/redis\.io/);
+    await tab.close();
 
     await page.goto('/');
     const recent = page.getByTestId('links-strip').locator('[data-chip=recent]');

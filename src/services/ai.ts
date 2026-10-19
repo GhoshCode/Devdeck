@@ -8,6 +8,7 @@
 //   • Perplexity and custom URLs — the query goes in the URL ({q}), which
 //     runs it directly everywhere.
 
+import { openInNewTab } from '../lib/openTab';
 import { isExtension } from '../lib/env';
 
 export type AiProviderId = 'gemini' | 'chatgpt' | 'claude' | 'perplexity' | 'custom';
@@ -57,7 +58,7 @@ export async function askAi(
   const prompt = text.trim();
   const navigate =
     opts.navigate ??
-    ((url: string, newTab: boolean) => (newTab ? window.open(url, '_blank', 'noopener') : window.location.assign(url)));
+    ((url: string) => openInNewTab(url)); // always a new tab: the start page stays put
 
   if (provider.via === 'url') {
     navigate(provider.url.replaceAll('{q}', encodeURIComponent(prompt)), !!opts.newTab);

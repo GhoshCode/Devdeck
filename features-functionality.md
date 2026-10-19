@@ -17,6 +17,23 @@ wide where layout is involved.
 
 ---
 
+## 000000000. Round 2026-10-19j — latest changes
+
+- **Multi-Timezone clock:** every city shows 24-hour time (e.g. 21:23).
+- **Flip clock:** DEVDECK sits on a small plate at the top of the case, fully visible, with tight padding, in dark and light themes.
+- **DevDeck stays open:** clicking any site, pressing Enter in the search bar or Site Map search, or asking an AI opens the result in a **new tab**.
+- **Drag a site out:** drag a site from the Site Map panel or from the category cards and let go outside that box (or outside the browser). It opens in a **new browser window**.
+
+**Manual test checklist**
+- [ ] Multi-Timezone: local + 2 zones in 24-hour, no AM/PM.
+- [ ] Flip: the plate is readable and not cut in both themes, at 1920 / 1366.
+- [ ] Click a site row, a top-row tile, a Site Map chip, an overview site, a quick link: each opens a new tab; DevDeck stays.
+- [ ] Search "vite" + Enter, and a built-in "open" command: new tab.
+- [ ] Drag a Site Map chip onto the dimmed area outside the panel: new window. Drag it onto a section: it moves (no window). Drag it onto the bin: deleted (no window).
+- [ ] Drag a deck site row out of the cards box onto the side column, and out of the browser window: new window. Drop it on the tab strip: new tab (the browser's own behaviour).
+
+---
+
 ## 00000000. Round 2026-10-19i — latest changes
 
 - **Terminal box:**

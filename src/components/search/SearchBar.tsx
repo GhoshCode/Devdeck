@@ -1,3 +1,4 @@
+import { openInNewTab } from '../../lib/openTab';
 import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useStore } from '../../store';
 import { searchSites, getHostname } from '../../utils';
@@ -150,8 +151,8 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     if (res.kind === 'open') {
       setOpen(false);
       setQuery('');
-      if (newTab) window.open(res.url, '_blank', 'noopener');
-      else window.location.assign(res.url);
+      void newTab; // always a new tab: the start page stays put
+      openInNewTab(res.url);
       return;
     }
     if (res.kind === 'copy') {
@@ -186,8 +187,8 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     if (item?.kind === 'site') recordVisit(item.siteId);
     setOpen(false);
     setQuery('');
-    if (newTab) window.open(url, '_blank', 'noopener');
-    else window.location.assign(url);
+    void newTab;
+    openInNewTab(url);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

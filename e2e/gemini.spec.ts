@@ -24,7 +24,7 @@ const FAKE_GEMINI = `<!doctype html><html><body>
 </body></html>`;
 
 async function openFakeGemini(page: Page, pending: unknown, delayEditorMs = 0) {
-  await page.route('https://gemini.google.com/**', (route) =>
+  await page.context().route('https://gemini.google.com/**', (route) =>
     route.fulfill({
       contentType: 'text/html',
       body: delayEditorMs
@@ -125,10 +125,11 @@ test.describe('search bar', () => {
   });
 
   test('Gemini mode off: Enter still searches Google', async ({ page }) => {
-    await page.route('https://www.google.com/**', (route) => route.fulfill({ body: 'google' }));
+    await page.context().route('https://www.google.com/**', (route) => route.fulfill({ body: 'google' }));
     const search = page.getByRole('combobox', { name: 'Search' });
     await search.fill('vite config');
-    await Promise.all([page.waitForURL(/google\.com\/search\?q=vite/), search.press('Enter')]);
+    const [tab] = await Promise.all([page.waitForEvent('popup'), search.press('Enter')]);
+    await tab.waitForURL(/google\.com\/search\?q=vite/);
   });
 
   test('voice input streams words into the box', async ({ page }) => {
@@ -197,7 +198,7 @@ test.describe('other AI providers', () => {
         document.addEventListener('input', () => { send.disabled = !ed().textContent.trim(); });
         send.addEventListener('click', () => window.sent.push(ed().textContent));
       </script></body></html>`;
-    await page.route('https://chatgpt.com/**', (route) => route.fulfill({ contentType: 'text/html', body }));
+    await page.context().route('https://chatgpt.com/**', (route) => route.fulfill({ contentType: 'text/html', body }));
     const run = async (item: unknown) => {
       await page.addInitScript((it) => {
         const store: Record<string, unknown> = { 'devdeck.aiPrompt': it };
@@ -226,6 +227,7 @@ test.describe('other AI providers', () => {
     await page.getByRole('button', { name: 'Perplexity mode' }).click();
     const search = page.getByRole('combobox', { name: 'Search' });
     await search.fill('best rust web framework');
-    await Promise.all([page.waitForURL(/perplexity\.ai\/search\?q=best%20rust%20web%20framework/), search.press('Enter')]);
+    const [tab] = await Promise.all([page.waitForEvent('popup'), search.press('Enter')]);
+    await tab.waitForURL(/perplexity\.ai\/search\?q=best%20rust%20web%20framework/);
   });
 });

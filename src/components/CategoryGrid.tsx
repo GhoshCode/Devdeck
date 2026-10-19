@@ -47,7 +47,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
   const isContainerized = sortedCategories.length > 3;
 
   return (
-    <main className="flex flex-1 min-h-0 w-full overflow-hidden">
+    <main data-drag-zone="cards" className="flex flex-1 min-h-0 w-full overflow-hidden">
       {sortedCategories.length === 0 ? (
         <div className="glass flex flex-1 items-center justify-center text-center p-8 rounded-3xl border border-white/10 shadow-2xl">
           <div className="flex flex-col items-center max-w-sm">

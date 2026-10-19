@@ -1,3 +1,4 @@
+import { openInNewTab } from '../../lib/openTab';
 import {
   memo,
   useEffect,
@@ -189,8 +190,8 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
 
   const open = (url: string, siteId: string | null, newTab: boolean) => {
     if (siteId) recordVisit(siteId);
-    if (newTab) window.open(url, '_blank', 'noopener');
-    else window.location.assign(url);
+    void newTab; // always a new tab: the start page stays put
+    openInNewTab(url);
   };
 
   const onChipClick = (e: MouseEvent<HTMLAnchorElement>, siteId: string | null) => {
@@ -233,6 +234,7 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
           role="dialog"
           aria-modal="true"
           aria-label="Site Map & Hierarchy"
+          data-drag-zone="sitemap"
           onKeyDown={onKeyDown}
           initial={{ opacity: 0, y: 14, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

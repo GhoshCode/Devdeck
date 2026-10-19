@@ -2482,3 +2482,7 @@ html[data-theme='light'] .sitemap-color { background: #fff; border-color: rgba(6
   border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
 }
 html[data-theme='light'] .bin-use-btn { color: rgba(60, 60, 67, 0.75); border-color: rgba(60, 60, 67, 0.18); }
+
+/* the plate stays dark in both themes, so its letters stay light */
+.flip-plate,
+html[data-theme='light'] .flip-plate { color: rgba(255, 255, 255, 0.88); }

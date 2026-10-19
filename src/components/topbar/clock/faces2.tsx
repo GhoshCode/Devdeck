@@ -139,14 +139,15 @@ function FlipFace({ parts }: FaceProps) {
     <div className="flex h-full w-full flex-col items-center justify-center">
       {/* the case */}
       <div
-        className="flip-case relative mt-[4cqh] flex items-center gap-[1.5cqw] rounded-[7cqh] px-[2cqw] pt-[3.5cqh] pb-[3.5cqh]"
+        className="flip-case relative flex flex-col items-center gap-[1.6cqh] rounded-[7cqh] px-[2cqw] pt-[2cqh] pb-[3.5cqh]"
         style={{
           background: `linear-gradient(180deg, ${mix(12, '#2a2e37')}, ${mix(6, '#14161b')} 60%, #0c0d10)`,
           boxShadow: `inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 6px rgba(0,0,0,0.6), 0 10px 22px -10px rgba(0,0,0,0.8), 0 0 0 1px ${mix(18)}`,
         }}
       >
-        {/* brand plate sitting on the top rim of the case */}
-        <span aria-hidden className={`flip-plate absolute -top-[3cqh] left-1/2 -translate-x-1/2 rounded-[1.6cqh] px-[2.8cqw] pt-[1.3cqh] pb-[1.1cqh] pl-[3.2cqw] font-mono ${TINY} leading-none tracking-[0.4em] text-white/55`}>DEVDECK</span>
+        {/* brand plate at the top of the case, in the layout so nothing covers or clips it */}
+        <span aria-hidden className={`flip-plate relative z-10 rounded-[1.2cqh] px-[1.6cqw] py-[0.7cqh] pl-[2cqw] font-mono ${TINY} leading-none font-semibold tracking-[0.4em]`}>DEVDECK</span>
+        <div className="flex items-center gap-[1.5cqw]">
         {/* recessed window */}
         <div className="flex items-center gap-[0.9cqw] rounded-[5cqh] bg-black/55 p-[1.4cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
           <FlipCard value={parts.hours} />
@@ -161,6 +162,7 @@ function FlipFace({ parts }: FaceProps) {
             <span style={parts.meridiem === 'PM' ? { color: A } : undefined}>PM</span>
           </span>
         )}
+        </div>
         {/* feet */}
         <span aria-hidden className="absolute -bottom-[2.4cqh] left-[14%] h-[2.6cqh] w-[12%] rounded-b-[2cqh] bg-[#0a0b0e]" />
         <span aria-hidden className="absolute right-[14%] -bottom-[2.4cqh] h-[2.6cqh] w-[12%] rounded-b-[2cqh] bg-[#0a0b0e]" />
@@ -272,10 +274,11 @@ function MultiTimezoneFace({ parts, now, interactive }: FaceProps) {
   const zones = useStore((s) => s.settings.clockZones ?? DEFAULT_ZONES).slice(0, 2);
   const updateSettings = useStore((s) => s.updateSettings);
   const localName = useLocalPlaceName();
-  const h24 = parts.meridiem === null;
+  // Always 24-hour here: several zones side by side read best without AM/PM.
+  const h24 = true;
   const [edit, setEdit] = useState<{ index: number; anchor: HTMLElement } | null>(null);
   const tiles: Array<{ key: string; city: string; hours: string; minutes: string; meridiem: string | null; offset: string; local: boolean; index: number }> = [
-    { key: 'local', city: localName, hours: parts.hours, minutes: parts.minutes, meridiem: parts.meridiem, offset: 'local', local: true, index: -1 },
+    { key: 'local', city: localName, hours: String(now.getHours()).padStart(2, '0'), minutes: parts.minutes, meridiem: null, offset: 'local', local: true, index: -1 },
     ...zones.map((tz, i) => ({ key: tz, city: zoneCity(tz), ...zoneTime(now, tz, h24), local: false, index: i })),
   ];
   const slots = 2 - zones.length;

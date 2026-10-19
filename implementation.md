@@ -10,6 +10,26 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19j — 24-hour zones, flip plate in layout, new-tab start page, drag-out windows
+
+- **Multi-Timezone** (`faces2.tsx`): always 24-hour. `h24 = true` for the zone tiles; the local tile uses `now.getHours()` and no meridiem.
+- **Flip plate:** the plate is now *in the case's layout*: the case is a column with the plate, then the row of cards and AM/PM.
+  - The plate is `relative z-10`, tightly padded (`px-[1.6cqw] pl-[2cqw] py-[0.7cqh]`), semibold, with tracking 0.4em.
+  - Before, it was absolutely positioned: the later (relative) cards painted over its lower half, and the widget edge clipped its top.
+  - `.flip-plate` text colour is fixed to white/88 in both themes; light theme had turned it dark on the dark plate.
+  - Verified by screenshots at 1920 px, dark and light.
+- **Start page never navigates away** (`lib/openTab.ts` new, `index.html`):
+  - `<base target="_blank">`: every link (site rows, tiles, chips, overview, quick links, feeds) opens in a new tab.
+  - `openInNewTab(url)` replaces `location.assign` in the search bar (Enter, built-in commands), the Site Map search and the AI hand-off (`services/ai.ts`).
+  - It uses `chrome.tabs.create` in the extension (no popup blocker, even after an await) and `window.open` on the website.
+- **Drag a site out → new window** (`hooks/useDragOutToWindow.ts` new, mounted in `App`):
+  - Drag zones: `data-drag-zone` on the Site Map dialog and on the category cards `main`.
+  - On `dragend` with `dropEffect === 'none'` (nothing accepted the drop) and the pointer outside the source zone, it calls `openInNewWindow(url)`: `chrome.windows.create` in the extension, otherwise a popup window at 70% × 80% of the screen.
+  - Drops onto sections, the bin or the browser tab strip keep their meaning.
+- **e2e:** search, sitemap and gemini specs now wait for the popup tab instead of a same-tab navigation, with routes on the context. 19/19 pass.
+
+---
+
 ## Round 2026-10-19i — terminal wording, location pin, greeting offset, QA strategy
 
 - **Terminal box** (`CommandPrompt.tsx`, `services/terminal.ts`): no behaviour change; the investigation is below.
