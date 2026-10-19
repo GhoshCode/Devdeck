@@ -1,5 +1,6 @@
 // Search row (Zone 3) and links strip (Zone 4) logic — plan Phase 2, §7 Q7/Q8/Q12.
 
+import { netFetch } from '../lib/netFetch';
 import type { QuickLink, Site } from '../types';
 import { getHostname, normalizeUrl } from '../utils';
 import { isExtension } from '../lib/env';
@@ -124,7 +125,7 @@ export async function fetchSuggestions(query: string, limit = 5, signal?: AbortS
   if (!q) return [];
   const url = SUGGEST_URL + encodeURIComponent(q);
   if (isExtension()) {
-    const res = await fetch(url, { signal });
+    const res = await netFetch(url, { signal });
     if (!res.ok) return [];
     return parseSuggestResponse(await res.json(), limit);
   }

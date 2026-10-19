@@ -53,7 +53,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
           )}
         </div>
         <NotificationPrompt items={processing} />
-        <div data-card-footer className="mt-auto flex h-10 shrink-0 items-center border-t border-white/[0.06] pl-1">
+        <div data-card-footer className="mt-auto flex h-9 shrink-0 items-center border-t border-white/[0.06] pl-1">
         <span className="font-mono text-[11px] text-white/45">{rest.reduce((n, g) => n + g.items.length, 0)} queued</span>
         <button
           type="button"
@@ -122,9 +122,9 @@ function ItemRow({ item, now }: { item: ProcessingItem; now: Date }) {
       >
         <Favicon url={item.url} name={item.name} className="size-5 shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-white/90">{item.name}</span>
+          <span className="block truncate text-[14px] font-semibold text-white/90">{item.name}</span>
           {/* The countdown leads the subtitle so the name keeps the full width. */}
-          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-white/55">
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-white/55">
             {item.timer && <Countdown timer={item.timer} />}
             {next && !item.timer && (
               <span className="shrink-0 font-mono" title={next.toLocaleString()}>
@@ -346,7 +346,7 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
         const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
         if (Math.abs(d) > 4) go(d > 0 ? 1 : 0);
       }}
-      className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pb-5"
+      className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pb-4"
     >
       {/* Segmented switch: a glowing pill slides under the active pane's tab.
           Clicking a tab, or scrolling over the switch, changes the pane. */}
@@ -392,7 +392,7 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
           <TodoWidget />
         </div>
       </div>
-      <span aria-hidden data-pane-dots className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+      <span aria-hidden data-pane-dots className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1">
         {[0, 1].map((i) => (
           <span key={i} className={`h-1.5 rounded-full transition-all ${pane === i ? 'w-4 bg-[var(--color-accent)]' : 'w-1.5 bg-white/25'}`} />
         ))}

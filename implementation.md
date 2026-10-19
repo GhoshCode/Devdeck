@@ -10,6 +10,37 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20h — no console errors from refused network requests
+
+- **Cause:** opening Settings → Scraping showed "Failed to load resource: 403". That was not the tab itself. The feed reload hit Hacker News's API (hn.algolia.com), which refuses bursts (the demo build has 210 sources). Chrome logs every refused request made by a page as a console error; GitHub rate limits, weather outages and the offline probe can do the same.
+- **Fix** (`lib/netFetch.ts` new, `background.ts`):
+  - in the extension, every data request (feeds, GitHub, weather, search suggestions, the offline probe) goes to the service worker (`devdeck:fetch`), which fetches it and returns status, headers and body;
+  - the page rebuilds a normal `Response`, so callers still see 403 / 404 / 429 and report them (e.g. the feed tooltip), but nothing is logged in DevDeck's console;
+  - only http(s) URLs with string or no bodies are proxied; anything else, and the website build, use plain `fetch`;
+  - abort signals and timeouts still work.
+- **Verified** (built extension, demo data with 210 sources, fresh profile): 0 console errors, warnings or failed requests after load, after opening Settings → Scraping, and 20 s of feed loading. Feeds fill normally.
+
+---
+
+## Round 2026-10-20g — to-do card at narrow widths, more room for items
+
+- **To-do card as a container** (`TodoWidget.tsx` `@container/todo`, `TodoRow.tsx`): rows and the footer respond to the card's own width.
+  - **The problem:** with the category cards taking three columns, the left column is 200–250 px and to-do rows overlapped (text squeezed to nothing).
+  - **Task text** keeps a minimum width (3.5rem, or 4.5rem at ≥ 240 px) and truncates with "…"; the row clips instead of overlapping.
+  - **Extras appear only with room:**
+    - tags and "+N": ≥ 360 px;
+    - subtask count and notes mark: ≥ 330 px;
+    - P1/P2/P3 label: ≥ 280 px (the priority bar on the left still shows it).
+  - **Due chip below 240 px:** drops the time ("Oct 28") and shows "1d late" for "1d overdue".
+  - **Footer chips:** short labels below 330 px ("5", "1 late", "5 prio", "7 act"), on one line. "Need action" hides below 300 px (those tasks are already in overdue / priority).
+- **More room for items:**
+  - the Queue/To-do bottom band is `h-9` (was `h-10`), and the card's bottom padding and dots are a little tighter;
+  - the main settings button is 40 px (was 44) with a 22 px cog;
+  - Currently processing / Queue text is 14 px name / 11 px schedule (between the original 13/10 and last round's 15/12).
+- **Not changed:** the quick-links bar and terminal widths stay as in round 2026-10-20f (a trial of matching them to the search row and Git box was reverted on request).
+
+---
+
 ## Round 2026-10-20f — alerts on any website, floating bookmarks panel, Tree View at scale, layout
 
 ### Alerts outside DevDeck (`background.ts`, `lib/alertEvents.ts`, `lib/alertOverlay.ts`, `hooks/useInPageAlerts.ts`)

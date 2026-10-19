@@ -72,7 +72,7 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
       data-overdue={overdue || undefined}
       className={`group/todo todo-row tone-${todoTone(todo, now)} rounded-lg ${priority ? 'has-prio' : ''} ${overdue ? 'todo-danger' : ''} ${details ? 'todo-open' : ''} ${isDragging ? 'opacity-60' : ''} prio-${priority}`}
     >
-      <div ref={setNodeRef} style={style} className="flex items-center gap-2 px-1.5 py-[3px]">
+      <div ref={setNodeRef} style={style} className="flex items-center gap-2 overflow-hidden px-1.5 py-[3px]">
         <button
           type="button"
           onClick={() => completeTodo(todo.id)}
@@ -114,32 +114,32 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
             title={expanded ? 'Click for details · double-click to rename · drag to reorder' : todo.text}
             className={`flex min-w-0 flex-1 items-center gap-1.5 ${expanded && !overdue ? 'cursor-grab active:cursor-grabbing' : ''}`}
           >
-            <span className={`min-w-0 truncate text-[13px] ${overdue ? 'font-medium text-red-100' : 'text-white/85'}`}>{todo.text}</span>
+            <span className={`min-w-[3.5rem] truncate text-[13px] @min-[240px]/todo:min-w-[4.5rem] ${overdue ? 'font-medium text-red-100' : 'text-white/85'}`}>{todo.text}</span>
             {todo.repeat && todo.dueDate && (
               <span data-testid="todo-repeat" title={`Repeats ${REPEAT_LABEL[todo.repeat].toLowerCase()}`} className="shrink-0 font-mono text-[10px] text-[var(--color-accent)]">
                 ↻
               </span>
             )}
             {tags.slice(0, 2).map((t) => (
-              <span key={t} className="todo-tag shrink-0 rounded px-1 font-mono text-[9.5px]">
+              <span key={t} className="todo-tag hidden shrink-0 rounded px-1 font-mono text-[9.5px] @min-[360px]/todo:inline">
                 #{t}
               </span>
             ))}
-            {tags.length > 2 && <span className="shrink-0 font-mono text-[9.5px] text-white/40">+{tags.length - 2}</span>}
+            {tags.length > 2 && <span className="hidden shrink-0 font-mono text-[9.5px] text-white/40 @min-[360px]/todo:inline">+{tags.length - 2}</span>}
             {subtasks.length > 0 && (
-              <span className="shrink-0 font-mono text-[9.5px] text-white/50" title={`${doneSubs} of ${subtasks.length} subtasks done`}>
+              <span className="hidden shrink-0 font-mono text-[9.5px] text-white/50 @min-[330px]/todo:inline" title={`${doneSubs} of ${subtasks.length} subtasks done`}>
                 ☑ {doneSubs}/{subtasks.length}
               </span>
             )}
             {todo.notes && (
-              <span aria-label="Has notes" className="shrink-0 text-[10px] text-white/40" title={todo.notes}>
+              <span aria-label="Has notes" className="hidden shrink-0 text-[10px] text-white/40 @min-[330px]/todo:inline" title={todo.notes}>
                 ✎
               </span>
             )}
           </span>
         )}
         {priority > 0 && !overdue && (
-          <span aria-hidden className="shrink-0 font-mono text-[9.5px] font-bold" style={{ color: 'var(--prio)' }}>
+          <span aria-hidden className="hidden shrink-0 font-mono text-[9.5px] font-bold @min-[280px]/todo:inline" style={{ color: 'var(--prio)' }}>
             P{priority}
           </span>
         )}
@@ -174,7 +174,15 @@ export const TodoRow = memo(function TodoRow({ todo, now, expanded, animate = tr
                   : 'text-white/30 opacity-0 group-hover/todo:opacity-100 hover:text-white/70'
           }`}
         >
-          {due ?? '+ due'}
+          {due ? (
+            <>
+              {/* narrow card: the date without its time */}
+              <span className="@min-[240px]/todo:hidden">{due.replace(/\s\d{1,2}[:.]\d{2}$/, '').replace(' overdue', ' late')}</span>
+              <span className="hidden @min-[240px]/todo:inline">{due}</span>
+            </>
+          ) : (
+            '+ due'
+          )}
         </button>
         {expanded && (
           <button

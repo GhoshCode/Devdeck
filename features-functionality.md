@@ -17,6 +17,29 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-20h — clean console while feeds load
+
+- **What was happening:** opening Settings → Scraping (or simply waiting) could show red "403" errors in the browser console. Hacker News's API sometimes refuses requests.
+- **Now:** DevDeck's background part makes those requests, so the page console stays clean. A source that's refused still shows in the ↻ tooltip of Tech news.
+
+**Manual test checklist**
+- [ ] DevTools console (on the DevDeck tab) stays empty while feeds load, after opening Settings → Scraping, and after toggling Wi-Fi off and on.
+
+---
+
+## Round 2026-10-20g — latest changes
+
+- **To-do list in a narrow column** (all three category cards showing): task names stay readable and dates show compactly. Tags, subtasks and the P-label appear when there's room. The footer chips shorten ("5 · 1 late · 5 prio") instead of wrapping.
+- **More room for items:** a slimmer bottom band in Queue / To-do, and a slightly smaller settings button.
+- **Queue / Currently processing text:** a touch smaller than last round (14 px / 11 px), still larger than before.
+
+**Manual test checklist**
+- [ ] Drag the side columns so the centre shows 3 cards: to-do rows show the task name plus one chip, with no overlap; the footer is one line.
+- [ ] Widen the left column: tags, P-labels and full chip labels come back.
+- [ ] More rows fit in Queue / To-do than before.
+
+---
+
 ## Round 2026-10-20f — latest changes
 
 - **Reminders reach you anywhere in Chrome:**

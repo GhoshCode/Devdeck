@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { OfflineIcon } from './icons';
+import { netFetch } from '../../lib/netFetch';
+import { isExtension } from '../../lib/env';
 
 // When the connection drops, a soft see-through veil (75% transparent) over
 // the category area — the quick-links row above stays clear — with a short
@@ -16,7 +18,9 @@ async function probe(): Promise<boolean> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 5000);
   try {
-    await fetch(`${PROBE_URL}?t=${Date.now()}`, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+    // through netFetch: in the extension a failed probe isn't logged as a page error
+    const res = await netFetch(`${PROBE_URL}?t=${Date.now()}`, isExtension() ? { cache: 'no-store', signal: ctrl.signal } : { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+    void res;
     return true;
   } catch {
     return false;

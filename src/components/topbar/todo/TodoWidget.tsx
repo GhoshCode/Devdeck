@@ -206,23 +206,26 @@ export const TodoWidget = memo(function TodoWidget() {
   );
 
   const footer = (inBox: boolean) => (
-    <div data-card-footer className="todo-footer mt-auto flex h-10 shrink-0 items-center gap-1.5 border-t border-white/[0.06] pl-1">
+    <div data-card-footer className="todo-footer mt-auto flex h-9 shrink-0 items-center gap-1.5 border-t border-white/[0.06] pl-1">
       {inBox || active.length === 0 ? (
         <span data-testid={inBox ? 'todo-status-box' : 'todo-status'} className="truncate font-mono text-[11px] text-white/50">
           {inBox ? (mode === 'archive' ? `${archived.length} archived` : 'Closes after 30 s idle · Esc') : 'Zero pending'}
         </span>
       ) : (
-        <div data-testid="todo-status" role="group" aria-label="Task summary" className="flex min-w-0 flex-wrap items-center gap-1">
-          <StatChip label={`${active.length} to-do`} on={focus === null} onClick={() => setFocus(null)} title={doneToday ? `${doneToday} done today` : 'All tasks in their usual order'} />
+        <div data-testid="todo-status" role="group" aria-label="Task summary" className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden">
+          <StatChip label={`${active.length} to-do`} short={String(active.length)} on={focus === null} onClick={() => setFocus(null)} title={doneToday ? `${doneToday} done today` : 'All tasks in their usual order'} />
           {overdueCount > 0 && (
-            <StatChip tone="danger" label={`${overdueCount} overdue`} on={focus === 'overdue'} onClick={() => setFocus(focus === 'overdue' ? null : 'overdue')} title="Show overdue tasks first" />
+            <StatChip tone="danger" label={`${overdueCount} overdue`} short={`${overdueCount} late`} on={focus === 'overdue'} onClick={() => setFocus(focus === 'overdue' ? null : 'overdue')} title="Show overdue tasks first" />
           )}
           {priorityCount > 0 && (
-            <StatChip tone="prio" label={`${priorityCount} priority`} on={focus === 'priority'} onClick={() => setFocus(focus === 'priority' ? null : 'priority')} title="Show prioritised tasks first" />
+            <StatChip tone="prio" label={`${priorityCount} priority`} short={`${priorityCount} prio`} on={focus === 'priority'} onClick={() => setFocus(focus === 'priority' ? null : 'priority')} title="Show prioritised tasks first" />
           )}
-          {actionCount > 0 && (
-            <StatChip tone="warn" label={`${actionCount} need action`} on={focus === 'action'} onClick={() => setFocus(focus === 'action' ? null : 'action')} title="Overdue, due within the hour, or urgent and due today — shown first" />
-          )}
+          {/* narrow card: "need action" (overdue / urgent ones, already counted above) waits for room */}
+          <span className="hidden @min-[300px]/todo:contents">
+            {actionCount > 0 && (
+              <StatChip tone="warn" label={`${actionCount} need action`} short={`${actionCount} act`} on={focus === 'action'} onClick={() => setFocus(focus === 'action' ? null : 'action')} title="Overdue, due within the hour, or urgent and due today — shown first" />
+            )}
+          </span>
         </div>
       )}
       <span className="ml-auto" />
@@ -247,7 +250,7 @@ export const TodoWidget = memo(function TodoWidget() {
 
   return (
     <div data-testid="todo-widget" className="@container relative flex h-full min-h-0 flex-col">
-      <div role="region" aria-label="To-do" className="flex h-full min-h-0 flex-col">
+      <div role="region" aria-label="To-do" className="@container/todo flex h-full min-h-0 flex-col">
         {header(false)}
         <div className="mt-1.5 shrink-0">
           <Composer inputRef={inlineInputRef} />
@@ -532,10 +535,18 @@ function ArchiveIcon() {
 }
 
 // Footer summary chip; a pressed chip glows and floats its tasks to the top.
-function StatChip({ label, on, onClick, title, tone = 'plain' }: { label: string; on: boolean; onClick: () => void; title: string; tone?: 'plain' | 'danger' | 'prio' | 'warn' }) {
+// In a narrow card the chips use short labels so they stay on one line.
+function StatChip({ label, short, on, onClick, title, tone = 'plain' }: { label: string; short?: string; on: boolean; onClick: () => void; title: string; tone?: 'plain' | 'danger' | 'prio' | 'warn' }) {
   return (
-    <button type="button" aria-pressed={on} onClick={onClick} title={title} className={`stat-chip stat-${tone} rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] whitespace-nowrap transition-all ${on ? 'is-on' : ''}`}>
-      {label}
+    <button type="button" aria-pressed={on} aria-label={label} onClick={onClick} title={title} className={`stat-chip stat-${tone} shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] whitespace-nowrap transition-all ${on ? 'is-on' : ''}`}>
+      {short ? (
+        <>
+          <span className="@min-[330px]/todo:hidden">{short}</span>
+          <span className="hidden @min-[330px]/todo:inline">{label}</span>
+        </>
+      ) : (
+        label
+      )}
     </button>
   );
 }

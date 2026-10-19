@@ -153,10 +153,10 @@ export default function App() {
       onClick={() => openSettings('library')}
       title="Open Settings (,)"
       aria-label="Settings"
-      className="settings-orb group relative flex size-11 shrink-0 items-center justify-center rounded-2xl"
+      className="settings-orb group relative flex size-10 shrink-0 items-center justify-center rounded-xl"
     >
-      <span aria-hidden className="settings-orb-ring absolute inset-0 rounded-2xl" />
-      <CogIcon className="relative size-[26px] transition-transform duration-500 group-hover:rotate-45" />
+      <span aria-hidden className="settings-orb-ring absolute inset-0 rounded-xl" />
+      <CogIcon className="relative size-[22px] transition-transform duration-500 group-hover:rotate-45" />
     </button>
   );
 

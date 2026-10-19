@@ -4,6 +4,7 @@
 // work wherever their server allows it (in the extension, via an optional
 // host permission granted when the source is added).
 
+import { netFetch } from '../lib/netFetch';
 import type { FeedCategory, FeedSource, Topic } from '../types';
 import { readCache, writeCache } from '../lib/cache';
 
@@ -42,7 +43,7 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '');
 // "Acme (YC W24) Is Hiring a Staff Engineer" → company "Acme (YC W24)".
 const hnJobCompany = (title: string) => title.split(/\s+(?:is hiring|hiring)\b/i)[0]?.trim() || undefined;
 
-export async function fetchSource(src: FeedSource, fetcher: Fetch = fetch): Promise<FeedItem[]> {
+export async function fetchSource(src: FeedSource, fetcher: Fetch = netFetch): Promise<FeedItem[]> {
   const base = { source: src.name, category: src.category };
   switch (src.kind) {
     case 'hn':

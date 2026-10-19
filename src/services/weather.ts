@@ -8,6 +8,7 @@
 // The chosen source is tried first and the rest take over if it fails.
 // Nothing is ever invented: if every source fails, the widget says so.
 
+import { netFetch } from '../lib/netFetch';
 import { readCache, writeCache } from '../lib/cache';
 import type { CustomWeatherSource } from '../types';
 
@@ -108,11 +109,11 @@ type Fetch = typeof fetch;
 
 // Every network call gets a timeout so a hung source falls through quickly.
 const withTimeout = (fetcher: Fetch): Fetch =>
-  fetcher === fetch
-    ? (input, init) => fetch(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
+  fetcher === fetch || fetcher === netFetch
+    ? (input, init) => fetcher(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
     : fetcher;
 
-export async function geocodeCity(name: string, fetcher: Fetch = fetch): Promise<Place> {
+export async function geocodeCity(name: string, fetcher: Fetch = netFetch): Promise<Place> {
   const url = `https://geocoding-api.open-meteo.com/v1/search?count=1&name=${encodeURIComponent(name)}`;
   const res = await withTimeout(fetcher)(url);
   if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
@@ -145,7 +146,7 @@ export function areaName(addr: Record<string, string | undefined>): string | nul
 export async function reverseGeocode(
   lat: number,
   lon: number,
-  fetcher: Fetch = fetch,
+  fetcher: Fetch = netFetch,
 ): Promise<Pick<Place, 'label' | 'postcode' | 'area'>> {
   const f = withTimeout(fetcher);
   try {
@@ -339,7 +340,7 @@ export interface SourcePrefs {
 // The preferred source first (or the default order for 'auto'), then the rest.
 export async function fetchWeather(
   place: Place,
-  fetcher: Fetch = fetch,
+  fetcher: Fetch = netFetch,
   now = Date.now(),
   prefs: SourcePrefs = {},
 ): Promise<WeatherData> {

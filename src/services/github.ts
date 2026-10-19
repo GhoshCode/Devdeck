@@ -5,6 +5,7 @@
 //   • PAT given → GitHub GraphQL contributionsCollection (includes private
 //                 contributions when the user has that profile setting on)
 
+import { netFetch } from '../lib/netFetch';
 import { readCache, writeCache } from '../lib/cache';
 import { localDateKey } from '../lib/time';
 
@@ -157,7 +158,7 @@ export async function loadGitStats(
     const hit = cachedGitStats(user, token);
     if (hit) return hit;
   }
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? netFetch;
   const days = await (token ? fetchWithToken(user, token, fetcher) : fetchPublic(user, fetcher));
   const stats = computeStats(user, days);
   writeCache(CACHE_NAME, cacheKey(user, token), stats);
@@ -226,7 +227,7 @@ export async function loadProfile(
     avatar_url: string;
     html_url: string;
     public_repos: number;
-  }>(`https://api.github.com/users/${encodeURIComponent(username)}`, token, opts.fetcher ?? fetch);
+  }>(`https://api.github.com/users/${encodeURIComponent(username)}`, token, opts.fetcher ?? netFetch);
   const profile: GitProfile = {
     login: u.login,
     name: u.name,
@@ -294,7 +295,7 @@ export async function loadRepos(
   >(
     `https://api.github.com/users/${encodeURIComponent(username)}/repos?type=owner&sort=pushed&per_page=100`,
     token,
-    opts.fetcher ?? fetch,
+    opts.fetcher ?? netFetch,
   );
   const repos = raw
     .map((r) => ({
@@ -327,7 +328,7 @@ export async function loadRepoActivity(
     const hit = readCache<RepoActivity>(CACHE_NAME, key, GIT_TTL_MS);
     if (hit) return hit;
   }
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? netFetch;
   const base = `https://api.github.com/repos/${repo.fullName}`;
   const [rawEvents, branchList] = await Promise.all([
     ghJson<Array<{ type: string; created_at: string; payload: { ref?: string } }>>(

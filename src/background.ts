@@ -235,8 +235,25 @@ async function faviconData(host: string): Promise<{ ok: boolean; data?: string }
   }
 }
 
+// Network requests for the page (feeds, GitHub, weather, suggestions): made
+// here so a refused request never shows up as an error in DevDeck's console.
+async function proxyFetch(url: string, init: { method?: string; headers?: Record<string, string>; body?: string }) {
+  if (!/^https?:/i.test(url)) return { status: 0, error: 'Only web requests can be proxied' };
+  try {
+    const res = await fetch(url, { method: init.method ?? 'GET', headers: init.headers, body: init.body });
+    return { status: res.status, statusText: res.statusText, headers: [...res.headers.entries()], body: await res.text() };
+  } catch (e) {
+    return { status: 0, error: e instanceof Error ? e.message : 'Network request failed' };
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type === 'devdeck:overlay-action' && msg.action && msg.alert) void act(msg.action, msg.alert);
+  if (msg?.type === 'devdeck:fetch' && (msg as { url?: string }).url) {
+    const m = msg as { url: string; init?: { method?: string; headers?: Record<string, string>; body?: string } };
+    void proxyFetch(m.url, m.init ?? {}).then(reply);
+    return true; // answer asynchronously
+  }
   if (msg?.type === 'devdeck:favicon' && (msg as { host?: string }).host) {
     void faviconData((msg as { host: string }).host).then(reply);
     return true; // answer asynchronously
