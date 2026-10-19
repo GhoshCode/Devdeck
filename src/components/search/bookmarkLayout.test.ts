@@ -45,3 +45,24 @@ describe('bookmark tree layout', () => {
     expect(boxes.find((x) => x.node.id === 'a')!.collapsed).toBe(true);
   });
 });
+
+describe('compact stacking for large trees', () => {
+  // 6 top folders × 8 sub folders × 10 sites each: a flat org chart would be
+  // ~48 boxes wide; stacking leaf sub-folders keeps it to one column per top folder.
+  const big: BmNode[] = [
+    { id: '1', parentId: '0', title: 'Bar', children: Array.from({ length: 6 }, (_, i) => ({
+      id: `f${i}`, parentId: '1', title: `F${i}`, children: Array.from({ length: 8 }, (_, j) => ({
+        id: `f${i}-${j}`, parentId: `f${i}`, title: `F${i}.${j}`, children: Array.from({ length: 10 }, (_, k) => site(`s${i}-${j}-${k}`, `f${i}-${j}`)),
+      })),
+    })) },
+  ];
+  test('leaf sub-folders stack under their parent and the tree stays narrow', () => {
+    const { boxes, width } = layoutTree(big, new Set(), new Set());
+    const f0 = boxes.find((b) => b.node.id === 'f0')!;
+    const kids = boxes.filter((b) => b.parentId === 'f0');
+    expect(kids).toHaveLength(8);
+    expect(new Set(kids.map((k) => k.x)).size).toBe(1); // one column
+    expect(kids.every((k) => k.x > f0.x && k.y > f0.y)).toBe(true); // indented below
+    expect(width).toBeLessThan(6 * (BOX_W + 80) + 100);
+  });
+});

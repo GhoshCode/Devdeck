@@ -56,7 +56,7 @@ declare const chrome: {
   runtime: {
     getURL(path: string): string;
     sendMessage(msg: unknown): Promise<unknown>;
-    onMessage: { addListener(cb: (msg: { type?: string; action?: string; alert?: AlertData }, sender: unknown, reply: (r: unknown) => void) => boolean | void): void };
+    onMessage: { addListener(cb: (msg: { type?: string; action?: string; alert?: AlertData; host?: string }, sender: unknown, reply: (r: unknown) => void) => boolean | void): void };
     onInstalled: { addListener(cb: () => void): void };
     onStartup: { addListener(cb: () => void): void };
   };
@@ -219,8 +219,28 @@ async function act(action: string, alert: AlertData) {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg) => {
+// Site icons for the page: fetched here so a missing icon never shows up as a
+// failed request in DevDeck's own console. Returned as a data: URL.
+async function faviconData(host: string): Promise<{ ok: boolean; data?: string }> {
+  try {
+    const res = await fetch(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`);
+    if (!res.ok) return { ok: false };
+    const type = res.headers.get('content-type') ?? 'image/png';
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { ok: true, data: `data:${type};base64,${btoa(bin)}` };
+  } catch {
+    return { ok: false };
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type === 'devdeck:overlay-action' && msg.action && msg.alert) void act(msg.action, msg.alert);
+  if (msg?.type === 'devdeck:favicon' && (msg as { host?: string }).host) {
+    void faviconData((msg as { host: string }).host).then(reply);
+    return true; // answer asynchronously
+  }
   return false;
 });
 

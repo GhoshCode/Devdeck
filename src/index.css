@@ -2657,3 +2657,7 @@ html[data-theme='light'] .alert-count.is-zero .alert-title { color: #94a3b8; }
 html[data-theme='light'] .alert-more { color: #0f172a; }
 @media (prefers-reduced-motion: reduce) { .todo-flash { animation: none; } }
 html[data-theme='light'] input.count-slider { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+
+/* Bookmarks panel (floating, like the Site Map): the Expand all toggle when on */
+.bm-tree-btn.is-on { background: color-mix(in srgb, var(--color-accent) 28%, transparent); border-color: var(--color-accent); color: #fff; }
+html[data-theme='light'] .bm-tree-btn.is-on { color: #0f172a; }

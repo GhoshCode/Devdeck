@@ -37,21 +37,30 @@ export default function BookmarkTreeView({ roots, onClose }: { roots: BmNode[]; 
     const k = Math.min(1, Math.max(MIN_Z, Math.min((vp.clientWidth - 80) / layout.width, (vp.clientHeight - 120) / Math.max(1, layout.height))));
     setView({ k, x: (vp.clientWidth - layout.width * k) / 2, y: 70 });
   }, [layout.width, layout.height]);
-  // Fit once on open.
+  // Open readable: fit if the tree is small, otherwise 70% centred on the
+  // first top-level folder (Fit shows everything on demand).
   const fitted = useRef(false);
   useLayoutEffect(() => {
-    if (!fitted.current && layout.width) {
-      fitted.current = true;
-      fit();
-    }
-  }, [fit, layout.width]);
+    const vp = vpRef.current;
+    if (fitted.current || !layout.width || !vp) return;
+    fitted.current = true;
+    const k = Math.min(1, (vp.clientWidth - 80) / layout.width, (vp.clientHeight - 120) / Math.max(1, layout.height));
+    if (k >= 0.7) return fit();
+    const first = layout.boxes[0];
+    const z = 0.8;
+    setView({ k: z, x: vp.clientWidth / 2 - (first.x + BOX_W / 2) * z, y: 70 });
+  }, [fit, layout.width, layout.height, layout.boxes]);
 
   useEffect(() => {
+    let closed = false; // while it fades out, a second Esc belongs to the panel
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape' || closed) return;
       e.preventDefault();
       if (dragRef.current) cancelDrag();
-      else onClose();
+      else {
+        closed = true;
+        onClose();
+      }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
@@ -268,11 +277,14 @@ export default function BookmarkTreeView({ roots, onClose }: { roots: BmNode[]; 
         >
           <svg className="pointer-events-none absolute top-0 left-0 overflow-visible" width={layout.width} height={layout.height} aria-hidden>
             {layout.edges.map((e) => {
+              if (e.stacked)
+                return <path key={`${e.from}-${e.to}`} d={`M${e.x1},${e.y1} V${e.y2 - 8} Q${e.x1},${e.y2} ${e.x1 + 8},${e.y2} H${e.x2}`} className="bm-edge" fill="none" />;
               const mid = (e.y1 + e.y2) / 2;
+              const dir = Math.sign(e.x2 - e.x1);
               return (
                 <path
                   key={`${e.from}-${e.to}`}
-                  d={`M${e.x1},${e.y1} V${mid - 8} Q${e.x1},${mid} ${e.x1 + Math.sign(e.x2 - e.x1) * 8},${mid} H${e.x2 - Math.sign(e.x2 - e.x1) * 8} Q${e.x2},${mid} ${e.x2},${mid + 8} V${e.y2}`}
+                  d={dir === 0 ? `M${e.x1},${e.y1} V${e.y2}` : `M${e.x1},${e.y1} V${mid - 8} Q${e.x1},${mid} ${e.x1 + dir * 8},${mid} H${e.x2 - dir * 8} Q${e.x2},${mid} ${e.x2},${mid + 8} V${e.y2}`}
                   className="bm-edge"
                   fill="none"
                 />
@@ -327,7 +339,7 @@ export default function BookmarkTreeView({ roots, onClose }: { roots: BmNode[]; 
                       className={`bm-site flex items-center gap-2 rounded-lg px-1.5 text-[12px] text-white/80 ${drag?.id === s.id ? 'is-source' : ''} ${lastMoved === s.id ? 'is-landed' : ''}`}
                       style={{ height: SITE_H }}
                     >
-                      <Favicon url={s.url!} name={s.title || s.url!} className="size-3.5 shrink-0" />
+                      <Favicon browser url={s.url!} name={s.title || s.url!} className="size-3.5 shrink-0" />
                       <span className="truncate">{s.title || s.url}</span>
                     </a>
                   ))}
@@ -361,7 +373,7 @@ export default function BookmarkTreeView({ roots, onClose }: { roots: BmNode[]; 
       </div>
       {drag && (
         <div ref={ghostRef} className="bm-ghost pointer-events-none fixed top-0 left-0 z-[96] flex items-center gap-2 rounded-xl border px-3 py-1.5 text-[12.5px] font-medium text-white" style={{ transform: `translate3d(${pointer.current.x + 14}px, ${pointer.current.y + 12}px, 0)` }}>
-          {drag.folder ? <FolderIcon /> : <Favicon url={drag.url!} name={drag.title} className="size-4" />}
+          {drag.folder ? <FolderIcon /> : <Favicon browser url={drag.url!} name={drag.title} className="size-4" />}
           <span className="max-w-[240px] truncate">{drag.title || drag.url}</span>
           {over && <span className={`ml-1 font-mono text-[10px] ${over.ok ? 'text-[var(--color-accent)]' : 'text-red-300'}`}>{over.ok ? 'drop to move here' : "can't move here"}</span>}
         </div>

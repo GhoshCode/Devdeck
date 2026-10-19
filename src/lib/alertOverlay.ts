@@ -96,7 +96,8 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
   const favicon = (url?: string) => {
     const img = document.createElement('img');
     try {
-      img.src = `https://www.google.com/s2/favicons?domain=${new URL(url ?? '').hostname}&sz=64`;
+      const rt = (globalThis as { chrome?: { runtime?: { getURL?: (p: string) => string } } }).chrome?.runtime;
+      img.src = rt?.getURL ? `${rt.getURL('/_favicon/')}?pageUrl=${encodeURIComponent(url ?? '')}&size=64` : `https://www.google.com/s2/favicons?domain=${new URL(url ?? '').hostname}&sz=64`;
     } catch {
       img.style.display = 'none';
     }

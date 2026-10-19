@@ -1,11 +1,23 @@
 import { memo, useState } from 'react';
 import { getHostname } from '../utils';
+import { proxiedFavicons, useProxiedFavicon } from '../lib/faviconStore';
 
 interface FaviconProps {
   url: string;
   name: string;
   categoryColor?: string;
   className?: string;
+  // Browser bookmarks: use Chrome's own favicon cache (no network, no 404s,
+  // the icon you see in the bookmark bar). Falls back to the web service
+  // outside the extension.
+  browser?: boolean;
+}
+
+const chromeRuntime = () => (globalThis as { chrome?: { runtime?: { id?: string; getURL?: (p: string) => string } } }).chrome?.runtime;
+export function browserFaviconUrl(pageUrl: string, size = 32): string | null {
+  const rt = chromeRuntime();
+  if (!rt?.id || !rt.getURL) return null;
+  return `${rt.getURL('/_favicon/')}?pageUrl=${encodeURIComponent(pageUrl)}&size=${size}`;
 }
 
 // Sites the favicon service has no icon for answer 404, and the browser logs
@@ -42,12 +54,26 @@ export const Favicon = memo(function Favicon({
   name,
   categoryColor = '#a78bfa',
   className = 'size-6',
+  browser = false,
 }: FaviconProps) {
   const domain = getHostname(url);
+  const cached = browser ? browserFaviconUrl(url) : null;
+  // Extension: the service worker fetches the icon, so the page never makes a
+  // request that can fail (and log an error).
+  const proxy = !cached && proxiedFavicons();
+  const proxied = useProxiedFavicon(proxy && domain && !missing.has(domain) ? domain : '');
   const [hasError, setHasError] = useState(() => missing.has(domain));
   const initial = (name.trim()[0] || '?').toUpperCase();
 
-  if (hasError || !domain || missing.has(domain)) {
+  if (cached && !hasError) {
+    return <img src={cached} alt="" className={`${className} rounded-sm object-contain shrink-0`} loading="lazy" onError={() => setHasError(true)} />;
+  }
+
+  if (proxy && proxied && !hasError) {
+    return <img src={proxied} alt="" className={`${className} rounded-sm object-contain shrink-0`} onError={() => setHasError(true)} />;
+  }
+
+  if (proxy || hasError || !domain || missing.has(domain)) {
     return (
       <div
         className={`${className} flex items-center justify-center rounded font-display text-xs font-bold text-white shadow-sm shrink-0`}

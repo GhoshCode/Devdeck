@@ -31,7 +31,8 @@
     "nativeMessaging",
     "bookmarks",
     "geolocation",
-    "scripting"
+    "scripting",
+    "favicon"
   ],
   "host_permissions": [
     "https://api.open-meteo.com/*",
@@ -52,5 +53,18 @@
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "_favicon/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "extension_ids": [
+        "*"
+      ]
+    }
+  ]
 }
