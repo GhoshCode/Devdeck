@@ -6,8 +6,8 @@ import { openInNewTab } from '../../lib/openTab';
 import { Favicon } from '../Favicon';
 import { dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, type AlertData } from './alertStore';
 
-// The alert stack: frosted-glass banners tinted with the theme accent that
-// drop from the top edge of the window. Each source has its own shape:
+// The alert stack: solid, matte banners tinted with the theme accent that drop
+// from the top edge of the window — opaque so the text reads at a glance. Each source has its own shape:
 //   Currently processing → wide "spotlight" banner
 //   Queue                → slim "up next" pill
 //   To-do                → checklist card with Mark done
@@ -54,7 +54,7 @@ export function AlertCenter() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowAll(true)}
-            className="alert-glass alert-more pointer-events-auto rounded-full border px-3.5 py-1 text-[11.5px] font-semibold"
+            className="alert-glass alert-more pointer-events-auto rounded-md border px-4 py-1.5 text-[13px] font-semibold"
           >
             +{hidden} more reminder{hidden === 1 ? '' : 's'}
           </motion.button>
@@ -95,11 +95,11 @@ function AlertCard({ a }: { a: AlertData }) {
 
   if (a.kind === 'queue') {
     return (
-      <div {...common} className="alert-glass alert-pill flex max-w-[min(640px,92vw)] items-center gap-2.5 rounded-full border py-1.5 pr-1.5 pl-2">
-        {a.url ? <Favicon url={a.url} name={a.title} className="size-6 shrink-0 rounded-full" /> : <QueueGlyph />}
-        <span className="min-w-0 truncate text-[13px] text-white/90">
-          <span className="font-semibold text-white">Up next:</span> {a.title}
-          {a.sub && <span className="text-white/55"> · {a.sub}</span>}
+      <div {...common} className="alert-glass alert-pill flex max-w-[min(700px,94vw)] items-center gap-3 rounded-[10px] border py-2 pr-2 pl-3">
+        {a.url ? <Favicon url={a.url} name={a.title} className="size-6 shrink-0 rounded-md" /> : <QueueGlyph />}
+        <span className="alert-title min-w-0 truncate text-[15px]">
+          <span className="font-bold">Up next:</span> <span className="font-semibold">{a.title}</span>
+          {a.sub && <span className="alert-sub font-medium"> · {a.sub}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-1">
           <Btn primary onClick={open}>Open</Btn>
@@ -113,17 +113,17 @@ function AlertCard({ a }: { a: AlertData }) {
   if (a.kind === 'todo') {
     const stripe = a.priority === 1 ? 'is-p1' : a.priority === 2 ? 'is-p2' : a.priority === 3 ? 'is-p3' : '';
     return (
-      <div {...common} className={`alert-glass alert-todo ${stripe} relative flex w-[min(500px,92vw)] items-start gap-3 overflow-hidden rounded-2xl border py-3 pr-3 pl-4`}>
-        <button type="button" onClick={done} aria-label={`Mark “${a.title}” done`} title="Mark done" className="alert-check mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-full border-2">
+      <div {...common} className={`alert-glass alert-todo ${stripe} relative flex w-[min(540px,94vw)] items-start gap-3.5 overflow-hidden rounded-[10px] border py-3.5 pr-3 pl-5`}>
+        <button type="button" onClick={done} aria-label={`Mark “${a.title}” done`} title="Mark done" className="alert-check mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2">
           <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="m5 12.5 4.5 4.5L19 7.5" />
           </svg>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="alert-eyebrow font-mono text-[10px] font-semibold tracking-[0.14em]">{a.eyebrow ?? 'TO-DO DUE'}</p>
-          <p className="mt-0.5 line-clamp-2 text-[14.5px] leading-snug font-semibold text-white">{a.title}</p>
-          {a.sub && <p className="mt-0.5 truncate text-[12px] text-white/60">{a.sub}</p>}
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <p className="alert-eyebrow font-mono text-[11.5px] font-bold tracking-[0.12em]">{a.eyebrow ?? 'TO-DO DUE'}</p>
+          <p className="alert-title mt-1 line-clamp-2 text-[17px] leading-snug font-semibold">{a.title}</p>
+          {a.sub && <p className="alert-sub mt-0.5 truncate text-[13.5px] font-medium">{a.sub}</p>}
+          <div className="mt-3 flex flex-wrap gap-2">
             <Btn primary onClick={done}>Mark done</Btn>
             <Btn onClick={open}>Open</Btn>
             <Btn onClick={snooze}>Snooze 10m</Btn>
@@ -138,19 +138,19 @@ function AlertCard({ a }: { a: AlertData }) {
     const c = a.counts ?? { todos: 0, queue: 0, processing: 0 };
     const total = c.todos + c.queue + c.processing;
     return (
-      <div {...common} className="alert-glass alert-summary w-[min(520px,92vw)] rounded-[20px] border p-3.5">
+      <div {...common} className="alert-glass alert-summary w-[min(560px,94vw)] rounded-[10px] border p-4">
         <div className="flex items-center gap-3">
-          <span className="alert-badge flex size-9 shrink-0 items-center justify-center rounded-xl">
+          <span className="alert-badge flex size-10 shrink-0 items-center justify-center rounded-lg">
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="13" r="8" />
               <path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3" />
             </svg>
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[14.5px] font-semibold text-white">
+            <p className="alert-title text-[17px] font-semibold">
               You have {total} overdue item{total === 1 ? '' : 's'}
             </p>
-            {a.list?.length ? <p className="truncate text-[12px] text-white/55">{a.list.join(' · ')}</p> : null}
+            {a.list?.length ? <p className="alert-sub truncate text-[13.5px] font-medium">{a.list.join(' · ')}</p> : null}
           </div>
           <Btn primary onClick={open}>Review</Btn>
           <CloseBtn onClick={close} />
@@ -166,14 +166,14 @@ function AlertCard({ a }: { a: AlertData }) {
 
   // Currently processing: the spotlight banner
   return (
-    <div {...common} className="alert-glass alert-spot flex w-[min(620px,92vw)] items-center gap-3.5 rounded-[20px] border px-3.5 py-3">
-      <span className="alert-ring flex size-12 shrink-0 items-center justify-center rounded-full">
+    <div {...common} className="alert-glass alert-spot flex w-[min(680px,94vw)] items-center gap-4 rounded-[10px] border px-4 py-3.5">
+      <span className="alert-ring flex size-12 shrink-0 items-center justify-center rounded-lg">
         {a.url ? <Favicon url={a.url} name={a.title} className="size-7 rounded-md" /> : <QueueGlyph />}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="alert-eyebrow font-mono text-[10px] font-semibold tracking-[0.14em]">{a.eyebrow ?? 'CURRENTLY PROCESSING · NOW'}</p>
-        <p className="mt-0.5 truncate text-[15px] font-semibold text-white">Time to work on {a.title}</p>
-        {a.sub && <p className="truncate text-[12px] text-white/60">{a.sub}</p>}
+        <p className="alert-eyebrow font-mono text-[11.5px] font-bold tracking-[0.12em]">{a.eyebrow ?? 'CURRENTLY PROCESSING · NOW'}</p>
+        <p className="alert-title mt-1 truncate text-[17px] font-semibold">Time to work on {a.title}</p>
+        {a.sub && <p className="alert-sub truncate text-[13.5px] font-medium">{a.sub}</p>}
       </div>
       <span className="flex shrink-0 items-center gap-1.5">
         <Btn primary onClick={open}>Open</Btn>
@@ -186,16 +186,16 @@ function AlertCard({ a }: { a: AlertData }) {
 
 function Count({ label, n }: { label: string; n: number }) {
   return (
-    <div className={`alert-count rounded-xl px-3 py-2 ${n ? '' : 'is-zero'}`}>
-      <p className="truncate text-[11px] text-white/55">{label}</p>
-      <p className="font-mono text-[18px] leading-tight font-semibold text-white">{n}</p>
+    <div className={`alert-count rounded-md px-3 py-2 ${n ? '' : 'is-zero'}`}>
+      <p className="alert-sub truncate text-[12.5px] font-medium">{label}</p>
+      <p className="alert-title font-mono text-[21px] leading-tight font-bold">{n}</p>
     </div>
   );
 }
 
 function Btn({ primary, onClick, children }: { primary?: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className={`alert-btn rounded-full px-3 py-1 text-[12px] font-semibold whitespace-nowrap ${primary ? 'is-primary' : ''}`}>
+    <button type="button" onClick={onClick} className={`alert-btn rounded-md px-3.5 py-1.5 text-[13.5px] font-semibold whitespace-nowrap ${primary ? 'is-primary' : ''}`}>
       {children}
     </button>
   );
@@ -203,8 +203,8 @@ function Btn({ primary, onClick, children }: { primary?: boolean; onClick: () =>
 
 function CloseBtn({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label="Dismiss" className="alert-x flex size-7 shrink-0 items-center justify-center rounded-full">
-      <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+    <button type="button" onClick={onClick} aria-label="Dismiss" className="alert-x flex size-8 shrink-0 items-center justify-center rounded-md">
+      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
         <path d="M6 6l12 12M18 6 6 18" />
       </svg>
     </button>

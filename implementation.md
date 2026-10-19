@@ -10,6 +10,21 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20c — matte, high-contrast alerts
+
+- **Finish:**  is now **solid and matte**: no backdrop blur, no gloss, no translucency.
+  - Dark: background , title #f8fafc, secondary #cbd5e1.
+  - Light: background , title #0f172a, secondary #334155.
+  - A 1 px accent border keeps the theme. Buttons are solid (secondary grey, primary accent).
+  - Priority eyebrows use the P1/P2/P3 colours.
+- **Contrast** (WCAG, measured by the QA script on every design): title 14.9:1 dark / 16.4:1 light; secondary 10.5:1 / 9.5:1 (AAA needs 7:1).
+- **Size:** titles 17 px (Queue pill 15 px), secondary 13.5 px, eyebrow 11.5 px bold, buttons 13.5 px, count numbers 21 px. Cards are slightly wider.
+- **Corners:** cards 10 px (were 16–20 px and fully round pills); buttons and close 6 px.
+- **Code:** new  /  classes replace  inside alerts, so contrast is set per theme.
+- **Checks:**  asserts an opaque background, no blur, contrast (title ≥ 7, secondary ≥ 4.5) and radius ≤ 10 px. It passes 29/29 in dark and light.
+
+---
+
 ## Round 2026-10-20b (vfinal-qa-fixes) — glass reminder alerts, zone picker unified, QA fixes
 
 - **Alert store** (`ui/alertStore.ts`): plain-data alerts, `AlertKind = processing | queue | todo | overdue`.

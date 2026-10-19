@@ -19,7 +19,7 @@ wide where layout is involved.
 
 ## Reminder alerts (round 2026-10-20b)
 
-- **What they are:** reminders drop in from the top of the page as frosted-glass cards tinted with your theme colour, with a hairline border.
+- **What they are:** reminders drop in from the top of the page as solid, matte cards tinted with your theme colour, with a thin accent border. They use large, high-contrast text that reads at a glance in both themes.
 - **When they appear:**
   - a Currently processing or Queue reminder time arrives;
   - a to-do reaches its due date and time;

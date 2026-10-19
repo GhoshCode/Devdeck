@@ -1,4 +1,4 @@
-// Final QA pass (dev server on :5180): alerts, cockpit resize stress,
+// Final QA pass (web build on the dev server): alerts, cockpit resize stress,
 // card paging stress, Site Map random deletes. Usage: node qa-final.mjs <dark|light>
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -84,12 +84,30 @@ await step('Alerts', async () => {
   note('"+N more" shows every alert; each source has its own design', ['overdue', 'todo', 'processing', 'queue'].every((k) => all.includes(k)), all.join(', '));
   // snapshot each kind
   for (const k of ['processing', 'queue', 'todo', 'overdue']) await shot(`alert-${k}`, p.locator(`[data-alert-kind="${k}"]`).first());
-  // glass style check
-  const style = await p.locator('[data-alert-kind="processing"]').first().evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return { blur: cs.backdropFilter, border: cs.borderTopWidth, bg: cs.backgroundColor };
-  });
-  note('Glass: backdrop blur + hairline border + tinted bg', /blur/.test(style.blur) && parseFloat(style.border) <= 1, JSON.stringify(style));
+  // matte + contrast check (WCAG ratio of title and sub text against the card)
+  for (const k of ['processing', 'queue', 'todo', 'overdue']) {
+    const m = await p.locator(`[data-alert-kind="${k}"]`).first().evaluate((el) => {
+      const rgb = (c) => {
+        const cv = document.createElement('canvas').getContext('2d');
+        cv.fillStyle = c; cv.fillRect(0, 0, 1, 1);
+        const d = cv.getImageData(0, 0, 1, 1).data;
+        return [d[0], d[1], d[2], d[3] / 255];
+      };
+      const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+      const cs = getComputedStyle(el);
+      const bg = rgb(cs.backgroundColor);
+      const title = el.querySelector('.alert-title');
+      const sub = el.querySelector('.alert-sub');
+      return {
+        alpha: bg[3], blur: cs.backdropFilter, radius: parseFloat(cs.borderTopLeftRadius),
+        title: title ? Math.round(ratio(rgb(getComputedStyle(title).color), bg) * 10) / 10 : null,
+        sub: sub ? Math.round(ratio(rgb(getComputedStyle(sub).color), bg) * 10) / 10 : null,
+        size: title ? parseFloat(getComputedStyle(title).fontSize) : null,
+      };
+    });
+    note(`${k}: opaque matte, contrast title ≥ 7 and sub ≥ 4.5, corners ≤ 10px`, m.alpha === 1 && (m.blur === 'none' || !m.blur) && m.title >= 7 && (m.sub === null || m.sub >= 4.5) && m.radius <= 10, JSON.stringify(m));
+  }
   // Mark done on the todo alert
   await p.locator('[data-alert-kind="todo"]').first().getByRole('button', { name: 'Mark done' }).click();
   await p.waitForTimeout(400);
