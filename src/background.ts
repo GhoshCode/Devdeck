@@ -27,6 +27,7 @@ declare const chrome: {
   };
   tabs: { create(opts: { url: string }): void };
   runtime: {
+    sendMessage(msg: unknown): Promise<unknown>;
     onInstalled: { addListener(cb: () => void): void };
     onStartup: { addListener(cb: () => void): void };
   };
@@ -56,11 +57,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && REMINDERS_STORAGE_KEY in changes) void rescheduleAll();
 });
 
+// A visible DevDeck tab shows its own glass alert instead; only when none
+// answers do we fall back to a system notification (never both).
+async function shownInTab(id: string, at: number): Promise<boolean> {
+  try {
+    const res = (await chrome.runtime.sendMessage({ type: 'devdeck:reminder-due', id, at })) as { shown?: boolean } | undefined;
+    return !!res?.shown;
+  } catch {
+    return false; // no DevDeck tab open
+  }
+}
+
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (!alarm.name.startsWith(ALARM_PREFIX)) return;
   const id = alarm.name.slice(ALARM_PREFIX.length);
   const item = (await loadItems()).find((i) => i.id === id);
   if (!item) return;
+  if (await shownInTab(item.id, (alarm as { scheduledTime?: number }).scheduledTime ?? Date.now())) {
+    scheduleItem(item);
+    return;
+  }
   chrome.notifications.create(ALARM_PREFIX + item.id, {
     type: 'basic',
     iconUrl: 'icons/icon-128.png',

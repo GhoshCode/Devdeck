@@ -74,8 +74,8 @@ for (const theme of ['light', 'dark'] as const) {
     }, 600);
 
     results['bookmarks drawer'] = await sample(page, async () => {
-      await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-      await page.getByRole('dialog', { name: 'Bookmarks and site map' }).waitFor();
+      await page.getByRole('button', { name: 'Browser bookmarks' }).click();
+      await page.getByRole('dialog', { name: 'Browser bookmarks' }).waitFor();
       await page.keyboard.press('Escape');
     }, 600);
 

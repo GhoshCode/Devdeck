@@ -353,7 +353,7 @@ const ALL_ZONES: string[] = (() => {
 })();
 
 // Searchable list of every time zone (city · region · offset).
-function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now: Date; onPick: (tz: string) => void; onClose: () => void }) {
+export function ZoneSearch({ anchor, now, onPick, onClose }: { anchor: HTMLElement; now: Date; onPick: (tz: string) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   // The full world list (@vvo/tzdb) loads when the search opens; until then

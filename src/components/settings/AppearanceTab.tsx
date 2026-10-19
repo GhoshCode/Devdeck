@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { ZoneSearch } from '../topbar/clock/faces2';
 import { useStore } from '../../store';
 import { PRESET_THEMES, THEME_CATEGORIES, type PresetTheme, type ThemeCategory } from '../../store/themes';
 import { DEFAULT_SETTINGS } from '../../store/seed';
@@ -9,9 +10,8 @@ import { useNow } from '../../hooks/useNow';
 import { CLOCK_STYLE_INFO } from '../../lib/clockStyles';
 import { clockParts } from '../../lib/time';
 import { ClockFace } from '../topbar/clock/faces';
-import { DEFAULT_ZONES, ZONE_CHOICES, zoneCity, zoneTime } from '../../lib/zones';
+import { DEFAULT_ZONES, zoneCity, zoneTime } from '../../lib/zones';
 import type { ClockStyle, GradientStudio, Settings, ThemeMode } from '../../types';
-import { Select } from '../ui/Select';
 import { GREET_STYLES, NAME_FONTS } from '../../types';
 
 // Settings → Appearance & Display, ordered the way people tune a look:
@@ -1107,28 +1107,31 @@ function ClockFaces({ style, h24, showSeconds, onPick }: { style: ClockStyle; h2
   );
 }
 
-// Multi-Timezone face: up to three cities shown beside local time.
+// Multi-Timezone face: up to two cities beside local time (24-hour). Adding
+// one uses the clock's own search over every time zone in the world.
+const MAX_ZONES = 2;
 function ZonePicker({ zones, onChange }: { zones: string[]; onChange: (z: string[]) => void }) {
   const now = useNow(30_000);
-  const available = ZONE_CHOICES.filter((z) => !zones.includes(z.tz));
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const shown = zones.slice(0, MAX_ZONES);
   return (
     <div data-testid="zone-picker" className="sub-panel mt-2 rounded-xl border p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[10px] font-semibold tracking-wider text-white/60 uppercase">Time zones</span>
-        <span className="text-[10px] text-white/45">{zones.length}/3 · shown beside your local time</span>
+        <span className="text-[10px] text-white/45">{shown.length}/{MAX_ZONES} · shown beside your local time</span>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        {zones.map((tz) => {
-          const t = zoneTime(now, tz, false);
+        {shown.map((tz) => {
+          const t = zoneTime(now, tz, true);
           return (
             <span key={tz} className="btn-secondary flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] text-white/85">
               {zoneCity(tz)}
               <span className="font-mono text-[10px] text-white/50">
-                {t.hours}:{t.minutes} {t.meridiem} · {t.offset}
+                {t.hours}:{t.minutes} · {t.offset}
               </span>
               <button
                 type="button"
-                onClick={() => onChange(zones.filter((z) => z !== tz))}
+                onClick={() => onChange(shown.filter((z) => z !== tz))}
                 aria-label={`Remove ${zoneCity(tz)}`}
                 className="text-white/45 hover:text-red-300"
               >
@@ -1137,19 +1140,28 @@ function ZonePicker({ zones, onChange }: { zones: string[]; onChange: (z: string
             </span>
           );
         })}
-        {zones.length < 3 && (
-          <Select
-            value=""
-            onChange={(tz) => onChange([...zones, tz])}
-            ariaLabel="Add a time zone"
-            placeholder="+ Add city…"
-            size="sm"
-            className="w-[150px]"
-            menuWidth={220}
-            options={available.map((z) => ({ value: z.tz, label: z.city, hint: zoneTime(now, z.tz, false).offset }))}
-          />
+        {shown.length < MAX_ZONES && (
+          <button
+            type="button"
+            aria-label="Add a time zone"
+            onClick={(e) => setAnchor(e.currentTarget)}
+            className="btn-secondary rounded-lg border border-dashed px-2.5 py-1 text-[11px] text-white/70 hover:text-white"
+          >
+            + Add city…
+          </button>
         )}
       </div>
+      {anchor && (
+        <ZoneSearch
+          anchor={anchor}
+          now={now}
+          onClose={() => setAnchor(null)}
+          onPick={(tz) => {
+            setAnchor(null);
+            if (!shown.includes(tz)) onChange([...shown, tz].slice(0, MAX_ZONES));
+          }}
+        />
+      )}
     </div>
   );
 }

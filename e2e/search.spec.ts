@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// v2 Phase 2: G1 bookmarks drawer (site map) and the E/F links strip.
+// G1 browser-bookmarks button (website behaviour) and the E/F links strip.
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -9,62 +9,17 @@ test.beforeEach(async ({ page }) => {
   await page.locator('[data-category-id]').first().waitFor({ state: 'visible' });
 });
 
-test.describe('G1 bookmarks drawer', () => {
-  test('opens, filters across nested folders, and closes with Escape', async ({ page }) => {
-    await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-    const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
-    await expect(drawer).toBeVisible();
-
-    await drawer.getByRole('textbox', { name: 'Filter bookmarks' }).fill('postgres');
-    await expect(drawer.getByRole('treeitem', { name: 'PostgreSQL' })).toBeVisible();
-    await expect(drawer.getByRole('treeitem', { name: 'Frontend' })).toHaveCount(0);
-
+test.describe('G1 browser bookmarks panel', () => {
+  // The browser's bookmarks need the extension (chrome.bookmarks); the full
+  // panel + Tree View behaviour is covered in e2e/qa/bookmarks.spec.ts.
+  test('on the website it explains that bookmarks need the extension; Esc closes', async ({ page }) => {
+    await page.getByRole('button', { name: 'Browser bookmarks' }).click();
+    const panel = page.getByRole('dialog', { name: 'Browser bookmarks' });
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('Browser bookmarks need the DevDeck extension');
+    await expect(panel.getByRole('button', { name: 'Tree View' })).toHaveCount(0);
     await page.keyboard.press('Escape');
-    await expect(drawer).toHaveCount(0);
-  });
-
-  test('adds, renames and deletes a folder', async ({ page }) => {
-    await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-    const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
-
-    await drawer.getByRole('button', { name: '+ Folder' }).click();
-    await drawer.getByRole('textbox', { name: 'New folder name' }).fill('Scratch');
-    await page.keyboard.press('Enter');
-    const folder = drawer.getByRole('treeitem', { name: 'Scratch' });
-    await expect(folder).toBeVisible();
-
-    await folder.hover();
-    await folder.getByRole('button', { name: 'Rename Scratch' }).click();
-    await folder.getByRole('textbox').fill('Playground');
-    await page.keyboard.press('Enter');
-    const renamed = drawer.getByRole('treeitem', { name: 'Playground' });
-    await expect(renamed).toBeVisible();
-
-    await renamed.hover();
-    await renamed.getByRole('button', { name: 'Delete Playground' }).click();
-    await renamed.getByRole('alert').getByRole('button', { name: 'Delete' }).click();
-    await expect(drawer.getByRole('treeitem', { name: 'Playground' })).toHaveCount(0);
-  });
-
-  test('dragging a site onto a folder moves it there', async ({ page }) => {
-    await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-    const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
-    await drawer.getByRole('textbox', { name: 'Filter bookmarks' }).fill('remix');
-
-    const leaf = drawer.locator('[data-site-leaf]').filter({ hasText: 'Remix' }).locator('a');
-    const target = drawer.locator('[data-folder-id]').first().locator(':scope > div');
-    const [from, to] = [await leaf.boundingBox(), await target.boundingBox()];
-    await page.mouse.move(from!.x + 30, from!.y + from!.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(from!.x + 40, from!.y - 10, { steps: 5 });
-    await page.mouse.move(to!.x + 100, to!.y + to!.height / 2, { steps: 10 });
-    await page.mouse.up();
-
-    const remix = await page.evaluate(() => {
-      const state = JSON.parse(localStorage.getItem('devdeck')!).state;
-      return state.sites.find((s: { name: string }) => s.name === 'Remix');
-    });
-    expect(remix.subcategoryId).toBeNull(); // moved from Frameworks to the folder's General group
+    await expect(panel).toHaveCount(0);
   });
 });
 
@@ -84,11 +39,11 @@ test.describe('Links strip (E/F)', () => {
   test('opening a site puts it at the head of the Recent strip', async ({ page }) => {
     // Stub the destination so following the link stays offline.
     await page.context().route('https://redis.io/**', (route) => route.fulfill({ body: 'redis' }));
-    await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-    const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
-    await drawer.getByRole('textbox', { name: 'Filter bookmarks' }).fill('redis');
+    await page.getByRole('button', { name: 'Site Map & Hierarchy' }).click();
+    const map = page.getByRole('dialog', { name: 'Site Map & Hierarchy' });
+    await map.getByRole('combobox', { name: 'Search the site map' }).fill('redis');
     // DevDeck stays put; the site opens in a new tab.
-    const [tab] = await Promise.all([page.waitForEvent('popup'), drawer.getByRole('treeitem', { name: 'Redis' }).getByRole('link').click()]);
+    const [tab] = await Promise.all([page.waitForEvent('popup'), map.getByRole('combobox', { name: 'Search the site map' }).press('Enter')]);
     await tab.waitForURL(/redis\.io/);
     await tab.close();
 

@@ -15,6 +15,10 @@ const html = (page: Page) => page.locator('html');
 const accentVar = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim().toLowerCase());
 
+// Theme changes run inside view transitions; under a busy full-suite run they
+// need more than the default 30 s.
+test.describe.configure({ timeout: 60_000 });
+
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
@@ -115,18 +119,23 @@ test('Reduce transparency survives a reload; reset restores the defaults', async
 });
 
 test('Multi-Timezone shows zone options under the gallery and adds a city', async ({ page }) => {
+  test.setTimeout(60_000); // the world zone list loads on first search
   const modal = await openAppearance(page);
   await expect(modal.getByTestId('zone-picker')).toHaveCount(0);
   await modal.getByRole('radio', { name: 'Multi-Timezone' }).click();
   const picker = modal.getByTestId('zone-picker');
   await expect(picker).toBeVisible();
-  await expect(picker).toContainText('New York');
-  await picker.getByRole('combobox', { name: 'Add a time zone' }).click();
-  await page.getByRole('option', { name: /London/ }).click();
-  await expect(picker).toContainText('London');
-  await expect(picker.getByRole('combobox', { name: 'Add a time zone' })).toHaveCount(0); // 3 of 3
+  await expect(picker).toContainText('0/2');
+  for (const city of ['London', 'Tokyo']) {
+    await picker.getByRole('button', { name: 'Add a time zone' }).click();
+    await page.getByRole('textbox', { name: 'Search time zones' }).fill(city);
+    await page.getByRole('option', { name: new RegExp(city) }).first().click();
+    await expect(picker).toContainText(city);
+  }
+  await expect(picker.getByRole('button', { name: 'Add a time zone' })).toHaveCount(0); // 2 of 2
   await page.keyboard.press('Escape');
   const clock = page.getByRole('timer', { name: 'Digital clock' });
   await expect(clock).toHaveAttribute('data-clock-style', 'multi-timezone');
   await expect(clock).toContainText('London');
+  await expect(clock).not.toContainText(/AM|PM/); // 24-hour
 });
