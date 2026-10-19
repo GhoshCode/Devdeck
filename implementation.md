@@ -10,6 +10,14 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20e — GitHub refresh every 3 hours
+
+- `GIT_TTL_MS` (`services/github.ts`) is now 3 h (was 30 min).
+  - It drives both the widget's background refresh (`setInterval` in `GitWidget.tsx`, for stats, profile, repos and activity) and how long cached GitHub data counts as fresh.
+  - The ↻ button still forces an immediate refresh.
+
+---
+
 ## Round 2026-10-20d — clean console, Site Map card sizing, minimal slider
 
 - **Console errors** came from two places; both are now gone.

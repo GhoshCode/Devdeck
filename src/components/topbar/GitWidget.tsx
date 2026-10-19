@@ -121,7 +121,7 @@ export const GitWidget = memo(function GitWidget() {
 
   useEffect(() => {
     refresh(false);
-    const timer = setInterval(() => refresh(false), GIT_TTL_MS); // every 30 minutes
+    const timer = setInterval(() => refresh(false), GIT_TTL_MS); // every 3 hours
     return () => clearInterval(timer);
   }, [refresh]);
 

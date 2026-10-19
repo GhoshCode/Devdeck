@@ -25,7 +25,7 @@ export interface GitStats {
   fetchedAt: number;
 }
 
-export const GIT_TTL_MS = 30 * 60 * 1000; // refreshed (and cached) every 30 min
+export const GIT_TTL_MS = 3 * 60 * 60 * 1000; // refreshed (and cached) every 3 hours; ↻ refreshes at once
 const CACHE_NAME = 'github';
 
 type Fetch = typeof fetch;

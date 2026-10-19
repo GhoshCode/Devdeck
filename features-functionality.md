@@ -17,6 +17,16 @@ wide where layout is involved.
 
 ---
 
+## GitHub refresh (round 2026-10-20e)
+
+- The Git widget fetches new data from GitHub every **3 hours** (it was every 30 minutes). Press ↻ for an instant refresh.
+
+**Manual test checklist**
+- [ ] After a reload within 3 hours, the widget shows cached data without new GitHub requests (DevTools → Network).
+- [ ] ↻ fetches immediately.
+
+---
+
 ## Clean console + small polish (round 2026-10-20d)
 
 - **No console errors:** switching subcategory chips or opening the Site Map no longer logs errors. Sites without a favicon show their letter tile straight away, and the browser is never asked for an icon that doesn't exist.
