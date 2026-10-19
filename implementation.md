@@ -10,6 +10,39 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20a — browser bookmarks panel + Tree View
+
+- **Data** (`services/bookmarks.ts`): live, two-way access to the browser's own bookmarks via `chrome.bookmarks`. The manifest gets the `"bookmarks"` permission.
+  - `watchBookmarks` re-reads the tree on every onCreated / onRemoved / onChanged / onMoved / onChildrenReordered / onImportEnded event, debounced 60 ms.
+  - Writes: `createFolder`, `renameNode` (title, and URL for sites), `moveNode`, `deleteNode` (`removeTree` for folders). `deleteNode` returns a snapshot that `restoreNode` recreates recursively, for Undo.
+  - Pure helpers: `findNode`, `isInside` (no moving a folder into itself or a descendant), `countSites`, `filterTree`.
+  - The browser's top-level containers (Bookmarks bar, Other, Mobile) are `isRootContainer`: they can't be renamed, deleted or moved. Managed (`unmodifiable`) nodes are read-only.
+- **Panel** (`search/BookmarkDrawer.tsx`, rewritten): the bookmark button now opens the browser bookmarks. DevDeck's categories stay in the Site Map and Settings → Library.
+  - A nested list to any depth. Only expanded folders render their children (`BmRow` is memoised), so large collections stay light.
+  - Folder hover actions, in order: **+** (tooltip "Add sub folder"), **Edit** (inline rename), **Delete**. A non-empty folder asks first; every delete has a 5 s Undo.
+  - Sites: open in a new tab, plus Edit (name and URL) and Delete.
+  - Filter box (keeps each match's folder path). **+ Add folder** creates a first-level folder in Bookmarks bar, or another root you pick.
+  - On the plain website (no `chrome.bookmarks`), the panel shows only an explanation.
+  - `useBookmarks` hook; `.bm-*` styles for dark and light.
+- **Tree View** (`search/BookmarkTreeView.tsx`, lazy-loaded; `search/bookmarkLayout.ts`): a full-screen canvas.
+  - Layout: each folder is a box with its own sites (8 shown, "+N more" for the rest); sub-folders hang below, centred, joined by elbow connectors. Subtrees take disjoint column ranges, so boxes never overlap.
+  - Folders at depth ≥ 2 that have sub-folders start collapsed; there are Expand all / Collapse all.
+  - Pan by dragging the background; the wheel zooms around the cursor (25–160%); − / + / Fit buttons; a sideways trackpad swipe pans.
+  - **Dragging is pointer-driven, not HTML5**, for smoothness:
+    - after 5 px of movement, a ghost follows the pointer on a `requestAnimationFrame` loop (`translate3d`, no React render per move);
+    - the target is found by `elementFromPoint → [data-drop-folder]`; React only re-renders when the target changes;
+    - invalid targets (itself, a descendant, its current parent, managed folders) show red and refuse the drop;
+    - the canvas auto-pans within 64 px of an edge;
+    - Esc cancels the drag; Esc again closes the view;
+    - the moved item's new box pulses briefly.
+  - Sites drag by their row; folders drag by their header.
+- **Tests:**
+  - 9 new unit tests (`bookmarks.test.ts`, `bookmarkLayout.test.ts`); Vitest 221/221.
+  - The extension QA script (`e2e/qa/bookmarks.manual.mjs`) seeds a 4-level tree through the real API and passes 26/26 in dark and light: panel CRUD, the confirm + Undo round trip, live external changes, real-mouse drags of sites and folders, the blocked drop into a descendant, Esc cancel, 6 rapid back-and-forth moves, pan and zoom, and no console errors.
+  - QA found and fixed a light-theme issue: the drop-target highlight and "+N more" / fold labels were invisible.
+
+---
+
 ## Round 2026-10-19j — 24-hour zones, flip plate in layout, new-tab start page, drag-out windows
 
 - **Multi-Timezone** (`faces2.tsx`): always 24-hour. `h24 = true` for the zone tiles; the local tile uses `now.getHours()` and no meridiem.

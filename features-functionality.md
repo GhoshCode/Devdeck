@@ -17,6 +17,33 @@ wide where layout is involved.
 
 ---
 
+## Browser bookmarks (round 2026-10-20a)
+
+- **Opening:** the bookmark button (beside Site Map) now opens **your browser's bookmarks**, live and two-way: changes here change the browser, and changes in the browser appear here instantly.
+- **Folders:** they nest to any depth; click a folder to expand it. Hover a folder for **+** (Add sub folder), **Edit** and **Delete**.
+  - Deleting a folder that has bookmarks asks first.
+  - Every delete can be undone for 5 s.
+- **Sites:** they open in a new tab, and can be edited (name and URL) or deleted.
+- **Filter** finds bookmarks by name or address, and shows the folders they're in.
+- **+ Add folder** adds a top-level folder (in the Bookmarks bar, or another top-level container you pick).
+- **Tree View** (top of the panel): the whole collection as a tree flowing top to bottom.
+  - Drag a site, or a folder by its header, onto another folder to move it there.
+  - A folder can't go inside itself (shown in red).
+  - Drag the background to pan, use the wheel to zoom, and press Fit to see everything.
+  - Esc cancels a drag, and closes the view.
+- **Outside the extension** (the plain website) the panel only explains that bookmarks need the extension.
+
+**Manual test checklist**
+- [ ] The panel matches chrome://bookmarks; add, rename or delete something in chrome://bookmarks → it appears here at once.
+- [ ] **+** shows "Add sub folder" on hover, sits left of Edit; sub folder created in the right place.
+- [ ] Delete a non-empty folder → confirm → Undo restores it with everything inside.
+- [ ] Tree View: drag sites and folders between boxes; the ghost follows smoothly; the target highlights; a folder dropped on its own child is refused.
+- [ ] Drag near the canvas edge → it auto-pans; Esc during a drag cancels it.
+- [ ] A large real profile (hundreds of bookmarks) stays responsive in both the panel and Tree View.
+- [ ] Dark and light themes.
+
+---
+
 ## 000000000. Round 2026-10-19j — latest changes
 
 - **Multi-Timezone clock:** every city shows 24-hour time (e.g. 21:23).
