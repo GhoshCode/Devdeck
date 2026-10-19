@@ -44,7 +44,7 @@ export function CardSnapHandle({
     el.addEventListener('pointercancel', up);
   };
 
-  const cards = side === 'left' ? 'Focus and Queue' : 'Tech news and jobs';
+  const cards = side === 'left' ? 'Currently processing and Queue' : 'Tech news and jobs';
   return (
     <div
       role="separator"

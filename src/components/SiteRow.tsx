@@ -101,10 +101,19 @@ export const SiteRow = memo(function SiteRow({
 });
 
 // Outline pin = not in the top row; filled pin = pinned there.
+// A minimal outline thumbtack, tilted like a pin pressed into a board.
+// "filled" (pinned) adds a soft tint inside the outline rather than a solid blob.
 export function PinIcon({ filled, className = 'size-3.5' }: { filled: boolean; className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 16 16" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
-      <path d="M10.2 1.8 14.2 5.8 12.4 6.4 9.9 8.9 10.3 12.1 8.9 13.5 6.4 11 2.6 14.8 1.2 13.4 5 9.6 2.5 7.1 3.9 5.7 7.1 6.1 9.6 3.6Z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <g transform="rotate(45 12 12)">
+        <path
+          d="M9 4h6M10 4v5.2c0 .6-.3 1.2-.8 1.5l-1.9 1.4A2.2 2.2 0 0 0 6.4 14v1h11.2v-1a2.2 2.2 0 0 0-.9-1.9l-1.9-1.4a1.9 1.9 0 0 1-.8-1.5V4"
+          fill={filled ? 'currentColor' : 'none'}
+          fillOpacity={filled ? 0.25 : 0}
+        />
+        <path d="M12 15v5.5" />
+      </g>
     </svg>
   );
 }

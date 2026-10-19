@@ -1,3 +1,4 @@
+import { FIRST_SECTION } from '../../types';
 import { memo, useMemo, useState, type FormEvent } from 'react';
 import { useStore } from '../../store';
 import type { ProcessingItem, Schedule, ScheduleFrequency } from '../../types';
@@ -14,7 +15,7 @@ import { showUndo } from '../ui/UndoToast';
 // by URL, group into sections, and set each item's reminder schedule. Used by
 // the panel's mini settings cog and by Settings → Processing.
 
-export const DEFAULT_SECTIONS = ['Focus', 'Queue'];
+export const DEFAULT_SECTIONS = [FIRST_SECTION, 'Queue'];
 
 export const ProcessingEditor = memo(function ProcessingEditor() {
   const processing = useStore((s) => s.processing);
@@ -66,7 +67,7 @@ function AddItem({ sections, onAdded }: { sections: string[]; onAdded: (id: stri
     : [];
 
   const add = (input: { name: string; url: string; siteId: string | null }) => {
-    const item = addProcessingItem({ ...input, section: section.trim() || 'Focus', schedule: { enabled: true } });
+    const item = addProcessingItem({ ...input, section: section.trim() || FIRST_SECTION, schedule: { enabled: true } });
     setQuery('');
     onAdded(item.id);
   };

@@ -176,7 +176,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
                 title="Unpin from the top row"
                 className="tile-unpin absolute -top-1 -right-1 z-10 flex size-5 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover/pin:opacity-100 focus-visible:opacity-100"
               >
-                <PinIcon filled className="size-2.5" />
+                <PinIcon filled={false} className="size-3" />
               </button>
             </div>
           ))}

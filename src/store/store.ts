@@ -1,3 +1,4 @@
+import { FIRST_SECTION } from '../types';
 import { create } from 'zustand';
 import { buildDemoData, isDemo } from '../lib/demoData';
 import { REPEAT_LABEL, nextRepeatDate } from '../lib/todos';
@@ -105,7 +106,8 @@ const normalizeProcessing = (raw: unknown, i: number): ProcessingItem | null => 
     name: typeof p.name === 'string' ? p.name : p.url,
     url: p.url,
     siteId: typeof p.siteId === 'string' ? p.siteId : null,
-    section: typeof p.section === 'string' && p.section ? p.section : 'Focus',
+    // The top section used to be called "Focus"; saved items move to the new name.
+    section: typeof p.section === 'string' && p.section && p.section !== 'Focus' ? p.section : FIRST_SECTION,
     order: typeof p.order === 'number' ? p.order : i,
     schedule: { ...defaultSchedule(), ...(asRecord(p.schedule) as Partial<Schedule>) },
     createdAt: typeof p.createdAt === 'number' ? p.createdAt : undefined,
@@ -603,7 +605,7 @@ export const useStore = create<Store>()(
         set((s) => ({ todos: s.todos.filter((t) => t.archivedAt === null) })),
 
       // ---- Currently Processing -----------------------------------------
-      addProcessingItem: ({ name, url, siteId = null, section = 'Focus', schedule }) => {
+      addProcessingItem: ({ name, url, siteId = null, section = FIRST_SECTION, schedule }) => {
         const item: ProcessingItem = {
           id: newId(),
           name,

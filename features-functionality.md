@@ -17,6 +17,21 @@ wide where layout is involved.
 
 ---
 
+## 000000. Round 2026-10-19g — latest changes
+
+- **Pin icon:** a clean outline thumbtack everywhere: site rows, the small unpin
+  badge on top-row tiles, and the category pin. The badge is a quiet dark
+  circle that only takes the accent colour on hover.
+- **"Focus" is now "Currently processing":** the top card's label, new items,
+  and existing saved items all use the new name, so there's nothing to redo.
+
+**Manual test checklist**
+- [ ] Hover a top-row tile: the unpin badge shows a thin outline pin (no solid pink blob); hover the badge: accent outline.
+- [ ] The category pin button uses the same icon; pinned shows a light tint.
+- [ ] The top card's tab reads "CURRENTLY PROCESSING" and fits; old "Focus" items now show under it; the Site Map and the Processing editor show the new name.
+
+---
+
 ## 00000. Round 2026-10-19f — latest changes
 
 - **Site Map chips:** rows still fill the card, but the last row's chips are only as wide as their names.

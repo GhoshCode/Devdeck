@@ -10,6 +10,29 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19g — pin icon, "Focus" renamed to "Currently processing"
+
+- **Pin icon** (`SiteRow.tsx` `PinIcon`): a new minimal outline thumbtack,
+  modelled on Font Awesome's jelly thumbtack.
+  - Drawing: a 24-unit, 2 px round-stroke cap, body and needle, rotated 45°.
+  - "Pinned" adds a 25% tint inside the outline instead of a solid shape.
+  - Used by site rows, the tile unpin badge (`PrimaryRow`) and the category
+    pin button (`CategoryCard`, which drops its own inline SVG).
+- **Tile unpin badge** (`.tile-unpin`): an elevated neutral circle with a
+  white/75 outline icon and a soft shadow. Hover gives an accent border and
+  icon instead of the solid accent fill.
+- **Section rename:**
+  - `FIRST_SECTION = 'Currently processing'` (`types.ts`) is the default
+    section for new items, the editor defaults and demo data.
+  - `normalizeProcessing` (which runs on every load through `merge`) maps saved
+    `'Focus'` items to it, so existing decks rename themselves.
+  - Resize-handle labels are updated.
+  - The e2e undo-text regex and the QA fixture are updated.
+  - **Note:** a section the user deliberately names "Focus" would also be renamed on the next load.
+- **Verification:** `tsc -b` clean; Vitest 211/211; `build:demo` succeeds; UI not tested yet.
+
+---
+
 ## Round 2026-10-19f — chip last row, inline new category, restore to origin, Uncategorized
 
 ### Site Map chips (`SiteMapModal.tsx`)

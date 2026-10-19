@@ -1,3 +1,4 @@
+import { FIRST_SECTION } from '../types';
 // Demo data for manual testing (Settings → Data → Load demo data). Every id
 // starts with "demo-" so the same panel can remove it again without touching
 // anything the user created. Deterministic: the same call gives the same data
@@ -79,12 +80,12 @@ function timerFor(i: number, now: number): { createdAt: number; timer: Timer | n
 
 function processing(now: Date): ProcessingItem[] {
   const t = now.getTime();
-  const make = (list: Array<[string, string]>, section: 'Focus' | 'Queue', offset: number) =>
+  const make = (list: Array<[string, string]>, section: typeof FIRST_SECTION | 'Queue', offset: number) =>
     list.map(([name, url], i) => {
       const { createdAt, timer } = timerFor(i + offset, t);
       return { id: `${DEMO_PREFIX}${section.toLowerCase()}-${i}`, name, url, siteId: null, section, order: 10_000 + offset + i, schedule: schedule(i + offset, now), createdAt, timer };
     });
-  return [...make(FOCUS_SITES, 'Focus', 0), ...make(QUEUE_SITES, 'Queue', 100)];
+  return [...make(FOCUS_SITES, FIRST_SECTION, 0), ...make(QUEUE_SITES, 'Queue', 100)];
 }
 
 const TASK_VERBS = ['Review', 'Write', 'Fix', 'Ship', 'Plan', 'Refactor', 'Test', 'Document', 'Deploy', 'Investigate', 'Prepare', 'Update', 'Design', 'Benchmark', 'Clean up'];

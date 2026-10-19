@@ -1823,15 +1823,19 @@ html[data-theme='light'] .overview-site:hover {
 }
 .tile-unpin {
   background: var(--color-base-elevated);
-  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
-  color: var(--color-accent);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 .tile-unpin:hover {
-  background: var(--color-accent);
-  color: #fff;
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  color: var(--color-accent);
 }
 html[data-theme='light'] .tile-unpin {
   background: #fff;
+  border-color: rgba(60, 60, 67, 0.16);
+  color: rgba(60, 60, 67, 0.75);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
 }
 
 /* Greeting styles (Appearance → Greeting). They colour the greeting words

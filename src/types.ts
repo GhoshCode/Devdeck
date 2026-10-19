@@ -138,6 +138,9 @@ export interface ProcessingItem {
   timer?: Timer | null;
 }
 
+// The top Processing section (formerly "Focus").
+export const FIRST_SECTION = 'Currently processing';
+
 export interface Topic {
   id: string;
   label: string; // shown as '#label'

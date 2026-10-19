@@ -16,7 +16,7 @@ import { AnchoredPopover } from '../ui/AnchoredPopover';
 import { SlidersIcon } from '../ui/icons';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
-// the first section ("Focus" by default). The lower card scrolls sideways
+// the first section ("Currently processing" by default). The lower card scrolls sideways
 // between the Queue (every other section, each collapsible; the mini settings
 // cog in its corner opens the editor) and the To-do list.
 
@@ -34,7 +34,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
 
   return (
     <>
-      <SplitPanes setting="leftSplit" label="Resize Focus and Queue" fitHint="fit Focus to its sites">
+      <SplitPanes setting="leftSplit" label="Resize Currently processing and Queue" fitHint="fit Currently processing to its sites">
       <section aria-label={`Processing: ${top.name}`} className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pt-9">
         <PanelNotch title={top.name} count={top.items.length} />
         <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />

@@ -137,7 +137,7 @@ test('removing a Focus site can be undone; the bar times out on its own', async 
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /^Remove (?!.* top row$)/ }).first().click();
   const bar = page.getByTestId('undo-bar');
-  await expect(bar).toContainText(/Removed .* from Focus/);
+  await expect(bar).toContainText(/Removed .* from Currently processing/);
   await bar.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByRole('button', { name: /^Remove (?!.* top row$)/ })).toHaveCount(1);
   await page.getByRole('button', { name: /^Remove (?!.* top row$)/ }).first().click();
