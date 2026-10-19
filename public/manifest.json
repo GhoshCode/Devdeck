@@ -29,7 +29,8 @@
     "notifications",
     "storage",
     "nativeMessaging",
-    "bookmarks"
+    "bookmarks",
+    "geolocation"
   ],
   "host_permissions": [
     "https://api.open-meteo.com/*",

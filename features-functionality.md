@@ -17,6 +17,20 @@ wide where layout is involved.
 
 ---
 
+## Clean console + small polish (round 2026-10-20d)
+
+- **No console errors:** switching subcategory chips or opening the Site Map no longer logs errors. Sites without a favicon show their letter tile straight away, and the browser is never asked for an icon that doesn't exist.
+- **Site Map cards:** a larger delete button at the top right, a slimmer header, and larger "+ Sub category" / "+ Add site" buttons.
+- **Settings → Scraping:** the items-per-section sliders are thin, half width, with just the number beside them (no dots).
+
+**Manual test checklist**
+- [ ] DevTools console stays empty while switching chips on every card and while opening and scrolling the Site Map (in the installed extension).
+- [ ] pkg.go.dev / CVE Details etc. show letter tiles.
+- [ ] The Site Map card delete button is easy to hit; the add buttons are readable.
+- [ ] The slider is half width and minimal in dark and light themes; dragging updates the number.
+
+---
+
 ## Reminder alerts (round 2026-10-20b)
 
 - **What they are:** reminders drop in from the top of the page as solid, matte cards tinted with your theme colour, with a thin accent border. They use large, high-contrast text that reads at a glance in both themes.

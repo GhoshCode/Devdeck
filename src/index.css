@@ -2397,34 +2397,37 @@ html[data-theme='light'] .skeleton {
   .skeleton { animation: none; }
 }
 
-/* Settings → Scraping: items-per-section slider */
+/* Settings → Scraping: items-per-section slider — thin, quiet, no ticks */
 .count-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 14px;
+  height: 16px;
   background: transparent;
   cursor: pointer;
 }
 .count-slider::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--color-accent) var(--fill), rgba(255, 255, 255, 0.12) var(--fill));
 }
 .count-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: -5px;
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
   border-radius: 999px;
   background: #fff;
-  border: 2px solid var(--color-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 60%, transparent);
+  border: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s;
 }
+.count-slider:hover::-webkit-slider-thumb { transform: scale(1.15); }
 .count-slider:focus-visible { outline: none; }
-.count-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 40%, transparent); }
+.count-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent); }
 html[data-theme='light'] .count-slider::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, var(--color-accent) var(--fill), rgba(15, 23, 42, 0.12) var(--fill));
 }
+html[data-theme='light'] .count-slider::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2), 0 1px 3px rgba(15, 23, 42, 0.25); }
 
 /* Greeting: typefaces for your name (Appearance → Greeting, or click the name) */
 .name-font-grotesk { font-family: var(--font-display); }
@@ -2449,18 +2452,7 @@ html[data-theme='light'] .name-edit-input { background: #fff; color: #0f172a; }
   vertical-align: baseline;
 }
 
-/* Settings → Scraping: the chosen amount */
-.count-value {
-  background: color-mix(in srgb, var(--color-accent) 14%, rgba(255, 255, 255, 0.03));
-  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  min-width: 4.5rem;
-  justify-content: center;
-}
-html[data-theme='light'] .count-value {
-  background: color-mix(in srgb, var(--color-accent) 10%, #fff);
-}
-html[data-theme='light'] .count-value .text-white { color: #0f172a; }
+html[data-theme='light'] .count-value { color: #0f172a; }
 
 /* Site Map: colour picker beside the new-category field */
 .sitemap-color {
@@ -2664,3 +2656,4 @@ html[data-theme='light'] .alert-count { background: #f8fafc; border-color: #e2e8
 html[data-theme='light'] .alert-count.is-zero .alert-title { color: #94a3b8; }
 html[data-theme='light'] .alert-more { color: #0f172a; }
 @media (prefers-reduced-motion: reduce) { .todo-flash { animation: none; } }
+html[data-theme='light'] input.count-slider { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }

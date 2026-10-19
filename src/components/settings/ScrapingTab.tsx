@@ -39,10 +39,8 @@ export function ScrapingTab() {
   );
 }
 
-// How many items each feed section shows: 0–100, a point at every 10.
+// How many items each feed section shows: 0–100.
 // The panels reload with the new amounts when Settings closes.
-const TICKS = Array.from({ length: 11 }, (_, i) => i * 10);
-
 function SectionCounts() {
   const news = useStore((s) => s.settings.feedNewsCount ?? 4);
   const jobs = useStore((s) => s.settings.feedJobsCount ?? 4);
@@ -60,18 +58,12 @@ function SectionCounts() {
 }
 
 function CountSlider({ id, label, value, onChange }: { id: string; label: string; value: number; onChange: (v: number) => void }) {
+  // One quiet row: label, a half-width slider, the number.
   return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between">
-        <label htmlFor={id} className="text-xs font-medium text-white/80">
-          {label}
-        </label>
-        <span className="count-value flex items-baseline gap-1 rounded-lg border px-2.5 py-1">
-          <span className="font-mono text-[15px] leading-none font-bold text-white tabular-nums">{value}</span>
-          <span className="text-[10px] leading-none font-medium text-white/50">{value === 1 ? 'item' : 'items'}</span>
-        </span>
-      </div>
-      {/* The thumb is 14 px wide, so the ticks sit 7 px in from each end to line up with it. */}
+    <div className="flex items-center gap-4">
+      <label htmlFor={id} className="w-24 shrink-0 text-xs font-medium text-white/80">
+        {label}
+      </label>
       <input
         id={id}
         type="range"
@@ -80,24 +72,10 @@ function CountSlider({ id, label, value, onChange }: { id: string; label: string
         step={1}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="count-slider w-full"
+        className="count-slider w-1/2 min-w-[140px]"
         style={{ '--fill': `${value}%` } as CSSProperties}
       />
-      <div aria-hidden className="pointer-events-none relative mx-[7px] mt-1 h-3">
-        {TICKS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            tabIndex={-1}
-            onClick={() => onChange(t)}
-            title={String(t)}
-            className="pointer-events-auto absolute top-0 flex size-3 -translate-x-1/2 items-center justify-center"
-            style={{ left: `${t}%` }}
-          >
-            <span className={`size-1.5 rounded-full ${t <= value ? 'bg-[var(--color-accent)]' : 'bg-white/25'}`} />
-          </button>
-        ))}
-      </div>
+      <span className="count-value w-12 shrink-0 text-right font-mono text-[13px] font-semibold text-white tabular-nums">{value}</span>
     </div>
   );
 }

@@ -467,9 +467,9 @@ function CategoryMapCard({
             onClick={() => setConfirm(true)}
             aria-label={`Delete category ${category.name}`}
             title="Delete this category"
-            className="sitemap-icon-btn sitemap-danger flex size-6 items-center justify-center rounded-md"
+            className="sitemap-icon-btn sitemap-danger flex size-8 items-center justify-center rounded-lg"
           >
-            <BinGlyph className="size-3.5" />
+            <BinGlyph className="size-[18px]" />
           </button>
         </>
       }
@@ -562,14 +562,14 @@ function CategoryMapCard({
           type="button"
           onClick={() => setNewSub('')}
           aria-label={`Add a subcategory to ${category.name}`}
-          className="sitemap-add rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
+          className="sitemap-add rounded-lg border border-dashed px-3 py-1.5 text-[13px] font-semibold text-white/65 transition-colors hover:text-white"
         >
           + Sub category
         </button>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="sitemap-add rounded-lg border border-dashed px-2.5 py-1 text-[11px] font-semibold text-white/55 transition-colors hover:text-white"
+          className="sitemap-add rounded-lg border border-dashed px-3 py-1.5 text-[13px] font-semibold text-white/65 transition-colors hover:text-white"
         >
           + Add site
         </button>
@@ -767,9 +767,9 @@ function MapCard({
       data-testid={testId}
       data-sitemap-category={categoryId}
       style={catVars(color)}
-      className="sitemap-card cat-scope relative flex flex-col gap-3 rounded-2xl border p-4"
+      className="sitemap-card cat-scope relative flex flex-col gap-3 rounded-2xl border px-4 pt-2.5 pb-4"
     >
-      <header className="flex items-center gap-2">
+      <header className="flex min-h-8 items-center gap-2">
         <span className="size-2 rounded-full" style={{ background: 'var(--cat)', boxShadow: '0 0 8px var(--cat)' }} />
         {titleNode ?? (
           <h3 className="truncate font-display text-[12px] font-bold tracking-[0.16em] uppercase" style={{ color: 'var(--cat)' }}>

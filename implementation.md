@@ -10,6 +10,26 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-20d — clean console, Site Map card sizing, minimal slider
+
+- **Console errors** came from two places; both are now gone.
+  - **Missing favicons:** the favicon service answers 404 for sites without an icon (pkg.go.dev, cvedetails.com, en.cppreference.com, gchq.github.io, …), and Chrome logs every failed image as an error. This repeated whenever cards re-rendered (switching subcategory chips) and when the Site Map opened.
+    - `Favicon.tsx` now never requests a host known to have no icon.
+    - Hosts come from a built-in list (all ~300 starter / demo hosts were probed) plus any host that failed once (`localStorage["devdeck.favicon.missing"]`, capped at 500).
+    - Those render the letter tile straight away.
+  - **Geolocation warning:** Chrome warned "Is the 'geolocation' permission appropriate?" because weather uses `navigator.geolocation`. The manifest now declares `"geolocation"`.
+- **Measured in the built extension:** 0 errors / warnings / failed requests on load, after switching chips on every card and page, and after opening and scrolling the Site Map. A new regression test (`e2e/qa/console-clean.spec.ts`) fails on any console error, warning or HTTP ≥ 400.
+- **Site Map category card** (`SiteMapModal.tsx`):
+  - delete-category button `size-8` with an 18 px bin (was `size-6` / 14 px);
+  - header area shorter: card top padding `pt-2.5` (was 16 px), header `min-h-8`;
+  - "+ Sub category" / "+ Add site" are 13 px (was 11 px) with more padding.
+- **Items-per-section slider** (`ScrapingTab.tsx`): one quiet row (label · half-width slider · number).
+  - The 0–100 dot markers and the boxed value are gone.
+  - Track 3 px, thumb 12 px, plain white with a hairline ring.
+  - The light theme's global input frame is stripped from the slider.
+
+---
+
 ## Round 2026-10-20c — matte, high-contrast alerts
 
 - **Finish:** `.alert-glass` is now **solid and matte**: no backdrop blur, no gloss, no translucency.
