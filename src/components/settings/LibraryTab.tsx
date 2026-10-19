@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useStore } from '../../store';
+import { deleteSubcategoryWithUndo } from '../library/deleteSubcategory';
 import type { Site } from '../../types';
 import { Favicon } from '../Favicon';
 import { SiteFormDialog } from '../library/SiteFormDialog';
@@ -25,7 +26,6 @@ export function LibraryTab({
 
   const addSubcategory = useStore((s) => s.addSubcategory);
   const updateSubcategory = useStore((s) => s.updateSubcategory);
-  const deleteSubcategory = useStore((s) => s.deleteSubcategory);
 
   const deleteSite = useStore((s) => s.deleteSite);
   const togglePrimary = useStore((s) => s.togglePrimary);
@@ -178,7 +178,7 @@ export function LibraryTab({
           <div className="glass w-full max-w-sm space-y-4 rounded-2xl border-red-500/20 bg-[#150e24] p-5 shadow-2xl">
             <h4 className="font-semibold text-sm text-red-400">Delete Category?</h4>
             <p className="text-xs text-white/70">
-              This will permanently delete this category, along with all of its subcategories and sites.
+              This deletes the category and its subcategories. Its sites move to the recycle bin — restore them from “+ Add Site”.
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -384,9 +384,9 @@ export function LibraryTab({
                       )}
                       <button
                         type="button"
-                        onClick={() => deleteSubcategory(subcat.id)}
+                        onClick={() => deleteSubcategoryWithUndo(subcat.id)}
                         className="text-[10px] text-white/40 hover:text-red-400"
-                        title="Delete subcategory (sites move to General)"
+                        title="Delete subcategory (its sites go to the recycle bin; Undo for 5 s)"
                       >
                         Delete
                       </button>

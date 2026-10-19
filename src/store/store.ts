@@ -207,7 +207,8 @@ export interface StoreActions {
   // Subcategory CRUD
   addSubcategory: (input: NewSubcategory) => Subcategory;
   updateSubcategory: (id: string, patch: Partial<Omit<Subcategory, 'id'>>) => void;
-  deleteSubcategory: (id: string) => void;
+  deleteSubcategory: (id: string) => void; // its sites → trash
+  reinsertSubcategory: (sub: Subcategory) => void; // undo a delete
   // Site CRUD
   addSite: (input: NewSite) => Site;
   updateSite: (id: string, patch: Partial<Omit<Site, 'id'>>) => void;
@@ -366,27 +367,27 @@ export const useStore = create<Store>()(
             sc.id === id ? { ...sc, ...patch } : sc,
           ),
         })),
-      // Deleting a subcategory moves its sites to the category's General group
-      // (subcategoryId = null), appended after any existing General sites.
+      // Deleting a subcategory removes it and sends its sites to the recycle
+      // bin (restore puts them back in the category's General group, or here
+      // again if the subcategory is brought back by Undo).
       deleteSubcategory: (id) =>
         set((s) => {
           const target = s.subcategories.find((sc) => sc.id === id);
           if (!target) return {};
-          let generalTail = nextOrder(
-            s.sites.filter(
-              (site) => site.categoryId === target.categoryId && site.subcategoryId === null,
-            ),
-          );
-          const sites = s.sites.map((site) =>
-            site.subcategoryId === id
-              ? { ...site, subcategoryId: null, order: generalTail++ }
-              : site,
-          );
+          const gone = s.sites.filter((site) => site.subcategoryId === id);
           return {
             subcategories: s.subcategories.filter((sc) => sc.id !== id),
-            sites,
+            sites: s.sites.filter((site) => site.subcategoryId !== id),
+            trash: { ...s.trash, sites: capTrash([...gone.map((site) => toTrash(s, site)), ...s.trash.sites]) },
           };
         }),
+      // Undo of a subcategory delete: the same subcategory (id, name, order) back.
+      reinsertSubcategory: (sub) =>
+        set((s) =>
+          s.subcategories.some((x) => x.id === sub.id) || !s.categories.some((c) => c.id === sub.categoryId)
+            ? {}
+            : { subcategories: [...s.subcategories, sub] },
+        ),
 
       // ---- Sites ---------------------------------------------------------
       addSite: ({ name, url, categoryId, subcategoryId, primary = false }) => {

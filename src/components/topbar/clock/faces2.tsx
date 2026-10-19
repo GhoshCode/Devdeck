@@ -139,14 +139,14 @@ function FlipFace({ parts }: FaceProps) {
     <div className="flex h-full w-full flex-col items-center justify-center">
       {/* the case */}
       <div
-        className="flip-case relative flex items-center gap-[1.5cqw] rounded-[7cqh] px-[2cqw] pt-[3.5cqh] pb-[3.5cqh]"
+        className="flip-case relative mt-[4cqh] flex items-center gap-[1.5cqw] rounded-[7cqh] px-[2cqw] pt-[3.5cqh] pb-[3.5cqh]"
         style={{
           background: `linear-gradient(180deg, ${mix(12, '#2a2e37')}, ${mix(6, '#14161b')} 60%, #0c0d10)`,
           boxShadow: `inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 6px rgba(0,0,0,0.6), 0 10px 22px -10px rgba(0,0,0,0.8), 0 0 0 1px ${mix(18)}`,
         }}
       >
         {/* brand plate sitting on the top rim of the case */}
-        <span aria-hidden className={`flip-plate absolute -top-[2.4cqh] left-1/2 -translate-x-1/2 rounded-[1.4cqh] px-[2.4cqw] pt-[0.9cqh] pb-[0.8cqh] pl-[2.8cqw] font-mono ${TINY} leading-none tracking-[0.4em] text-white/55`}>DEVDECK</span>
+        <span aria-hidden className={`flip-plate absolute -top-[3cqh] left-1/2 -translate-x-1/2 rounded-[1.6cqh] px-[2.8cqw] pt-[1.3cqh] pb-[1.1cqh] pl-[3.2cqw] font-mono ${TINY} leading-none tracking-[0.4em] text-white/55`}>DEVDECK</span>
         {/* recessed window */}
         <div className="flex items-center gap-[0.9cqw] rounded-[5cqh] bg-black/55 p-[1.4cqh] shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]">
           <FlipCard value={parts.hours} />

@@ -77,8 +77,8 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
 // The section name in a tab that hangs from the card's top edge, centred.
 function PanelNotch({ title, count }: { title: string; count: number }) {
   return (
-    <div className="panel-notch absolute top-0 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-b-xl border border-t-0 px-4 py-1">
-      <h2 className="font-display text-[11px] font-semibold tracking-[0.2em] text-white/80 uppercase">{title}</h2>
+    <div className="panel-notch absolute top-0 left-1/2 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-b-xl border border-t-0 px-3.5 py-1">
+      <h2 className="font-display text-[10.5px] font-semibold tracking-[0.12em] whitespace-nowrap text-white/80 uppercase">{title}</h2>
       <span className="rounded-full bg-white/10 px-1.5 font-mono text-[10px] text-white/55">{count}</span>
     </div>
   );
@@ -337,7 +337,7 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
           const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
           if (Math.abs(d) > 4) go(d > 0 ? 1 : 0);
         }}
-        className="pane-switch relative grid shrink-0 grid-cols-2 rounded-2xl border p-1"
+        className="pane-switch @container relative grid shrink-0 grid-cols-2 rounded-2xl border p-1"
       >
         <span
           aria-hidden
@@ -351,11 +351,12 @@ function QueueAndTodo({ queueTitle, queueCount, children }: { queueTitle: string
             role="tab"
             aria-selected={pane === i}
             onClick={() => go(i as 0 | 1)}
-            className={`pane-tab relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-1.5 font-display text-[11.5px] font-semibold tracking-[0.12em] uppercase transition-colors ${
+            className={`pane-tab relative z-10 flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-1.5 py-1.5 font-display text-[11px] font-semibold tracking-[0.06em] uppercase @min-[300px]:gap-2 @min-[300px]:px-2 @min-[300px]:text-[11.5px] @min-[300px]:tracking-[0.12em] transition-colors ${
               pane === i ? 'is-on' : ''
             }`}
           >
-            {i === 0 ? <WaveIcon /> : <CheckCircleIcon />}
+            {/* icons only when there is room, so the labels never get cut */}
+            <span className="hidden @min-[300px]:inline-flex">{i === 0 ? <WaveIcon /> : <CheckCircleIcon />}</span>
             <span className="truncate">{t.label}</span>
             <span className="pane-tab-count min-w-5 rounded-md px-1.5 py-px font-mono text-[10px] tracking-normal">{t.count}</span>
           </button>

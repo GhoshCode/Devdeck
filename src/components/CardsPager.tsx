@@ -135,7 +135,7 @@ export function PagerDots({ pages, page, goTo }: { pages: number; page: number; 
           goTo(page + (e.key === 'ArrowLeft' ? -1 : 1));
         }
       }}
-      className="flex h-8 shrink-0 items-center justify-center gap-1.5 pt-1"
+      className="flex h-5 shrink-0 items-center justify-center gap-1.5"
     >
       {Array.from({ length: pages }, (_, i) => (
         <button

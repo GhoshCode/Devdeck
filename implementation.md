@@ -10,6 +10,30 @@ Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 
 ---
 
+## Round 2026-10-19h — subcategory delete → bin + undo, QA fixes, card polish
+
+- **Subcategory delete** (`store.ts` `deleteSubcategory`, new `reinsertSubcategory`; `library/deleteSubcategory.ts` new):
+  - The subcategory is removed and its sites go to the recycle bin (`toTrash`), no longer to General.
+  - `deleteSubcategoryWithUndo` deletes without a prompt and shows the undo bar (5 s): "Deleted X — N sites moved to the recycle bin".
+  - Undo re-inserts the same subcategory (same id and order) and restores each site into it.
+  - Used by the Site Map, the Bookmarks drawer and Settings → Library.
+- **Category delete:** confirmation everywhere, as before. The Library modal text now says the sites move to the recycle bin; the store already trashed them.
+- **Fixes found by the QA run** (`qa-sitemap-lifecycle.md`):
+  - `Select` list layer `z-[80]` → `z-[120]`. It was hidden behind the Add Site dialog (`z-[85]`).
+  - Site Map drag state ends on any `drop` / `dragend` (capture listeners while dragging). A chip dropped on the bin unmounts before its dragend.
+  - Site Map closes on Esc when focus is on the page body (window listener; skipped while focus is inside another dialog).
+  - The new-category Add button is accent-coloured (it was invisible in light theme).
+  - Queue/To-do switch: `@container`; the icons and wide tracking only show at ≥ 300 px, so the labels aren't cut.
+  - Notch label `whitespace-nowrap`, 10.5 px, `tracking 0.12em`, max width.
+- **Card polish:**
+  - The All Categories overview wraps long names (`break-words`, dot aligned to the first line) instead of truncating.
+  - The pager strip is `h-5` (was `h-8 pt-1`) and the container bottom padding is `pb-1` / `sm:pb-1.5`.
+  - The pinned row is `px-3.5 py-2`, and the rail is `px-1 pt-1.5 pb-1` with `gap-2.5`, so tiles and the unpin badge aren't clipped.
+  - Flip: the case gets `mt-[4cqh]`, and the plate sits at `-top-[3cqh]` with more padding (`px-[2.8cqw] pl-[3.2cqw] pt-[1.3cqh] pb-[1.1cqh]`). It was clipped by the widget top edge.
+- **Tests:** unit tests updated (subcategory → bin; undo round-trip; fixture resets trash): 212/212. The QA script is saved as `e2e/qa/sitemap-lifecycle.manual.mjs`.
+
+---
+
 ## Round 2026-10-19g — pin icon, "Focus" renamed to "Currently processing"
 
 - **Pin icon** (`SiteRow.tsx` `PinIcon`): a new minimal outline thumbtack,

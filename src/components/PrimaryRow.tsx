@@ -114,7 +114,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
   return (
     <section
       aria-label="Primary sites"
-      className="group/primary relative shrink-0 border-b border-white/[0.04] px-3 py-1.5 select-none"
+      className="group/primary relative shrink-0 border-b border-white/[0.04] px-3.5 py-2 select-none"
     >
       <div className="relative">
         {/* Left Fade Mask & Chevron */}
@@ -146,7 +146,7 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none cursor-grab active:cursor-grabbing"
+          className="flex items-center gap-2.5 overflow-x-auto px-1 pt-1.5 pb-1 scrollbar-none cursor-grab active:cursor-grabbing"
           tabIndex={0}
           role="region"
           aria-label="Primary sites rail"

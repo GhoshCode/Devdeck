@@ -17,6 +17,25 @@ wide where layout is involved.
 
 ---
 
+## 0000000. Round 2026-10-19h — latest changes
+
+- **Deleting a subcategory:** no prompt. Its sites move to Deleted / archived sites, and an undo bar shows for 5 s ("Deleted Tools — 3 sites moved to the recycle bin"). Undo brings the subcategory and its sites back.
+- **Deleting a category:** still asks first. The category and its subcategories go; its sites move to Deleted / archived sites.
+- **Fixed:**
+  - the dropdowns in the Add Site window now open in front of it;
+  - after dropping a site on the bin, the card no longer stays in drag mode;
+  - Esc closes the Site Map even after the Add Site window was closed.
+- **All Categories view:** long names wrap onto a second line instead of being cut.
+- **Main container:** a slimmer strip under the cards; pinned tiles get a bit more room.
+- **Flip clock:** the DEVDECK plate isn't clipped and has more padding.
+
+**Manual test checklist:** see `qa-sitemap-lifecycle.md` (automated walk-through results) plus:
+- [ ] Settings → Library: delete a subcategory → undo bar → Undo restores it with its sites.
+- [ ] Bookmarks drawer: the same.
+- [ ] Overview at one-card width: "SYSTEMS & LOW-LEVEL" and "DATA SCIENCE & ANALYTICS" show in full.
+
+---
+
 ## 000000. Round 2026-10-19g — latest changes
 
 - **Pin icon:** a clean outline thumbtack everywhere: site rows, the small unpin

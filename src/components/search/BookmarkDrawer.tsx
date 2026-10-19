@@ -16,6 +16,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useStore } from '../../store';
+import { deleteSubcategoryWithUndo } from '../library/deleteSubcategory';
 import type { Category, Site, Subcategory } from '../../types';
 import { getHostname } from '../../utils';
 import { Favicon } from '../Favicon';
@@ -322,7 +323,6 @@ function CategoryNode({
 
 function SubcategoryNode({ sub, count, children }: { sub: Subcategory; count: number; children: ReactNode }) {
   const updateSubcategory = useStore((s) => s.updateSubcategory);
-  const deleteSubcategory = useStore((s) => s.deleteSubcategory);
   const [renaming, setRenaming] = useState(false);
   const { isOver, setNodeRef } = useDroppable({
     id: `sub:${sub.id}`,
@@ -359,7 +359,7 @@ function SubcategoryNode({ sub, count, children }: { sub: Subcategory; count: nu
             ✎
           </IconAction>
           {/* Its sites fall back to the category's General group (store rule). */}
-          <IconAction label={`Delete ${sub.name} (sites move to General)`} onClick={() => deleteSubcategory(sub.id)} danger>
+          <IconAction label={`Delete ${sub.name} (its sites go to the recycle bin)`} onClick={() => deleteSubcategoryWithUndo(sub.id)} danger>
             🗑
           </IconAction>
         </span>

@@ -18,6 +18,7 @@ import { getCategoryDisplayColor, getHostname, searchSites } from '../../utils';
 import { Favicon } from '../Favicon';
 import { BinGlyph, SiteFormDialog } from '../library/SiteFormDialog';
 import { showUndo } from '../ui/UndoToast';
+import { deleteSubcategoryWithUndo } from '../library/deleteSubcategory';
 import { Masonry } from '../ui/Masonry';
 import { nextFreeColor } from '../../lib/palette';
 import { UNCATEGORIZED_COLOR, UNCATEGORIZED_NAME } from '../../lib/categories';
@@ -84,6 +85,33 @@ function SiteMapModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const q = query.trim();
+
+  // End the drag look on any drop or drag end. Listened to in the capture
+  // phase: a chip dropped on a bin is removed before its own dragend fires,
+  // and the bin stops the drop from bubbling.
+  useEffect(() => {
+    if (!dragging) return;
+    const end = () => setDragging(false);
+    window.addEventListener('drop', end, true);
+    window.addEventListener('dragend', end, true);
+    return () => {
+      window.removeEventListener('drop', end, true);
+      window.removeEventListener('dragend', end, true);
+    };
+  }, [dragging]);
+
+  // Esc also closes the map when focus has dropped to the page (e.g. after the
+  // Add Site window closes); inside the map its own key handler does it.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const el = document.activeElement;
+      if (el && el !== document.body && el.closest('[role="dialog"]')) return;
+      onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -408,7 +436,6 @@ function CategoryMapCard({
 }) {
   const updateCategory = useStore((s) => s.updateCategory);
   const updateSubcategory = useStore((s) => s.updateSubcategory);
-  const deleteSubcategory = useStore((s) => s.deleteSubcategory);
   const deleteCategory = useStore((s) => s.deleteCategory);
   const addSubcategory = useStore((s) => s.addSubcategory);
   const placeSite = useStore((s) => s.placeSite);
@@ -474,11 +501,9 @@ function CategoryMapCard({
             onDelete={
               g.id === GENERAL
                 ? undefined
-                : () => {
-                    deleteSubcategory(g.id);
-                  }
+                : () => deleteSubcategoryWithUndo(g.id)
             }
-            deleteLabel={`Delete section ${g.name} (its sites move to General)`}
+            deleteLabel={`Delete section ${g.name} (its sites go to the recycle bin)`}
             onDropSite={(siteId, before) => placeSite(siteId, category.id, g.id === GENERAL ? null : g.id, before ?? null)}
             dropId={`${category.id}/${g.id}`}
           >
@@ -644,7 +669,7 @@ function NewCategoryButton() {
         aria-label="New category name"
         className="sitemap-input h-8 w-48 rounded-lg border px-2.5 text-[12px] outline-none"
       />
-      <button type="submit" className="h-8 rounded-lg bg-white/15 px-3 text-xs font-semibold text-white hover:bg-white/20">
+      <button type="submit" className="h-8 rounded-lg bg-[var(--color-accent)] px-3.5 text-xs font-semibold text-white hover:opacity-90">
         Add
       </button>
       <button type="button" onClick={() => setOpen(false)} aria-label="Cancel new category" className="h-8 rounded-lg px-2 text-xs text-white/50 hover:bg-white/5 hover:text-white">

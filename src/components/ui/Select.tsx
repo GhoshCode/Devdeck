@@ -157,7 +157,7 @@ export function Select<T extends string>({
             transition={{ duration: 0.12 }}
             style={{ top: pos.top, left: pos.left, width: pos.width }}
             onKeyDown={onKeyDown}
-            className="dropdown-menu ultra-thin-scrollbar fixed z-[80] max-h-[260px] overflow-y-auto rounded-xl border py-1 shadow-2xl"
+            className="dropdown-menu ultra-thin-scrollbar fixed z-[120] max-h-[260px] overflow-y-auto rounded-xl border py-1 shadow-2xl"
           >
             {options.map((o, i) => {
               const selected = o.value === value;

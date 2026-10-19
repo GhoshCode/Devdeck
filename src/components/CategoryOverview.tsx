@@ -139,9 +139,9 @@ export const CategoryOverview = memo(function CategoryOverview({ onClose }: { on
                   style={{ ['--cat' as string]: color }}
                   className="overview-tile group/tile flex h-full cursor-pointer flex-col gap-2 rounded-xl border p-2.5 transition-colors @min-[640px]:p-3"
                 >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="size-2 shrink-0 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-                    <span className="min-w-0 flex-1 truncate font-display text-[12px] font-bold tracking-[0.1em] uppercase" style={{ color }}>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span className="mt-[5px] size-2 shrink-0 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+                    <span className="min-w-0 flex-1 font-display text-[12px] leading-[1.35] font-bold tracking-[0.1em] break-words uppercase" style={{ color }}>
                       {c.name}
                     </span>
                     {c.id === pinnedId && (
