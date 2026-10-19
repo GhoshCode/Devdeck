@@ -3219,3 +3219,4 @@ html[data-theme='light'] .mini-cal-wheel-row.is-on { color: #0f172a; }
 .term-input::placeholder { color: rgba(226, 245, 234, 0.3); text-shadow: none; }
 html[data-theme='light'] .term [class*='text-white'] { color: rgba(226, 245, 234, 0.55); }
 .term-mark { color: var(--color-accent); background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, rgba(255, 255, 255, 0.1)); letter-spacing: -0.04em; }
+.term[data-admin] .term-input { caret-color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, 0.3); }
