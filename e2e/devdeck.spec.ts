@@ -135,14 +135,18 @@ test.describe('Page Load & Header', () => {
     await expect(page.getByText(currentMonth)).toBeVisible();
   });
 
-  test('has no quote line (v2 DateGreet is date + greeting only)', async ({ page }) => {
+  test('date, greeting and a shuffleable daily quote on the right', async ({ page }) => {
     // ┌─────────────────────────────────────────────────────────┐
-    // │  v2 moved the date and greeting to the far right of    │
-    // │  the top bar and dropped the quote (plan §7 Q5).        │
+    // │  The far right of the top bar: date line, greeting     │
+    // │  heading and a motivational quote (↻ for another).      │
     // └─────────────────────────────────────────────────────────┘
     const dateGreet = page.locator('[data-widget="date-greet"]');
-    await expect(dateGreet.locator('p')).toHaveCount(1); // just the date line
-    await expect(dateGreet.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(dateGreet.getByRole('heading', { level: 1 })).toContainText('GOOD');
+    const quote = dateGreet.getByTestId('greeting-quote');
+    const first = await quote.textContent();
+    await quote.hover();
+    await dateGreet.getByRole('button', { name: 'Another quote' }).click();
+    await expect(quote).not.toHaveText(first ?? '');
   });
 });
 
@@ -164,10 +168,10 @@ test.describe('Quick Links', () => {
     // │  If the text doesn't appear, the test FAILS.           │
     // └─────────────────────────────────────────────────────────┘
 
-    await expect(page.getByRole('link', { name: 'Mail' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Drive' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Telegram' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'LinkedIn' })).toBeVisible();
+    await expect(page.getByTestId('links-strip').getByRole('link', { name: 'Mail', exact: true })).toBeVisible();
+    await expect(page.getByTestId('links-strip').getByRole('link', { name: 'Drive', exact: true })).toBeVisible();
+    await expect(page.getByTestId('links-strip').getByRole('link', { name: 'Telegram', exact: true })).toBeVisible();
+    await expect(page.getByTestId('links-strip').getByRole('link', { name: 'LinkedIn', exact: true })).toBeVisible();
   });
 
   test('quick links have correct URLs', async ({ page }) => {
@@ -179,10 +183,10 @@ test.describe('Quick Links', () => {
     // │  So "https://gmail.com" toContain("gmail") → PASS     │
     // └─────────────────────────────────────────────────────────┘
 
-    const mailLink = page.getByRole('link', { name: 'Mail' });
+    const mailLink = page.getByTestId('links-strip').getByRole('link', { name: 'Mail', exact: true });
     await expect(mailLink).toHaveAttribute('href', /gmail/);
 
-    const driveLink = page.getByRole('link', { name: 'Drive' });
+    const driveLink = page.getByTestId('links-strip').getByRole('link', { name: 'Drive', exact: true });
     await expect(driveLink).toHaveAttribute('href', /drive\.google/);
   });
 });
@@ -362,7 +366,7 @@ test.describe('Settings Modal', () => {
 
     // Appearance tab should show accent color options
     // (look for a label or heading that's unique to this tab)
-    await expect(modal.getByText(/accent/i)).toBeVisible();
+    await expect(modal.getByRole('heading', { name: /accent/i })).toBeVisible();
   });
 
   test('closes with the Close button', async ({ page }) => {

@@ -37,10 +37,10 @@ const SubcategoryCard = memo(function SubcategoryCard({
   return (
     <div
       data-subcategory-card-id={id}
-      className="glass-inner flex h-full w-[85%] min-w-[85%] max-w-[85%] shrink-0 flex-col overflow-hidden p-3.5 sm:p-4 snap-start snap-always"
+      className="glass-inner @container flex h-full w-[calc(50%-6px)] min-w-[calc(50%-6px)] max-w-[calc(50%-6px)] shrink-0 flex-col overflow-hidden p-2 snap-start snap-always"
     >
       {/* Subcategory Card Header */}
-      <div className="mb-2 flex items-center justify-between border-b border-white/[0.04] pb-2 px-1 select-none">
+      <div className="mb-1 flex items-center justify-between border-b border-white/[0.04] pb-1.5 px-1 select-none">
         <h3 className="text-sm sm:text-[15px] font-bold text-white/95 tracking-tight truncate">
           {name}
         </h3>
@@ -276,7 +276,7 @@ export function SubcategoryRail({
       tabIndex={0}
       role="region"
       aria-label="Subcategory rail"
-      className="flex-1 flex gap-4 overflow-x-auto p-4 pb-2 min-h-0 snap-x snap-mandatory scroll-smooth scrollbar-none focus-visible:outline-none select-none"
+      className="flex-1 flex gap-3 overflow-x-auto scroll-px-3 px-3 pt-2 pb-1.5 min-h-0 snap-x snap-mandatory scroll-smooth scrollbar-none focus-visible:outline-none select-none"
     >
       {groups.map((group) => (
         <SubcategoryCard

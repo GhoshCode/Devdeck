@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import { describeWeather, fetchWeather, geocodeCity, placeFromTimezone, uvRisk } from './weather';
+import {
+  describeWeather,
+  fetchWeather,
+  geocodeCity,
+  metSymbolToWmo,
+  placeFromTimezone,
+  reverseGeocode,
+  areaName,
+  uvRisk,
+} from './weather';
 
 const jsonFetch = (body: unknown, ok = true) =>
   (async () => ({ ok, status: ok ? 200 : 500, json: async () => body })) as unknown as typeof fetch;
@@ -34,7 +43,7 @@ test('placeFromTimezone keeps the last segment, spaced', () => {
 describe('fetchWeather', () => {
   test('normalises the Open-Meteo current block', async () => {
     const data = await fetchWeather(
-      { lat: 22.57, lon: 88.36, label: null },
+      { lat: 22.57, lon: 88.36, label: null, postcode: '700001' },
       jsonFetch({
         timezone: 'Asia/Kolkata',
         current: { temperature_2m: 26.6, weather_code: 51, uv_index: 6.2, is_day: 1 },
@@ -47,22 +56,144 @@ describe('fetchWeather', () => {
       conditionText: 'Drizzle',
       icon: 'rain',
       place: 'Kolkata',
+      postcode: '700001',
+      area: null,
       uvIndex: 6.2,
       uvRisk: 'high',
+      source: 'Open-Meteo',
+      sourceId: 'open-meteo',
+      siteUrl: 'https://open-meteo.com/en/docs?latitude=22.5700&longitude=88.3600',
       fetchedAt: 1234,
     });
   });
 
-  test('rejects on HTTP errors', async () => {
-    await expect(fetchWeather({ lat: 0, lon: 0, label: 'X' }, jsonFetch({}, false))).rejects.toThrow(
+  test('falls back to MET Norway when Open-Meteo is down', async () => {
+    const fetcher = (async (url: string) =>
+      url.includes('open-meteo')
+        ? { ok: false, status: 503, json: async () => ({}) }
+        : {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              properties: {
+                timeseries: [
+                  {
+                    data: {
+                      instant: { details: { air_temperature: 21.4, ultraviolet_index_clear_sky: 3.1 } },
+                      next_1_hours: { summary: { symbol_code: 'lightrainshowers_day' } },
+                    },
+                  },
+                ],
+              },
+            }),
+          }) as unknown as typeof fetch;
+    const data = await fetchWeather({ lat: 12.97, lon: 77.59, label: 'Bengaluru', postcode: '560037' }, fetcher, 1);
+    expect(data).toMatchObject({
+      temperature: 21.4,
+      icon: 'rain',
+      place: 'Bengaluru',
+      postcode: '560037',
+      uvIndex: 3.1,
+      uvRisk: 'moderate',
+      source: 'MET Norway (yr.no)',
+      sourceId: 'met-norway',
+      siteUrl: 'https://www.yr.no/en/forecast/daily-table/12.9700,77.5900',
+    });
+  });
+
+  test('tries the preferred source first, including a custom one', async () => {
+    const urls: string[] = [];
+    const fetcher = (async (url: string) => {
+      urls.push(url);
+      return url.startsWith('https://wttr.in/')
+        ? {
+            ok: true,
+            status: 200,
+            json: async () => ({ current_condition: [{ temp_C: '19', uvIndex: '4', weatherCode: '116' }] }),
+          }
+        : { ok: false, status: 500, json: async () => ({}) };
+    }) as unknown as typeof fetch;
+    const place = { lat: 1, lon: 2, label: 'Here', postcode: null };
+    const data = await fetchWeather(place, fetcher, 1, { weatherSource: 'wttr' });
+    expect(urls).toHaveLength(1);
+    expect(data).toMatchObject({
+      temperature: 19,
+      conditionCode: 2,
+      uvIndex: 4,
+      sourceId: 'wttr',
+      siteUrl: 'https://wttr.in/1.0000,2.0000',
+    });
+
+    urls.length = 0;
+    const mine = {
+      id: 'custom-1',
+      name: 'Mine',
+      apiUrl: 'https://meteo.example/v1/forecast?latitude={lat}&longitude={lon}',
+      siteUrl: 'https://meteo.example/',
+    };
+    await fetchWeather(place, fetcher, 1, { weatherSource: 'custom-1', customWeatherSources: [mine] });
+    expect(urls[0]).toBe(
+      'https://meteo.example/v1/forecast?latitude=1.0000&longitude=2.0000&current=temperature_2m,weather_code,uv_index,is_day&timezone=auto',
+    );
+  });
+
+  test('reports the primary error when both sources fail', async () => {
+    await expect(fetchWeather({ lat: 0, lon: 0, label: 'X', postcode: null }, jsonFetch({}, false))).rejects.toThrow(
       'Weather request failed',
     );
   });
 });
 
-test('geocodeCity reports unknown cities', async () => {
+test.each([
+  ['clearsky_day', 0, true],
+  ['clearsky_night', 0, false],
+  ['partlycloudy_day', 2, true],
+  ['heavyrainshowers_night', 80, false],
+  ['heavyrain', 65, true],
+  ['snow', 73, true],
+  ['rainandthunder', 95, true],
+  ['fog', 45, true],
+])('metSymbolToWmo(%s) → %i', (symbol, code, isDay) => {
+  expect(metSymbolToWmo(symbol)).toEqual({ code, isDay });
+});
+
+test('geocodeCity reports unknown cities and returns a postcode when known', async () => {
   await expect(geocodeCity('Nowhere', jsonFetch({}))).rejects.toThrow('City "Nowhere" not found');
   await expect(
-    geocodeCity('Kolkata', jsonFetch({ results: [{ latitude: 1, longitude: 2, name: 'Kolkata' }] })),
-  ).resolves.toEqual({ lat: 1, lon: 2, label: 'Kolkata' });
+    geocodeCity(
+      'Kolkata',
+      jsonFetch({ results: [{ latitude: 1, longitude: 2, name: 'Kolkata', postcodes: ['700001'] }] }),
+    ),
+  ).resolves.toEqual({ lat: 1, lon: 2, label: 'Kolkata', postcode: '700001' });
+});
+
+test('reverseGeocode uses OpenStreetMap for the neighbourhood, BigDataCloud as fallback, and never throws', async () => {
+  const osm = (async (url: string) => ({
+    ok: true,
+    status: 200,
+    json: async () =>
+      url.includes('nominatim')
+        ? { address: { neighbourhood: 'Koramangala 4th Block', suburb: 'Kormangala East', city: 'Bengaluru', postcode: '560034' } }
+        : {},
+  })) as unknown as typeof fetch;
+  await expect(reverseGeocode(12.93, 77.62, osm)).resolves.toEqual({
+    label: 'Bengaluru',
+    postcode: '560034',
+    area: 'Kormangala',
+  });
+  // OSM answers without a city → BigDataCloud
+  await expect(
+    reverseGeocode(12.97, 77.59, jsonFetch({ city: 'Bengaluru', locality: 'Shanthala Nagar', postcode: '560037' })),
+  ).resolves.toEqual({ label: 'Bengaluru', postcode: '560037', area: 'Shanthala Nagar' });
+  await expect(reverseGeocode(0, 0, jsonFetch({}, false))).resolves.toEqual({ label: null, postcode: null, area: null });
+});
+
+test.each([
+  [{ suburb: 'Kormangala East' }, 'Kormangala'],
+  [{ neighbourhood: 'Koramangala 4th Block' }, 'Koramangala'],
+  [{ suburb: 'Marathahalli' }, 'Marathahalli'],
+  [{ city_district: 'Bengaluru East City Corporation', quarter: 'Brookefield' }, 'Brookefield'],
+  [{ city_district: 'Bengaluru East City Corporation' }, null],
+])('areaName(%o) → %s', (addr, expected) => {
+  expect(areaName(addr)).toBe(expected);
 });

@@ -1,7 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { openInNewTab } from '../../lib/openTab';
+import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useStore } from '../../store';
 import { searchSites, getHostname } from '../../utils';
 import { destinationFor, fetchSuggestions, googleSearchUrl, looksLikeUrl } from '../../services/search';
+import { aiProvider, askAi, type AiProvider } from '../../services/ai';
+import { COMMANDS, detectPlatform, parseCommand, runCommand, type CommandResult } from '../../services/commands';
+import { useSpeechInput } from '../../hooks/useSpeechInput';
 import { Favicon } from '../Favicon';
 
 // Always-visible search (Zone 3, §7 Q12) with a three-tier dropdown:
@@ -10,6 +14,11 @@ import { Favicon } from '../Favicon';
 //   3. the direct action — open the URL or search Google for the raw text
 // ↑/↓ move, Enter picks (Ctrl/⌘+Enter → new tab), Esc closes. "/" and Ctrl+K
 // focus it (wired in App).
+//
+// The mic fills the box by voice. The AI toggle switches Enter (and the
+// SEARCH button) from Google to a new chat with the AI chosen in Settings →
+// Profile (Gemini, ChatGPT, Claude, Perplexity or a custom URL), text sent;
+// Google suggestions are hidden then, your sites still match.
 
 const SITE_LIMIT = 5;
 const WEB_LIMIT = 5;
@@ -19,6 +28,8 @@ type Item =
   | { kind: 'site'; key: string; siteId: string; name: string; url: string; meta: string }
   | { kind: 'web'; key: string; text: string; url: string }
   | { kind: 'go'; key: string; text: string; url: string; isUrl: boolean }
+  | { kind: 'gemini'; key: string; text: string; url: string }
+  | { kind: 'command'; key: string; text: string; url: string; result: CommandResult }
   | { kind: 'add'; key: string; text: string; url: string };
 
 interface SearchBarProps {
@@ -32,17 +43,37 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   const categories = useStore((s) => s.categories);
   const subcategories = useStore((s) => s.subcategories);
   const recordVisit = useStore((s) => s.recordVisit);
+  const geminiMode = useStore((s) => !!s.settings.geminiMode);
+  const aiId = useStore((s) => s.settings.aiProvider);
+  const aiCustomUrl = useStore((s) => s.settings.aiCustomUrl);
+  const ai = useMemo(() => aiProvider(aiId, aiCustomUrl), [aiId, aiCustomUrl]);
+  const updateSettings = useStore((s) => s.updateSettings);
 
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [web, setWeb] = useState<{ q: string; items: string[] }>({ q: '', items: [] });
+  const [notice, setNotice] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const q = query.trim();
 
+  const speech = useSpeechInput((text, final) => {
+    setQuery(text);
+    setActive(-1);
+    setOpen(true);
+    if (final) inputRef.current?.focus();
+  });
+  const hint = speech.error ?? notice;
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [notice]);
+
   // Tier 2, debounced; stale responses are dropped by comparing the query.
   useEffect(() => {
-    if (!q || looksLikeUrl(q)) return;
+    if (!q || looksLikeUrl(q) || geminiMode) return;
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       fetchSuggestions(q, WEB_LIMIT + 1, ctrl.signal)
@@ -53,7 +84,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q]);
+  }, [q, geminiMode]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -62,6 +93,17 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
+
+  // Built-in commands (calc, open, gh, npm, g, b64e, b64d, help) run right
+  // here: ">" forces command mode, otherwise the first word must be a command.
+  const command = useMemo<Item | null>(() => {
+    if (!q) return null;
+    const { name } = parseCommand(q);
+    const known = COMMANDS.some((c) => c.name === name) || name === '?' || name === '=' || name === 'google';
+    if (!q.startsWith('>') && !(known && (q.includes(' ') || name === 'help'))) return null;
+    const result = runCommand(q, { admin: false, platform: detectPlatform(), sites });
+    return { kind: 'command', key: 'cmd', text: q.replace(/^>s*/, ''), url: result.kind === 'open' ? result.url : '', result };
+  }, [q, sites]);
 
   const items = useMemo<Item[]>(() => {
     if (!q) return [];
@@ -76,7 +118,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
         meta: `${getHostname(site.url)} · ${category.name}`,
       }));
     const webItems: Item[] =
-      web.q === q
+      web.q === q && !geminiMode
         ? web.items
             .filter((t) => t.toLowerCase() !== q.toLowerCase())
             .slice(0, WEB_LIMIT)
@@ -87,10 +129,53 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     // A URL that isn't in the library yet can be saved straight from here.
     const known = isUrl && sites.some((s) => getHostname(s.url) === getHostname(direct.url));
     const add: Item[] = isUrl && !known ? [{ kind: 'add', key: 'add', text: q, url: direct.url }] : [];
+    if (command) return [command, ...siteItems];
+    if (geminiMode) {
+      // Asking the AI is what Enter does, so it leads; a typed URL can still be opened.
+      const ask: Item = { kind: 'gemini', key: 'gemini', text: q, url: '' };
+      return [ask, ...siteItems, ...(isUrl ? [direct, ...add] : [])];
+    }
     return [...siteItems, ...webItems, direct, ...add];
-  }, [q, sites, categories, subcategories, web]);
+  }, [q, sites, categories, subcategories, web, geminiMode, command]);
+
+  const toGemini = (text: string, newTab: boolean) => {
+    setOpen(false);
+    setQuery('');
+    void askAi(ai, text, { newTab }).then((how) => {
+      if (how === 'clipboard') setNotice(`Prompt copied — paste it into ${ai.name} (Ctrl/⌘+V) and press Enter`);
+      else if (how === 'manual') setNotice(`${ai.name} opened in a new tab — type your prompt there`);
+    });
+  };
+
+  const runBuiltin = async (res: CommandResult, newTab: boolean) => {
+    if (res.kind === 'open') {
+      setOpen(false);
+      setQuery('');
+      void newTab; // always a new tab: the start page stays put
+      openInNewTab(res.url);
+      return;
+    }
+    if (res.kind === 'copy') {
+      try {
+        await navigator.clipboard.writeText(res.text);
+      } catch {
+        // shown below instead
+      }
+    }
+    // Output and errors stay on screen; the query stays so it can be tweaked.
+    setOpen(false);
+    setNotice(res.message);
+  };
 
   const go = (item: Item | undefined, newTab: boolean) => {
+    if (item?.kind === 'command' || (!item && command)) {
+      void runBuiltin((item?.kind === 'command' ? item : (command as Extract<Item, { kind: 'command' }>)).result, newTab);
+      return;
+    }
+    if (item?.kind === 'gemini' || (!item && geminiMode && q)) {
+      toGemini(q, newTab);
+      return;
+    }
     if (item?.kind === 'add') {
       setOpen(false);
       setQuery('');
@@ -102,8 +187,8 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     if (item?.kind === 'site') recordVisit(item.siteId);
     setOpen(false);
     setQuery('');
-    if (newTab) window.open(url, '_blank', 'noopener');
-    else window.location.assign(url);
+    void newTab;
+    openInNewTab(url);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -136,9 +221,19 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   const goIndex = items.findIndex((i) => i.kind === 'go');
 
   return (
-    <div ref={rootRef} className="relative min-w-0 flex-1">
-      <div className="glass-raised flex h-12 items-center gap-3 rounded-2xl pr-1.5 pl-4 transition-colors focus-within:border-white/30">
-        <SearchIcon className="size-5 shrink-0 text-white/45" />
+    <div ref={rootRef} className="relative min-w-0 flex-1 max-sm:basis-full">
+      <div
+        data-gemini={geminiMode || undefined}
+        data-ai={geminiMode ? ai.id : undefined}
+        className={`glass-raised relative isolate flex h-[52px] items-center gap-2.5 rounded-2xl pr-1.5 pl-4 transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
+          geminiMode ? 'gemini-ring' : ''
+        }`}
+      >
+        {geminiMode ? (
+          <AiIcon provider={ai} className="size-5 shrink-0" />
+        ) : (
+          <SearchIcon className="size-5 shrink-0 text-white/45" />
+        )}
         <input
           ref={inputRef}
           value={query}
@@ -149,7 +244,9 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
           }}
           onFocus={() => q && setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search your sites or the web…"
+          placeholder={
+            speech.listening ? 'Listening…' : geminiMode ? `Ask ${ai.name} anything…` : 'Search your sites or the web…'
+          }
           aria-label="Search"
           role="combobox"
           aria-expanded={showDropdown}
@@ -177,16 +274,57 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
             /
           </kbd>
         )}
+        {speech.supported && (
+          <button
+            type="button"
+            onClick={() => (speech.listening ? speech.stop() : void speech.start())}
+            aria-label={speech.listening ? 'Stop voice input' : 'Search by voice'}
+            aria-pressed={speech.listening}
+            title={speech.listening ? 'Stop listening' : 'Search by voice'}
+            className={`relative flex size-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
+              speech.listening ? 'mic-live bg-red-500/20 text-red-300' : 'text-white/45 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <MicIcon className="size-[18px]" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            updateSettings({ geminiMode: !geminiMode });
+            inputRef.current?.focus();
+          }}
+          aria-label={`${ai.name} mode`}
+          aria-pressed={geminiMode}
+          title={geminiMode ? `${ai.name} mode on — Enter asks ${ai.name}` : `Ask ${ai.name} instead of searching Google`}
+          className={`flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
+            geminiMode
+              ? 'border-[#9b72cb]/50 bg-[#9b72cb]/20'
+              : 'border-transparent opacity-60 grayscale hover:bg-white/10 hover:opacity-100 hover:grayscale-0'
+          }`}
+        >
+          <AiIcon provider={ai} className="size-[18px]" />
+        </button>
         <button
           type="button"
           onClick={() => (q ? go(undefined, false) : inputRef.current?.focus())}
-          aria-label="Search the web"
-          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
+          aria-label={geminiMode ? `Ask ${ai.name} now` : 'Search the web'}
+          className="accent-gradient flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 min-[1700px]:px-4 text-xs font-semibold tracking-wide text-white shadow-md transition-transform hover:scale-[1.03]"
         >
           <SearchIcon className="size-4" />
-          SEARCH
+          <span className="hidden min-[1700px]:inline">SEARCH</span>
         </button>
       </div>
+
+      {hint && !showDropdown && (
+        <p
+          role="status"
+          data-testid="search-hint"
+          className="glass-raised absolute top-full left-4 z-50 mt-2 rounded-xl bg-[var(--color-base-elevated)]/95 px-3 py-1.5 text-xs text-white/80"
+        >
+          {hint}
+        </p>
+      )}
 
       {showDropdown && (
         <div
@@ -223,6 +361,25 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
                     <SearchIcon className="size-4 shrink-0 text-white/35" />
                     <span className="truncate">{item.text}</span>
                     <span className="ml-auto shrink-0 font-mono text-[10px] text-white/35">Google</span>
+                  </>
+                ) : item.kind === 'command' ? (
+                  <>
+                    <span className="flex size-5 shrink-0 items-center justify-center font-mono text-xs font-bold text-[var(--color-accent)]">&gt;_</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-mono font-semibold text-white">{item.text}</span>
+                      <span className={`ml-2 font-mono text-xs ${item.result.kind === 'error' ? 'text-red-300' : 'text-white/55'}`}>
+                        {item.result.kind === 'output' ? `→ ${item.result.message}` : item.result.message}
+                      </span>
+                    </span>
+                    <kbd className="ml-auto shrink-0 font-mono text-[10px] text-white/35">Run ↵</kbd>
+                  </>
+                ) : item.kind === 'gemini' ? (
+                  <>
+                    <AiIcon provider={ai} className="size-5 shrink-0" />
+                    <span className="truncate">
+                      Ask {ai.name} <span className="font-semibold text-white">“{item.text}”</span>
+                    </span>
+                    <kbd className="ml-auto shrink-0 font-mono text-[10px] text-white/35">Enter</kbd>
                   </>
                 ) : item.kind === 'add' ? (
                   <>
@@ -261,6 +418,47 @@ function TierLabel({ children, divider = false }: { children: string; divider?: 
     >
       {children}
     </div>
+  );
+}
+
+// The chosen AI's mark: Gemini's sparkle, otherwise a simple glyph in the
+// service's colour.
+function AiIcon({ provider, className }: { provider: AiProvider; className: string }) {
+  if (provider.id === 'gemini') return <GeminiSparkle className={className} />;
+  const glyph = provider.id === 'chatgpt' ? '✺' : provider.id === 'claude' ? '✳' : provider.id === 'perplexity' ? '⁂' : '✦';
+  return (
+    <span aria-hidden className={`${className} flex items-center justify-center text-[15px] leading-none font-bold`} style={{ color: provider.color }}>
+      {glyph}
+    </span>
+  );
+}
+
+// Four-point sparkle in Gemini's blue → violet → rose.
+function GeminiSparkle({ className }: { className: string }) {
+  const id = `gemini-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden>
+      <defs>
+        <linearGradient id={id} x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#4285f4" />
+          <stop offset="0.55" stopColor="#9b72cb" />
+          <stop offset="1" stopColor="#d96570" />
+        </linearGradient>
+      </defs>
+      <path
+        fill={`url(#${id})`}
+        d="M12 2c.6 5.2 4.8 9.4 10 10-5.2.6-9.4 4.8-10 10-.6-5.2-4.8-9.4-10-10 5.2-.6 9.4-4.8 10-10z"
+      />
+    </svg>
+  );
+}
+
+function MicIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21" strokeLinecap="round" />
+    </svg>
   );
 }
 

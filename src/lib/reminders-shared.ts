@@ -6,10 +6,10 @@ import { nextFireTime } from './schedule';
 
 export const REMINDERS_STORAGE_KEY = 'devdeck:reminders';
 
-export type ReminderItem = Pick<ProcessingItem, 'id' | 'name' | 'url' | 'schedule'>;
+export type ReminderItem = Pick<ProcessingItem, 'id' | 'name' | 'url' | 'schedule'> & { section?: string };
 
 export const toReminderItems = (items: readonly ProcessingItem[]): ReminderItem[] =>
-  items.map(({ id, name, url, schedule }) => ({ id, name, url, schedule }));
+  items.map(({ id, name, url, schedule, section }) => ({ id, name, url, schedule, section }));
 
 // The soonest fire time across all items, and which items fire then.
 export function nextDue(items: readonly ReminderItem[], now: Date): { at: number; items: ReminderItem[] } | null {

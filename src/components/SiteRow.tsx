@@ -18,10 +18,9 @@ export const SiteRow = memo(function SiteRow({
   isOverlay = false,
 }: SiteRowProps) {
   const recordVisit = useStore((s) => s.recordVisit);
+  const togglePrimary = useStore((s) => s.togglePrimary);
 
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
@@ -49,7 +48,7 @@ export const SiteRow = memo(function SiteRow({
       ref={setNodeRef}
       style={style}
       data-site-id={site.id}
-      className={`group/site flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-left transition-colors duration-150 ${
+      className={`group/site flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left @min-[240px]:gap-3 @min-[240px]:px-3 transition-colors duration-150 ${
         isOverlay
           ? 'glass-inner bg-white/10 shadow-2xl border-white/20'
           : 'hover:bg-white/[0.07] hover:border-white/10'
@@ -58,7 +57,7 @@ export const SiteRow = memo(function SiteRow({
       <a
         href={site.url}
         onClick={handleClick}
-        className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-center gap-2 focus-visible:outline-none @min-[240px]:gap-3"
       >
         <Favicon
           url={site.url}
@@ -69,56 +68,52 @@ export const SiteRow = memo(function SiteRow({
         <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
           <span
             title={site.name}
-            className="truncate text-sm font-semibold text-white/95 group-hover/site:text-white shrink-0 max-w-[65%]"
+            className="truncate text-[12.5px] font-medium text-white/85 group-hover/site:text-white min-w-0 @min-[240px]:shrink-0 @min-[240px]:max-w-[65%]"
           >
             {site.name}
           </span>
           <span
             title={site.url}
-            className="truncate text-xs text-white/45 group-hover/site:text-white/70 min-w-0 flex-1 font-mono"
+            className="hidden truncate text-[10px] text-white/35 group-hover/site:text-white/60 min-w-0 flex-1 @min-[240px]:block"
           >
             {hostname}
           </span>
         </div>
       </a>
 
-      {/* Hover actions: open in new tab & drag handle */}
-      <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/site:opacity-100 focus-within:opacity-100">
-        <a
-          href={site.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleClick}
-          title="Open in new tab"
-          aria-label={`Open ${site.name} in new tab`}
-          className="flex size-7 items-center justify-center rounded-lg text-white/40 hover:bg-white/10 hover:text-white transition-colors"
-        >
-          <svg className="size-4" viewBox="0 0 20 20" fill="currentColor">
-            <path
-              fillRule="evenodd"
-              d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h4a.75.75 0 010 1.5h-4z"
-              clipRule="evenodd"
-            />
-            <path
-              fillRule="evenodd"
-              d="M6.19 13.81a.75.75 0 001.06 0l7.25-7.25v2.69a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.69L6.19 12.75a.75.75 0 000 1.06z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </a>
-
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag to reorder ${site.name}`}
-          className="flex size-7 cursor-grab active:cursor-grabbing items-center justify-center rounded-lg text-white/30 hover:text-white/70"
-        >
-          <svg className="size-4" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M7 2a2 2 0 100 4 2 2 0 000-4zM7 8a2 2 0 100 4 2 2 0 000-4zM7 14a2 2 0 100 4 2 2 0 000-4zM13 2a2 2 0 100 4 2 2 0 000-4zM13 8a2 2 0 100 4 2 2 0 000-4zM13 14a2 2 0 100 4 2 2 0 000-4z" />
-          </svg>
-        </button>
-      </div>
+      {/* Pin: puts the site in the card's top row (it stays here too, marked pinned). */}
+      <button
+        type="button"
+        onClick={() => togglePrimary(site.id)}
+        aria-pressed={site.primary}
+        aria-label={site.primary ? `Remove ${site.name} from the top row` : `Add ${site.name} to the top row`}
+        title={site.primary ? 'Pinned to the top row — click to unpin' : 'Pin to the top row'}
+        className={`flex size-7 shrink-0 items-center justify-center rounded-lg transition-[opacity,color,background-color] duration-150 hover:bg-white/10 ${
+          site.primary
+            ? 'site-pinned opacity-100'
+            : 'text-white/40 opacity-0 group-hover/site:opacity-100 focus-visible:opacity-100 hover:text-white'
+        }`}
+      >
+        <PinIcon filled={site.primary} />
+      </button>
     </div>
   );
 });
+
+// Outline pin = not in the top row; filled pin = pinned there.
+// A minimal outline thumbtack, tilted like a pin pressed into a board.
+// "filled" (pinned) adds a soft tint inside the outline rather than a solid blob.
+export function PinIcon({ filled, className = 'size-3.5' }: { filled: boolean; className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <g transform="rotate(45 12 12)">
+        <path
+          d="M9 4h6M10 4v5.2c0 .6-.3 1.2-.8 1.5l-1.9 1.4A2.2 2.2 0 0 0 6.4 14v1h11.2v-1a2.2 2.2 0 0 0-.9-1.9l-1.9-1.4a1.9 1.9 0 0 1-.8-1.5V4"
+          fill={filled ? 'currentColor' : 'none'}
+          fillOpacity={filled ? 0.25 : 0}
+        />
+        <path d="M12 15v5.5" />
+      </g>
+    </svg>
+  );
+}

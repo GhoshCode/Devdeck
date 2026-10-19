@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../../store';
+import { LoadingBar } from '../ui/LoadingBar';
 import {
   UV_LABEL,
   WEATHER_TTL_MS,
@@ -10,8 +11,10 @@ import {
   type WeatherIcon,
 } from '../../services/weather';
 
-// A (Weather °C) stacked over B (UV index + risk badge), beside the TIME widget.
-// Click either half to force a refresh.
+// Under the clock: `lead` (the date line), then A (weather °C) and B (UV
+// badge) on the same line, and the place — area, city, pincode — below.
+// Refreshes every 15 min. Click to refresh now; double-click to open the page
+// of the source the reading came from.
 
 const ICON: Record<WeatherIcon, string> = {
   sun: '☀️',
@@ -39,12 +42,18 @@ type State =
   | { status: 'error'; data: WeatherData | null; error: string };
 
 // onSetup: opens Settings → Profile when there is no usable location.
-export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => void }) {
+export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: () => void; lead?: ReactNode }) {
   const enabled = useStore((s) => s.settings.weatherEnabled);
   const useGeolocation = useStore((s) => s.settings.useGeolocation);
   const manualCity = useStore((s) => s.settings.manualCity);
+  const weatherSource = useStore((s) => s.settings.weatherSource);
+  const customWeatherSources = useStore((s) => s.settings.customWeatherSources);
+  const prefs = useMemo(
+    () => ({ useGeolocation, manualCity, weatherSource, customWeatherSources }),
+    [useGeolocation, manualCity, weatherSource, customWeatherSources],
+  );
   const [state, setState] = useState<State>(() => {
-    const hit = cachedWeather({ useGeolocation, manualCity });
+    const hit = cachedWeather(prefs);
     return hit ? { status: 'ready', data: hit } : { status: 'loading', data: null };
   });
 
@@ -52,7 +61,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
     (force: boolean) => {
       let cancelled = false;
       setState((s) => ({ status: 'loading', data: s.data }));
-      loadWeather({ useGeolocation, manualCity }, { force })
+      loadWeather(prefs, { force })
         .then((data) => !cancelled && setState({ status: 'ready', data }))
         .catch(
           (err: unknown) =>
@@ -67,7 +76,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
         cancelled = true;
       };
     },
-    [useGeolocation, manualCity],
+    [prefs],
   );
 
   // Load on mount / location change, then keep it fresh while the tab stays open.
@@ -81,68 +90,139 @@ export const WeatherUV = memo(function WeatherUV({ onSetup }: { onSetup?: () => 
     };
   }, [enabled, refresh]);
 
-  if (!enabled) return <div aria-hidden className="glass h-full opacity-40" />;
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (clickTimer.current && clearTimeout(clickTimer.current)), []);
+
+  if (!enabled) return <>{lead}</>;
 
   const { data } = state;
   const error = state.status === 'error' ? state.error : null;
 
   // First run with location denied and no city: say what to do instead of
   // showing a bare warning and "--°C".
+  const row = 'flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-0.5 text-left';
+
   if (!data && error && !manualCity.trim() && onSetup) {
     return (
-      <button
-        type="button"
-        onClick={onSetup}
-        title={`${error} — set a city in Settings → Profile`}
-        aria-label="Set your location for weather"
-        data-testid="weather-uv"
-        className="glass-inner flex h-full flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center"
-      >
-        <span aria-hidden className="text-base leading-none">📍</span>
-        <span className="text-[11px] leading-tight font-semibold text-white/90">Set location</span>
-        <span className="text-[9px] leading-tight text-white/50">for weather &amp; UV</span>
-      </button>
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1">
+        {lead}
+        <button
+          type="button"
+          onClick={onSetup}
+          title={`${error} — set a city in Settings → Profile`}
+          aria-label="Set your location for weather"
+          data-testid="weather-uv"
+          className={`${row} hover:bg-white/[0.04]`}
+        >
+          <MapPinGlyph className="size-[18px] shrink-0 text-[var(--color-accent)]" />
+          <span className="text-[11px] leading-tight font-semibold text-white/90">Set location</span>
+          <span className="text-[10px] leading-tight text-white/50">for weather &amp; UV</span>
+        </button>
+      </div>
     );
   }
+
+  const where = data ? [data.area, data.place].filter(Boolean).join(', ') : '';
+  const updated = data
+    ? new Date(data.fetchedAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+  const site = !error && data?.siteUrl ? data.siteUrl : null;
   const title = error
     ? `${error} — click to retry`
     : data
-      ? `${data.conditionText} in ${data.place} · updated ${new Date(data.fetchedAt).toLocaleTimeString()} — click to refresh`
+      ? `${data.conditionText} in ${where}${data.postcode ? ` ${data.postcode}` : ''} · ${data.source}, updated ${updated}\nClick to refresh · double-click to open ${data.source}`
       : 'Loading weather…';
 
+  // One click refreshes; a double click opens the source's page instead (the
+  // single click waits a moment so a double click doesn't also refresh).
+  const onClick = () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      refresh(true);
+    }, 260);
+  };
+  const onDoubleClick = () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = null;
+    if (site) window.open(site, '_blank', 'noopener');
+  };
+
+  const handlers = { onClick, onDoubleClick, title };
   return (
-    <button
-      type="button"
-      onClick={() => refresh(true)}
-      title={title}
-      aria-label={data ? `Weather: ${Math.round(data.temperature)}°C, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}` : 'Weather'}
-      data-testid="weather-uv"
-      className={`grid h-full grid-rows-2 gap-2 text-left ${state.status === 'loading' ? 'animate-pulse' : ''}`}
-    >
-      {/* A — Weather */}
-      <div className="glass-inner flex flex-col justify-center rounded-2xl px-2.5">
-        <span className="font-mono text-[8px] font-bold tracking-[0.18em] text-white/40">A · WEATHER</span>
-        <span className="flex items-center gap-1 text-white/95">
-          <span className="text-sm leading-none">{data ? ICON[data.icon] : error ? '⚠️' : '·'}</span>
-          <span className="text-[1rem] font-semibold tabular-nums">
-            {data ? `${Math.round(data.temperature)}°C` : '--°C'}
-          </span>
-        </span>
-      </div>
-      {/* B — UV index */}
-      <div className="glass-inner flex flex-col justify-center rounded-2xl px-2.5">
-        <span className="font-mono text-[8px] font-bold tracking-[0.18em] text-white/40">B · UV</span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold tabular-nums text-white/95">
-            {data ? data.uvIndex.toFixed(1) : '--'}
-          </span>
-          {data && (
-            <span className={`rounded-md border px-1 text-[9px] font-bold uppercase ${UV_BADGE[data.uvRisk]}`}>
-              {UV_LABEL[data.uvRisk]}
+    <div className="relative flex max-w-full min-w-0 flex-col items-start gap-1">
+      <LoadingBar active={state.status === 'loading'} label="Loading weather" className="absolute inset-x-0 -bottom-1" />
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-1.5">
+        {lead}
+        <button
+          type="button"
+          {...handlers}
+          aria-label={
+            data
+              ? `Weather in ${where}: ${Math.round(data.temperature)}°C, ${data.conditionText}, UV ${data.uvIndex.toFixed(1)} ${UV_LABEL[data.uvRisk]}. Click to refresh, double-click to open ${data.source}`
+              : 'Weather'
+          }
+          data-testid="weather-uv"
+          className={`${row} -my-0.5 cursor-pointer transition-colors select-none hover:bg-white/[0.05] ${
+            state.status === 'loading' ? (data ? 'opacity-70' : 'animate-pulse') : ''
+          }`}
+        >
+          {/* A — condition + temperature */}
+          <span className="flex items-center gap-1.5 text-white/90">
+            <span aria-hidden className="text-base leading-none">
+              {data ? ICON[data.icon] : error ? '⚠️' : '·'}
             </span>
-          )}
-        </span>
+            <span className="font-mac text-[1.05rem] leading-none font-light tracking-tight tabular-nums">
+              {data ? `${Math.round(data.temperature)}°` : '--°'}
+              <span className="text-[0.7rem] text-white/55">C</span>
+            </span>
+          </span>
+          {/* B — UV index */}
+          <span
+            className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
+              data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
+            }`}
+          >
+            UV {data ? data.uvIndex.toFixed(1) : '--'} · {data ? UV_LABEL[data.uvRisk] : '—'}
+          </span>
+        </button>
       </div>
-    </button>
+      {/* The place: area, city, pincode — one weight, the city a touch larger */}
+      <span
+        {...handlers}
+        data-testid="weather-place"
+        className="flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 leading-tight font-medium text-white/80 select-none"
+      >
+        {/* the pin sits centred beside the place lines */}
+        <MapPinGlyph className="size-[18px] shrink-0 text-[var(--color-accent)]" />
+        {data ? (
+          <span className="flex min-w-0 flex-col items-start gap-0.5">
+            <span className="max-w-full truncate text-[11px] text-white/75">{data.area ?? data.place}</span>
+            {data.area && (
+              <span className="max-w-full truncate text-[14.5px] text-white/90">
+                {data.place}
+                {data.postcode && <span className="font-mono text-[11.5px] text-white/60">, {data.postcode}</span>}
+              </span>
+            )}
+            {!data.area && data.postcode && <span className="font-mono text-[11.5px] text-white/60">{data.postcode}</span>}
+          </span>
+        ) : (
+          <span className="text-[11px]">{error ? 'Unavailable' : 'Locating…'}</span>
+        )}
+      </span>
+    </div>
   );
 });
+
+// Map pin for the place line (replaces the small emoji).
+function MapPinGlyph({ className = 'size-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}

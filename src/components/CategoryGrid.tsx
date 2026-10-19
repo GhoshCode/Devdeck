@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useStore } from '../store';
 import { CategoryCard } from './CategoryCard';
+import { PagerDots, PagerSpacer, useCardPaging } from './CardsPager';
 import { orderWithPin } from '../lib/categories';
+import { UncategorizedTiles } from './UncategorizedTiles';
 
 interface CategoryGridProps {
   onOpenSettings?: () => void;
@@ -14,106 +16,14 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
   const shouldReduceMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortedCategories = useMemo(() => orderWithPin(categories, pinnedId), [categories, pinnedId]);
+  const sites = useStore((s) => s.sites);
+  const loose = useMemo(() => sites.filter((s) => s.categoryId === '').sort((a, b) => a.order - b.order), [sites]);
+  const paging = useCardPaging(scrollRef, sortedCategories.length + (loose.length ? 1 : 0));
 
   // Bring the row back to the start when a card is pinned so it is seen landing first.
   useEffect(() => {
     if (pinnedId) scrollRef.current?.scrollTo({ left: 0, behavior: shouldReduceMotion ? 'auto' : 'smooth' });
   }, [pinnedId, shouldReduceMotion]);
-
-  const handleThinSpaceWheel = (e: React.WheelEvent) => {
-    e.stopPropagation();
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    if (Math.abs(delta) < 2) return;
-
-    // Check if directly below a specific card
-    const elements = document.elementsFromPoint(e.clientX, Math.max(0, e.clientY - 25));
-    const card = elements.find((el) => el.closest('[data-category-id]'))?.closest<HTMLElement>('[data-category-id]');
-    if (card) {
-      const bottomToolbar = card.querySelector<HTMLElement>('[data-category-card-bottom]');
-      if (bottomToolbar) {
-        const btn =
-          delta > 0
-            ? bottomToolbar.querySelector<HTMLButtonElement>('button[title*="Next"]')
-            : bottomToolbar.querySelector<HTMLButtonElement>('button[title*="Previous"]');
-        if (btn && !btn.disabled) {
-          btn.click();
-          return;
-        }
-      }
-    }
-    // Fallback: translate to horizontal scroll of category container
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft += delta;
-    }
-  };
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    // Mouse wheel horizontal translation inside this container
-    const handleWheel = (e: WheelEvent) => {
-      const target = e.target as HTMLElement;
-      // If cursor is inside any category card, let the card handle its internal scrolling
-      if (target.closest('[data-category-id]')) {
-        return;
-      }
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-    };
-  }, [sortedCategories.length]);
-
-  // Pointer drag-to-scroll on main container
-  const isPointerDownRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollStartRef = useRef(0);
-  const isDraggingRef = useRef(false);
-
-  const handleContainerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    // Don't drag if clicking inside links, buttons, inputs, or site rows
-    if (target.closest('a, button, input, [data-site-id]')) return;
-    if (e.button !== 0) return;
-
-    isPointerDownRef.current = true;
-    isDraggingRef.current = false;
-    startXRef.current = e.clientX;
-    scrollStartRef.current = scrollRef.current?.scrollLeft ?? 0;
-  };
-
-  const handleContainerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPointerDownRef.current) return;
-    const dx = e.clientX - startXRef.current;
-    if (!isDraggingRef.current && Math.abs(dx) > 6) {
-      isDraggingRef.current = true;
-      try {
-        scrollRef.current?.setPointerCapture(e.pointerId);
-      } catch {}
-    }
-    if (isDraggingRef.current && scrollRef.current) {
-      scrollRef.current.scrollLeft = scrollStartRef.current - dx;
-    }
-  };
-
-  const handleContainerPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDraggingRef.current) {
-      try {
-        scrollRef.current?.releasePointerCapture(e.pointerId);
-      } catch {}
-    }
-    isPointerDownRef.current = false;
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 50);
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -137,7 +47,7 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
   const isContainerized = sortedCategories.length > 3;
 
   return (
-    <main className="flex flex-1 min-h-0 w-full overflow-hidden">
+    <main data-drag-zone="cards" className="flex flex-1 min-h-0 w-full overflow-hidden">
       {sortedCategories.length === 0 ? (
         <div className="glass flex flex-1 items-center justify-center text-center p-8 rounded-3xl border border-white/10 shadow-2xl">
           <div className="flex flex-col items-center max-w-sm">
@@ -166,10 +76,13 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
         <div className="flex flex-1 min-h-0 w-full flex-col overflow-hidden">
           <motion.div
             ref={scrollRef}
+            data-cards-track
+            data-per-page={paging.perPage}
+            id="category-cards-track"
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="flex flex-1 min-h-0 w-full flex-row gap-5 lg:gap-6 items-stretch justify-start overflow-x-auto overflow-y-hidden scrollbar-none"
+            className="relative flex flex-1 min-h-0 w-full flex-row gap-5 lg:gap-6 items-stretch justify-start overflow-x-auto overflow-y-hidden scrollbar-none"
           >
             {sortedCategories.map((category) => (
               <motion.div
@@ -184,36 +97,39 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
                 <CategoryCard category={category} />
               </motion.div>
             ))}
+            {loose.length > 0 && (
+              <div className="w-[330px] sm:w-[370px] lg:w-[400px] shrink-0 h-full flex flex-col min-h-0">
+                <UncategorizedTiles sites={loose} />
+              </div>
+            )}
+            <PagerSpacer width={paging.spacer} />
           </motion.div>
-          {/* Thin interactive scroll space below cards - completely scrollbar-free */}
-          <div
-            data-testid="thin-cards-scroll-space"
-            onWheel={handleThinSpaceWheel}
-            className="w-full h-1.5 shrink-0 select-none cursor-ew-resize opacity-0"
-            title="Scroll subcategories or cards horizontally"
-          />
+          {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
+          {/* Footer: page dots in the middle */}
+          <div className="flex shrink-0 items-center justify-center pt-1.5">
+            <PagerDots pages={paging.pages} page={paging.page} goTo={paging.goTo} />
+          </div>
         </div>
       ) : (
         /* Containerized when cards cross the limit (> 3 categories) */
         <section
           aria-label="Categories container"
           data-categories-container
-          className="glass-raised relative flex flex-1 min-h-0 flex-col overflow-hidden rounded-3xl border border-white/15 shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-2xl p-3 sm:p-4"
+          className="glass-raised relative flex flex-1 min-h-0 flex-col overflow-hidden rounded-3xl border border-white/15 shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-2xl p-3 pb-1 sm:p-4 sm:pb-1.5"
         >
           {/* Horizontal scroll track with cards */}
           <motion.div
             ref={scrollRef}
+            data-cards-track
+            data-per-page={paging.perPage}
+            id="category-cards-track"
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            onPointerDown={handleContainerPointerDown}
-            onPointerMove={handleContainerPointerMove}
-            onPointerUp={handleContainerPointerUp}
-            onPointerCancel={handleContainerPointerUp}
             tabIndex={0}
             role="region"
             aria-label="Scrollable category cards"
-            className="flex flex-1 min-h-0 flex-row gap-5 overflow-x-auto overflow-y-hidden items-stretch py-1 px-1 scroll-smooth scrollbar-none focus-visible:outline-none select-none cursor-grab active:cursor-grabbing"
+            className="relative flex flex-1 min-h-0 flex-row gap-5 overflow-x-auto overflow-y-hidden items-stretch py-1 px-1 scrollbar-none focus-visible:outline-none"
           >
             {sortedCategories.map((category) => (
               <motion.div
@@ -228,22 +144,25 @@ export function CategoryGrid({ onOpenSettings }: CategoryGridProps) {
                 <CategoryCard category={category} />
               </motion.div>
             ))}
+            {loose.length > 0 && (
+              <div className="w-[330px] sm:w-[370px] lg:w-[400px] shrink-0 h-full flex flex-col min-h-0">
+                <UncategorizedTiles sites={loose} />
+              </div>
+            )}
+            <PagerSpacer width={paging.spacer} />
           </motion.div>
 
-          {/* Thin interactive scroll space below cards - completely scrollbar-free */}
-          <div
-            data-testid="thin-cards-scroll-space"
-            onWheel={handleThinSpaceWheel}
-            className="w-full h-1.5 shrink-0 select-none cursor-ew-resize opacity-0"
-            title="Scroll subcategories or cards horizontally"
-          />
+          {/* Page dots: click one, or scroll the wheel over this strip, to move a page of cards. */}
+          {/* Footer: page dots in the middle */}
+          <div className="flex shrink-0 items-center justify-center pt-1.5">
+            <PagerDots pages={paging.pages} page={paging.page} goTo={paging.goTo} />
+          </div>
         </section>
       )}
     </main>
   );
 }
 
-// The pinned card stays anchored at the left edge while the others scroll
-// underneath; the solid backing and right-edge shadow keep it legible.
-const PINNED_CLASS =
-  'sticky left-0 z-10 rounded-2xl bg-[var(--color-base-elevated)] shadow-[12px_0_24px_-8px_rgba(0,0,0,0.55)]';
+// The pinned card leads the first page (rows move a page at a time, so it no
+// longer stays stuck to the left edge).
+const PINNED_CLASS = 'rounded-2xl';

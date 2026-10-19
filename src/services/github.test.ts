@@ -63,10 +63,12 @@ describe('loadGitStats', () => {
   test('public path hits the contributions API and caches the result', async () => {
     const { fn, calls } = fakeFetch(200, { contributions: [{ date: '2026-10-14', count: 2, level: 2 }] });
     const s = await loadGitStats('octo', '', { fetcher: fn });
-    expect(calls[0].url).toBe('https://github-contributions-api.jogruber.de/v4/octo?y=last');
+    const contributionCalls = () => calls.filter((c) => c.url.includes('github-contributions-api'));
+    expect(contributionCalls().map((c) => c.url)).toEqual(['https://github-contributions-api.jogruber.de/v4/octo?y=last']);
     expect(s.days).toHaveLength(1);
+    const before = calls.length;
     await loadGitStats('octo', '', { fetcher: fn });
-    expect(calls).toHaveLength(1); // second call served from cache
+    expect(calls).toHaveLength(before); // second call served entirely from cache
   });
 
   test('token path uses GraphQL with a bearer header and maps levels', async () => {

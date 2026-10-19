@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('panel D is two stacked cards with the settings cog in the lower one', async ({ page }) => {
-  const top = page.getByRole('region', { name: 'Processing: Focus' });
+  const top = page.getByRole('region', { name: 'Processing: Currently processing' });
   const lower = page.getByRole('region', { name: 'Processing: other sections' });
   await expect(top).toBeVisible();
   await expect(lower).toBeVisible();
@@ -42,6 +42,6 @@ test('add a library site, schedule it, and file a second one under another secti
   await add.press('Enter');
 
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('region', { name: 'Processing: Focus' }).getByText('GitHub')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Processing: Currently processing' }).getByText('GitHub')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Processing: other sections' }).getByText('Vercel')).toBeVisible();
 });

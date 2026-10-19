@@ -1,9 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { useStore } from '../../store';
 import type { FeedCategory, FeedKind } from '../../types';
 import { normalizeUrl } from '../../utils';
 import { requestHostAccess } from '../../lib/env';
 import { clearCache } from '../../lib/cache';
+import { Select } from '../ui/Select';
+
+const FEED_PANELS = [{ value: 'news', label: 'News' }, { value: 'jobs', label: 'Jobs' }] as const;
 
 // Settings → Scraping (plan Phase 6, §7 Q13): topic chips (J) and the sources
 // feeding the news and jobs panels (I).
@@ -29,8 +32,50 @@ export function ScrapingTab() {
           Topic chips filter the news and jobs panels; sources decide what they show.
         </p>
       </div>
+      <SectionCounts />
       <Topics />
       <Sources />
+    </div>
+  );
+}
+
+// How many items each feed section shows: 0–100.
+// The panels reload with the new amounts when Settings closes.
+function SectionCounts() {
+  const news = useStore((s) => s.settings.feedNewsCount ?? 4);
+  const jobs = useStore((s) => s.settings.feedJobsCount ?? 4);
+  const updateSettings = useStore((s) => s.updateSettings);
+  return (
+    <section aria-label="Items per section" className="glass-inner space-y-4 rounded-xl p-4">
+      <div>
+        <h4 className="text-xs font-semibold tracking-wider text-white/80 uppercase">Items per section</h4>
+        <p className="mt-0.5 text-[11px] text-white/45">How many scraped items each panel lists (0 hides the list).</p>
+      </div>
+      <CountSlider id="count-news" label="Tech news" value={news} onChange={(v) => updateSettings({ feedNewsCount: v })} />
+      <CountSlider id="count-jobs" label="Dev jobs" value={jobs} onChange={(v) => updateSettings({ feedJobsCount: v })} />
+    </section>
+  );
+}
+
+function CountSlider({ id, label, value, onChange }: { id: string; label: string; value: number; onChange: (v: number) => void }) {
+  // One quiet row: label, a half-width slider, the number.
+  return (
+    <div className="flex items-center gap-4">
+      <label htmlFor={id} className="w-24 shrink-0 text-xs font-medium text-white/80">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="count-slider w-1/2 min-w-[140px]"
+        style={{ '--fill': `${value}%` } as CSSProperties}
+      />
+      <span className="count-value w-12 shrink-0 text-right font-mono text-[13px] font-semibold text-white tabular-nums">{value}</span>
     </div>
   );
 }
@@ -149,15 +194,14 @@ function Sources() {
                 {KIND_LABEL[s.kind]} · {s.url}
               </span>
             </span>
-            <select
+            <Select
               value={s.category}
-              onChange={(e) => updateFeedSource(s.id, { category: e.target.value as FeedCategory })}
-              aria-label={`Panel for ${s.name}`}
-              className="rounded-lg bg-white/5 px-2 py-1 text-[11px] text-white/80 [color-scheme:dark]"
-            >
-              <option value="news">News</option>
-              <option value="jobs">Jobs</option>
-            </select>
+              onChange={(v) => updateFeedSource(s.id, { category: v as FeedCategory })}
+              ariaLabel={`Panel for ${s.name}`}
+              size="sm"
+              className="w-[84px]"
+              options={FEED_PANELS}
+            />
             <button
               type="button"
               onClick={() => deleteFeedSource(s.id)}
@@ -179,15 +223,13 @@ function Sources() {
             aria-label="Feed URL"
             className={`${field} font-mono`}
           />
-          <select
+          <Select
             value={category}
-            onChange={(e) => setCategory(e.target.value as FeedCategory)}
-            aria-label="Feed panel"
-            className={`${field} [color-scheme:dark]`}
-          >
-            <option value="news">News</option>
-            <option value="jobs">Jobs</option>
-          </select>
+            onChange={(v) => setCategory(v as FeedCategory)}
+            ariaLabel="Feed panel"
+            className="w-[96px]"
+            options={FEED_PANELS}
+          />
           <button type="submit" className="rounded-xl bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15">
             Add RSS
           </button>

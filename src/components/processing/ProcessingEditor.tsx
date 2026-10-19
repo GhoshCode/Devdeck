@@ -1,24 +1,26 @@
+import { FIRST_SECTION } from '../../types';
 import { memo, useMemo, useState, type FormEvent } from 'react';
 import { useStore } from '../../store';
 import type { ProcessingItem, Schedule, ScheduleFrequency } from '../../types';
 import { deriveNameFromUrl, normalizeUrl, searchSites } from '../../utils';
 import { looksLikeUrl } from '../../services/search';
-import { DAY_LABELS, describeSchedule, nextFireTime } from '../../lib/schedule';
+import { DAY_LABELS, describeSchedule, nextFireTime, ordinal } from '../../lib/schedule';
+import { Select } from '../ui/Select';
 import { Favicon } from '../Favicon';
+import { Countdown } from '../ui/Countdown';
+import { TimerPanel } from '../ui/TimerPanel';
+import { showUndo } from '../ui/UndoToast';
 
 // Full editor for Currently Processing (plan Phase 4): add from the library or
 // by URL, group into sections, and set each item's reminder schedule. Used by
 // the panel's mini settings cog and by Settings → Processing.
 
-export const DEFAULT_SECTIONS = ['Focus', 'Queue'];
+export const DEFAULT_SECTIONS = [FIRST_SECTION, 'Queue'];
 
 export const ProcessingEditor = memo(function ProcessingEditor() {
   const processing = useStore((s) => s.processing);
   const items = useMemo(() => [...processing].sort((a, b) => a.order - b.order), [processing]);
-  const sections = useMemo(
-    () => [...new Set([...DEFAULT_SECTIONS, ...items.map((i) => i.section)])],
-    [items],
-  );
+  const sections = useMemo(() => [...new Set([...DEFAULT_SECTIONS, ...items.map((i) => i.section)])], [items]);
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
@@ -30,9 +32,7 @@ export const ProcessingEditor = memo(function ProcessingEditor() {
         ))}
       </datalist>
       {items.length === 0 ? (
-        <p className="px-1 py-4 text-center text-xs text-white/40">
-          Nothing in progress yet — add a site you're actively working on.
-        </p>
+        <p className="px-1 py-4 text-center text-xs text-white/40">Nothing in progress yet — add a site you're actively working on.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((item) => (
@@ -67,7 +67,7 @@ function AddItem({ sections, onAdded }: { sections: string[]; onAdded: (id: stri
     : [];
 
   const add = (input: { name: string; url: string; siteId: string | null }) => {
-    const item = addProcessingItem({ ...input, section: section.trim() || 'Focus', schedule: { enabled: true } });
+    const item = addProcessingItem({ ...input, section: section.trim() || FIRST_SECTION, schedule: { enabled: true } });
     setQuery('');
     onAdded(item.id);
   };
@@ -139,11 +139,20 @@ const FREQUENCIES: Array<{ id: ScheduleFrequency; label: string }> = [
   { id: 'minute', label: 'Minute' },
   { id: 'hourly', label: 'Hourly' },
   { id: 'daily', label: 'Daily' },
+  { id: 'weekly', label: 'Weekly' },
+  { id: 'monthly', label: 'Monthly' },
+];
+const WEEK_INTERVALS = [1, 2, 3, 4].map((n) => ({ value: String(n), label: n === 1 ? 'Every week' : `Every ${n} weeks` }));
+const MONTH_INTERVALS = [1, 2, 3, 6].map((n) => ({ value: String(n), label: n === 1 ? 'Every month' : `Every ${n} months` }));
+const MONTH_DAYS = [
+  ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: `${ordinal(i + 1)} day` })),
+  { value: '-1', label: 'Last day' },
 ];
 
 function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: boolean; onToggle: () => void }) {
   const update = useStore((s) => s.updateProcessingItem);
   const remove = useStore((s) => s.deleteProcessingItem);
+  const reinsert = useStore((s) => s.reinsertProcessingItem);
   const s = item.schedule;
   const setSchedule = (patch: Partial<Schedule>) => update(item.id, { schedule: { ...s, ...patch } });
   const next = nextFireTime(s, new Date());
@@ -165,7 +174,10 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
         </button>
         <button
           type="button"
-          onClick={() => remove(item.id)}
+          onClick={() => {
+            remove(item.id);
+            showUndo(`Removed ${item.name} from ${item.section}`, () => reinsert(item));
+          }}
           aria-label={`Remove ${item.name}`}
           className="text-xs text-white/30 hover:text-red-300"
         >
@@ -176,12 +188,7 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
       {open && (
         <div className="space-y-2.5 border-t border-white/[0.06] px-3 pt-2.5 pb-3 text-xs">
           <div className="grid grid-cols-[1fr_6rem] gap-2">
-            <input
-              value={item.name}
-              onChange={(e) => update(item.id, { name: e.target.value })}
-              aria-label="Name"
-              className={field}
-            />
+            <input value={item.name} onChange={(e) => update(item.id, { name: e.target.value })} aria-label="Name" className={field} />
             <input
               value={item.section}
               onChange={(e) => update(item.id, { section: e.target.value })}
@@ -208,8 +215,8 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
             Remind me to work on this
           </label>
 
-          <fieldset disabled={!s.enabled} className="space-y-2.5 disabled:opacity-40">
-            <div className="flex items-center gap-2">
+          <fieldset disabled={!s.enabled} className="min-w-0 space-y-2.5 disabled:opacity-40">
+            <div className="flex flex-wrap items-center gap-2">
               <div role="radiogroup" aria-label="Frequency" className="inline-flex rounded-lg bg-black/30 p-0.5">
                 {FREQUENCIES.map((f) => (
                   <button
@@ -217,7 +224,7 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
                     type="button"
                     role="radio"
                     aria-checked={s.frequency === f.id}
-                    onClick={() => setSchedule({ frequency: f.id })}
+                    onClick={() => setSchedule(f.id === s.frequency ? {} : { frequency: f.id, interval: 1 })}
                     className={`rounded-md px-2 py-0.5 text-[11px] ${
                       s.frequency === f.id ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white/80'
                     }`}
@@ -226,7 +233,7 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
                   </button>
                 ))}
               </div>
-              {s.frequency === 'daily' && (
+              {(s.frequency === 'daily' || s.frequency === 'weekly' || s.frequency === 'monthly') && (
                 <input
                   type="time"
                   value={s.timeOfDay ?? '09:00'}
@@ -237,34 +244,100 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
               )}
             </div>
 
-            <div role="group" aria-label="Days of the week" className="flex gap-1">
-              {DAY_LABELS.map((label, d) => (
-                <button
-                  key={label}
-                  type="button"
-                  aria-pressed={s.daysOfWeek.includes(d)}
-                  onClick={() => toggleDay(d)}
-                  className={`flex-1 rounded-md py-1 text-[10px] font-semibold ${
-                    s.daysOfWeek.includes(d)
-                      ? 'bg-[var(--color-accent)]/25 text-white ring-1 ring-[var(--color-accent)]/50'
-                      : 'bg-white/5 text-white/45 hover:bg-white/10'
-                  }`}
-                >
-                  {label.slice(0, 2)}
-                </button>
-              ))}
-            </div>
+            {s.frequency === 'weekly' && (
+              <div className="flex items-center gap-2 text-white/60">
+                <span className="text-[11px]">Repeat</span>
+                <Select
+                  value={String(s.interval ?? 1)}
+                  onChange={(v) => setSchedule({ interval: Number(v) })}
+                  ariaLabel="Repeat every"
+                  size="sm"
+                  className="w-[130px]"
+                  options={WEEK_INTERVALS}
+                />
+                <span className="text-[11px]">on</span>
+              </div>
+            )}
+            {s.frequency === 'monthly' && (
+              <div className="flex flex-wrap items-center gap-2 text-white/60">
+                <span className="text-[11px]">On</span>
+                <Select
+                  value={String(s.dayOfMonth ?? 1)}
+                  onChange={(v) => setSchedule({ dayOfMonth: Number(v) })}
+                  ariaLabel="Day of the month"
+                  size="sm"
+                  className="w-[118px]"
+                  options={MONTH_DAYS}
+                />
+                <Select
+                  value={String(s.interval ?? 1)}
+                  onChange={(v) => setSchedule({ interval: Number(v) })}
+                  ariaLabel="Repeat every"
+                  size="sm"
+                  className="w-[132px]"
+                  options={MONTH_INTERVALS}
+                />
+              </div>
+            )}
+            {s.frequency !== 'monthly' && (
+              <div role="group" aria-label="Days of the week" className="flex gap-1">
+                {DAY_LABELS.map((label, d) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-pressed={s.daysOfWeek.includes(d)}
+                    onClick={() => toggleDay(d)}
+                    className={`flex-1 rounded-md py-1 text-[10px] font-semibold ${
+                      s.daysOfWeek.includes(d)
+                        ? 'bg-[var(--color-accent)]/25 text-white ring-1 ring-[var(--color-accent)]/50'
+                        : 'bg-white/5 text-white/45 hover:bg-white/10'
+                    }`}
+                  >
+                    {label.slice(0, 2)}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center gap-1.5 text-white/55">
-              <input type="month" value={s.from} onChange={(e) => setSchedule({ from: e.target.value })} aria-label="From month" className={field} />
+              <input
+                type="month"
+                value={s.from}
+                onChange={(e) => setSchedule({ from: e.target.value })}
+                aria-label="From month"
+                className={field}
+              />
               <span>→</span>
-              <input type="month" value={s.to} onChange={(e) => setSchedule({ to: e.target.value })} aria-label="To month" className={field} />
+              <input
+                type="month"
+                value={s.to}
+                onChange={(e) => setSchedule({ to: e.target.value })}
+                aria-label="To month"
+                className={field}
+              />
             </div>
           </fieldset>
 
           <p className="font-mono text-[10px] text-white/40">
-            {next ? `Next reminder: ${next.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'No upcoming reminder'}
+            {next
+              ? `Next reminder: ${next.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+              : 'No upcoming reminder'}
           </p>
+
+          <fieldset className="min-w-0 space-y-2 border-t border-white/[0.06] pt-2">
+            <legend className="flex items-center gap-2 text-[11px] font-semibold text-white/75">
+              Countdown timer
+              {item.timer && <Countdown timer={item.timer} />}
+            </legend>
+            <TimerPanel
+              value={item.timer ? { amount: item.timer.amount, unit: item.timer.unit } : null}
+              start={item.createdAt ?? item.timer?.start ?? Date.now()}
+              onChange={(t) => {
+                const start = item.createdAt ?? item.timer?.start ?? Date.now();
+                update(item.id, { timer: t ? { ...t, start } : null, createdAt: item.createdAt ?? start });
+              }}
+            />
+          </fieldset>
         </div>
       )}
     </li>

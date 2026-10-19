@@ -213,7 +213,7 @@ export async function seedDeck(page: Page, opts: { theme: 'dark' | 'light' }): P
     ];
     const sch = { enabled: true, frequency: 'hourly', daysOfWeek: [1, 2, 3, 4, 5], timeOfDay: '09:00', from: '2026-01', to: '2026-12' };
     s.processing = [
-      { id: 'p1', name: 'DevDeck Core', url: 'https://github.com', siteId: null, section: 'Focus', order: 0, schedule: sch },
+      { id: 'p1', name: 'DevDeck Core', url: 'https://github.com', siteId: null, section: 'Currently processing', order: 0, schedule: sch },
       { id: 'p2', name: 'API Gateway', url: 'https://vercel.com', siteId: null, section: 'Queue', order: 1, schedule: sch },
     ];
     s.settings = {
@@ -223,6 +223,7 @@ export async function seedDeck(page: Page, opts: { theme: 'dark' | 'light' }): P
       useGeolocation: false,
       themeMode: theme,
       presetTheme: theme === 'light' ? 'default-light' : 'default-dark',
+      accentColor: theme === 'light' ? '#007aff' : '#ff2e9a',
       backgroundImage: null,
     };
     localStorage.setItem('devdeck', JSON.stringify(raw));

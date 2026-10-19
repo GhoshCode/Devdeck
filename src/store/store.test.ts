@@ -22,6 +22,7 @@ const site = (over: Partial<Site> & Pick<Site, 'id'>): Site => ({
 beforeEach(() => {
   useStore.setState({
     schemaVersion: SCHEMA_VERSION,
+    trash: { sites: [], processing: [] },
     categories: [
       { id: 'c1', name: 'Cat One', color: '#a78bfa', order: 0 },
       { id: 'c2', name: 'Cat Two', color: '#f472b6', order: 1 },
@@ -100,18 +101,25 @@ describe('delete cascades', () => {
     expect(st().sites.map((s) => s.id)).toEqual(['d']); // a, b, c gone
   });
 
-  test('deleting a subcategory moves its sites to General, appended after existing', () => {
+  test('deleting a subcategory sends its sites to the recycle bin', () => {
     st().deleteSubcategory('s1');
     expect(st().subcategories.map((s) => s.id)).toEqual(['s2']);
-    const a = byId('a');
-    const b = byId('b');
-    expect(a.subcategoryId).toBeNull();
-    expect(b.subcategoryId).toBeNull();
-    expect(a.categoryId).toBe('c1');
-    // C already occupied General order 0 → A and B appended at 1 and 2
-    expect([a.order, b.order].sort()).toEqual([1, 2]);
-    // primary flag survives the move
-    expect(b.primary).toBe(true);
+    expect(st().sites.map((s) => s.id).sort()).toEqual(['c', 'd']);
+    expect(st().trash.sites.map((t) => t.id).sort()).toEqual(['a', 'b']);
+    // restoring now lands in the category's General group
+    st().restoreSite('b');
+    expect(byId('b')).toMatchObject({ categoryId: 'c1', subcategoryId: null, primary: true });
+  });
+
+  test('undoing a subcategory delete brings it and its sites back', () => {
+    const sub = st().subcategories.find((s) => s.id === 's1')!;
+    st().deleteSubcategory('s1');
+    st().reinsertSubcategory(sub);
+    st().restoreSite('a', 'c1', 's1');
+    st().restoreSite('b', 'c1', 's1');
+    expect(st().subcategories.map((s) => s.id).sort()).toEqual(['s1', 's2']);
+    expect([byId('a').subcategoryId, byId('b').subcategoryId]).toEqual(['s1', 's1']);
+    expect(st().trash.sites.some((t) => t.id === 'a' || t.id === 'b')).toBe(false);
   });
 });
 
@@ -364,5 +372,59 @@ describe('feeds config', () => {
 
     st().resetFeeds();
     expect(st().feeds).toEqual(DEFAULT_FEEDS);
+  });
+});
+
+describe('placeSite (Site Map / Bookmarks reorder)', () => {
+  it('moves a site before another in the same section, and into another section', () => {
+    const s = useStore.getState();
+    const cat = s.addCategory({ name: 'Order test', color: '#ff0000' });
+    const a = s.addSite({ name: 'A', url: 'https://a.dev', categoryId: cat.id, subcategoryId: null });
+    const b = s.addSite({ name: 'B', url: 'https://b.dev', categoryId: cat.id, subcategoryId: null });
+    const c = s.addSite({ name: 'C', url: 'https://c.dev', categoryId: cat.id, subcategoryId: null });
+    const names = () =>
+      useStore
+        .getState()
+        .sites.filter((x) => x.categoryId === cat.id && x.subcategoryId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((x) => x.name)
+        .join('');
+    useStore.getState().placeSite(c.id, cat.id, null, a.id);
+    expect(names()).toBe('CAB');
+    useStore.getState().placeSite(c.id, cat.id, null, null);
+    expect(names()).toBe('ABC');
+    const sub = useStore.getState().addSubcategory({ name: 'Sub', categoryId: cat.id });
+    useStore.getState().placeSite(b.id, cat.id, sub.id, null);
+    expect(names()).toBe('AC');
+    expect(useStore.getState().sites.find((x) => x.id === b.id)?.subcategoryId).toBe(sub.id);
+  });
+});
+
+describe('restoreSite — back to where it came from', () => {
+  const where = (id: string) => {
+    const s = st().sites.find((x) => x.id === id);
+    return s && [s.categoryId, s.subcategoryId];
+  };
+  test('its subcategory still exists → back into it', () => {
+    st().deleteSite('a');
+    st().restoreSite('a');
+    expect(where('a')).toEqual(['c1', 's1']);
+    expect(st().trash.sites.some((t) => t.id === 'a')).toBe(false);
+  });
+  test('subcategory deleted, category kept → the category\'s General group', () => {
+    st().deleteSite('a');
+    st().deleteSubcategory('s1');
+    st().restoreSite('a');
+    expect(where('a')).toEqual(['c1', null]);
+  });
+  test('category deleted → Uncategorized (no category, no subcategory)', () => {
+    st().deleteCategory('c1');
+    st().restoreSite('a');
+    expect(where('a')).toEqual(['', null]);
+  });
+  test('an explicit target still wins', () => {
+    st().deleteSite('a');
+    st().restoreSite('a', 'c2', null);
+    expect(where('a')).toEqual(['c2', null]);
   });
 });

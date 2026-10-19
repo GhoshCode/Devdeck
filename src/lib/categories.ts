@@ -8,3 +8,11 @@ export function orderWithPin(categories: readonly Category[], pinnedId: string |
   const pinned = pinnedId ? sorted.find((c) => c.id === pinnedId) : undefined;
   return pinned ? [pinned, ...sorted.filter((c) => c !== pinned)] : sorted;
 }
+
+// Sites with no category ("Uncategorized / None"): categoryId '' and no
+// subcategory. They come back from the recycle bin when their category is
+// gone. Not a real category — the deck shows them as loose tiles after the
+// last card, the Site Map in their own card.
+export const UNCATEGORIZED_ID = '';
+export const UNCATEGORIZED_NAME = 'Uncategorized';
+export const UNCATEGORIZED_COLOR = '#94a3b8';

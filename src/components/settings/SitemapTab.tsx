@@ -18,6 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useStore } from '../../store';
 import { Favicon } from '../Favicon';
+import { UNCATEGORIZED_COLOR, UNCATEGORIZED_NAME } from '../../lib/categories';
 
 // --- Custom Node Components --------------------------------------------------
 
@@ -359,6 +360,33 @@ function SitemapFlow() {
       } else {
         currentY += 70;
       }
+    }
+
+    // Sites with no category hang straight off an "Uncategorized / None" node.
+    const loose = sites.filter((s) => s.categoryId === '');
+    if (loose.length) {
+      const nodeId = 'cat-uncategorized';
+      nodes.push({
+        id: nodeId,
+        type: 'category',
+        position: { x: 300, y: currentY },
+        data: { label: `${UNCATEGORIZED_NAME} / None`, color: UNCATEGORIZED_COLOR, count: loose.length, isCollapsed: collapsedIds.has(nodeId), onToggleCollapse: toggleCollapse },
+      });
+      edges.push({ id: 'e-root-uncat', source: 'root', target: nodeId, type: 'smoothstep', style: { stroke: `${UNCATEGORIZED_COLOR}80`, strokeWidth: 2 } });
+      let siteY = currentY;
+      if (!collapsedIds.has(nodeId)) {
+        for (const site of loose) {
+          nodes.push({
+            id: `site-${site.id}`,
+            type: 'site',
+            position: { x: 580, y: siteY },
+            data: { siteId: site.id, name: site.name, url: site.url, color: UNCATEGORIZED_COLOR },
+          });
+          edges.push({ id: `e-uncat-site-${site.id}`, source: nodeId, target: `site-${site.id}`, type: 'smoothstep', style: { stroke: `${UNCATEGORIZED_COLOR}40`, strokeWidth: 1 } });
+          siteY += 46;
+        }
+      }
+      currentY = Math.max(currentY + 70, siteY + 20);
     }
 
     // Center root vertically relative to tree

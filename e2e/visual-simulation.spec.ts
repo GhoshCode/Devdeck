@@ -36,12 +36,10 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     await appearanceTab.click();
 
     // Toggle Default Light
-    const lightBtn = settingsModal.getByRole('button', { name: /Default Light/i });
+    const lightBtn = settingsModal.getByRole('radio', { name: 'Light', exact: true });
     await lightBtn.click();
-    await page.waitForTimeout(200);
-
-    const dataTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-    expect(dataTheme).toBe('light');
+    // the theme commits inside a view transition, so wait for it rather than a fixed delay
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
     // Close settings
     await page.keyboard.press('Escape');
@@ -119,8 +117,8 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     // 2. Appearance Tab
     const appearanceTab = modal.getByRole('button', { name: /Appearance/i });
     await appearanceTab.click();
-    await expect(modal.getByText('Base Theme Mode')).toBeVisible();
-    await expect(modal.getByText('Preset Themes & Gradients')).toBeVisible();
+    await expect(modal.getByRole('radiogroup', { name: 'Appearance mode' })).toBeVisible();
+    await expect(modal.getByRole('region', { name: 'Themes' })).toBeVisible();
 
     // 3. Quick Links Tab
     const quickLinksTab = modal.getByRole('button', { name: /Quick Links/i });
@@ -196,8 +194,8 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     await page.keyboard.press('Escape');
 
     // Open and close the G1 bookmarks drawer
-    await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-    await expect(page.getByRole('dialog', { name: 'Bookmarks and site map' })).toBeVisible();
+    await page.getByRole('button', { name: 'Browser bookmarks' }).click();
+    await expect(page.getByRole('dialog', { name: 'Browser bookmarks' })).toBeVisible();
     await page.keyboard.press('Escape');
 
     // Switch subcategories back and forth

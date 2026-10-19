@@ -5,6 +5,7 @@
 //   • PAT given → GitHub GraphQL contributionsCollection (includes private
 //                 contributions when the user has that profile setting on)
 
+import { netFetch } from '../lib/netFetch';
 import { readCache, writeCache } from '../lib/cache';
 import { localDateKey } from '../lib/time';
 
@@ -25,7 +26,7 @@ export interface GitStats {
   fetchedAt: number;
 }
 
-export const GIT_TTL_MS = 60 * 60 * 1000; // plan Phase 1: cached for 1 hour
+export const GIT_TTL_MS = 3 * 60 * 60 * 1000; // refreshed (and cached) every 3 hours; ↻ refreshes at once
 const CACHE_NAME = 'github';
 
 type Fetch = typeof fetch;
@@ -157,8 +158,8 @@ export async function loadGitStats(
     const hit = cachedGitStats(user, token);
     if (hit) return hit;
   }
-  const fetcher = opts.fetcher ?? fetch;
-  const days = token ? await fetchWithToken(user, token, fetcher) : await fetchPublic(user, fetcher);
+  const fetcher = opts.fetcher ?? netFetch;
+  const days = await (token ? fetchWithToken(user, token, fetcher) : fetchPublic(user, fetcher));
   const stats = computeStats(user, days);
   writeCache(CACHE_NAME, cacheKey(user, token), stats);
   return stats;
@@ -183,4 +184,184 @@ export function buildWeeks(
       return byDate.get(key) ?? { date: key, count: 0, level: 0 };
     }),
   );
+}
+
+// ---- Repositories (Git widget repo picker) ------------------------------------
+
+export interface RepoSummary {
+  name: string;
+  fullName: string; // owner/name
+  defaultBranch: string;
+  pushedAt: number; // epoch ms
+  url: string;
+  fork: boolean;
+  language: string | null;
+  stars: number;
+  forks: number;
+  openIssues: number; // issues + pull requests
+  description: string | null;
+}
+
+export interface GitProfile {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+  url: string;
+  publicRepos: number;
+}
+
+// Avatar and repo count for the Git widget header.
+export async function loadProfile(
+  username: string,
+  token: string,
+  opts: { force?: boolean; fetcher?: Fetch } = {},
+): Promise<GitProfile> {
+  const key = `profile|${cacheKey(username, token)}`;
+  if (!opts.force) {
+    const hit = readCache<GitProfile>(CACHE_NAME, key, GIT_TTL_MS);
+    if (hit) return hit;
+  }
+  const u = await ghJson<{
+    login: string;
+    name: string | null;
+    avatar_url: string;
+    html_url: string;
+    public_repos: number;
+  }>(`https://api.github.com/users/${encodeURIComponent(username)}`, token, opts.fetcher ?? netFetch);
+  const profile: GitProfile = {
+    login: u.login,
+    name: u.name,
+    avatarUrl: u.avatar_url,
+    url: u.html_url,
+    publicRepos: u.public_repos,
+  };
+  writeCache(CACHE_NAME, key, profile);
+  return profile;
+}
+
+export interface RepoCommit {
+  sha: string; // short
+  message: string; // first line
+  author: string | null;
+  at: number; // epoch ms
+  url: string;
+}
+
+export interface RepoActivity {
+  fullName: string;
+  branch: string; // where the latest push landed (default branch if unknown)
+  commits: RepoCommit[]; // newest first, up to 3
+  fetchedAt: number;
+}
+
+const ghHeaders = (token: string): Record<string, string> => ({
+  Accept: 'application/vnd.github+json',
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+});
+
+async function ghJson<T>(url: string, token: string, fetcher: Fetch): Promise<T> {
+  const res = await fetcher(url, { headers: ghHeaders(token) });
+  if (res.status === 403 || res.status === 429) throw new Error('GitHub rate limit reached — try again later');
+  if (res.status === 404) throw new Error('Not found on GitHub');
+  if (!res.ok) throw new Error(`GitHub request failed (${res.status})`);
+  return (await res.json()) as T;
+}
+
+// The user's own public repositories, most recently pushed first.
+export async function loadRepos(
+  username: string,
+  token: string,
+  opts: { force?: boolean; fetcher?: Fetch } = {},
+): Promise<RepoSummary[]> {
+  const key = `repos2|${cacheKey(username, token)}`; // v2: with language, stars, forks
+  if (!opts.force) {
+    const hit = readCache<RepoSummary[]>(CACHE_NAME, key, GIT_TTL_MS);
+    if (hit) return hit;
+  }
+  const raw = await ghJson<
+    Array<{
+      name: string;
+      full_name: string;
+      default_branch: string;
+      pushed_at: string | null;
+      html_url: string;
+      fork: boolean;
+      language: string | null;
+      stargazers_count: number;
+      forks_count: number;
+      open_issues_count: number;
+      description: string | null;
+    }>
+  >(
+    `https://api.github.com/users/${encodeURIComponent(username)}/repos?type=owner&sort=pushed&per_page=100`,
+    token,
+    opts.fetcher ?? netFetch,
+  );
+  const repos = raw
+    .map((r) => ({
+      name: r.name,
+      fullName: r.full_name,
+      defaultBranch: r.default_branch,
+      pushedAt: r.pushed_at ? Date.parse(r.pushed_at) : 0,
+      url: r.html_url,
+      fork: r.fork,
+      language: r.language ?? null,
+      stars: r.stargazers_count ?? 0,
+      forks: r.forks_count ?? 0,
+      openIssues: r.open_issues_count ?? 0,
+      description: r.description ?? null,
+    }))
+    .sort((a, b) => b.pushedAt - a.pushedAt);
+  writeCache(CACHE_NAME, key, repos);
+  return repos;
+}
+
+// The branch with the latest push in a repository (from its public events;
+// the default branch when there are none) and that branch's newest commits.
+export async function loadRepoActivity(
+  repo: Pick<RepoSummary, 'fullName' | 'defaultBranch'>,
+  token: string,
+  opts: { force?: boolean; fetcher?: Fetch } = {},
+): Promise<RepoActivity> {
+  const key = `activity2|${repo.fullName.toLowerCase()}|${token ? 'pat' : 'public'}`;
+  if (!opts.force) {
+    const hit = readCache<RepoActivity>(CACHE_NAME, key, GIT_TTL_MS);
+    if (hit) return hit;
+  }
+  const fetcher = opts.fetcher ?? netFetch;
+  const base = `https://api.github.com/repos/${repo.fullName}`;
+  const [rawEvents, branchList] = await Promise.all([
+    ghJson<Array<{ type: string; created_at: string; payload: { ref?: string } }>>(
+      `${base}/events?per_page=30`,
+      token,
+      fetcher,
+    ).catch(() => []),
+    ghJson<Array<{ name: string }>>(`${base}/branches?per_page=100`, token, fetcher).catch(() => null),
+  ]);
+  // Newest push first; a branch deleted since (e.g. merged and removed) is skipped.
+  const existing = Array.isArray(branchList) ? new Set(branchList.map((b) => b.name)) : null;
+  const events = Array.isArray(rawEvents) ? rawEvents : [];
+  const branch =
+    [...events]
+      .filter((e) => e.type === 'PushEvent' && e.payload.ref?.startsWith('refs/heads/'))
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+      .map((e) => e.payload.ref!.replace('refs/heads/', ''))
+      .find((name) => !existing || existing.has(name)) ?? repo.defaultBranch;
+  const commits = await ghJson<
+    Array<{ sha: string; html_url: string; commit: { message: string; author: { name?: string; date?: string } | null } }>
+  >(`${base}/commits?sha=${encodeURIComponent(branch)}&per_page=3`, token, fetcher).catch(() => []); // empty repo
+  const activity: RepoActivity = {
+    fullName: repo.fullName,
+    branch,
+    commits: commits.map((c) => ({
+      sha: c.sha.slice(0, 7),
+      message: c.commit.message.split('\n')[0],
+      author: c.commit.author?.name ?? null,
+      at: c.commit.author?.date ? Date.parse(c.commit.author.date) : 0,
+      url: c.html_url,
+    })),
+    fetchedAt: Date.now(),
+  };
+  writeCache(CACHE_NAME, key, activity);
+  return activity;
 }

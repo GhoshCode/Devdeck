@@ -14,7 +14,7 @@ import { useStore } from '../store';
 import { PrimaryRow } from './PrimaryRow';
 import { PinnedStrip, type GroupItem } from './PinnedStrip';
 import { SubcategoryRail, type RailGroup } from './SubcategoryRail';
-import { SiteRow } from './SiteRow';
+import { PinIcon, SiteRow } from './SiteRow';
 import { getCategoryDisplayColor } from '../utils';
 
 // Theme-resolved category colour (see --cat in index.css) and its soft glow.
@@ -249,7 +249,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
       className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 transition-all duration-300 hover:border-white/20 shadow-lg select-none"
     >
       {/* 1. Header Region: colored label + site count + segmented view switcher */}
-      <header className="flex items-center justify-between px-4.5 pt-3.5 pb-2.5 border-b border-white/[0.06] select-none shrink-0">
+      <header className="flex items-center justify-between px-4 py-1 border-b border-white/[0.06] select-none shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <span
             className="size-2.5 rounded-full shrink-0"
@@ -259,22 +259,22 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
             }}
           />
           <h2
-            className="font-display text-sm sm:text-base font-bold tracking-[0.12em] uppercase truncate"
+            className="font-display text-[13px] sm:text-sm font-bold tracking-[0.12em] uppercase truncate"
             style={{ color: displayColor }}
           >
             {category.name}
           </h2>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <PinButton categoryId={category.id} name={category.name} />
-          <span className="text-xs sm:text-sm font-medium text-white/50 tabular-nums">
+          <span className="text-xs font-medium text-white/50 tabular-nums">
             {totalSites} {totalSites === 1 ? 'site' : 'sites'}
           </span>
           {/* Segmented View Switcher: Grid vs List (per user request) */}
           <div
             role="group"
             aria-label={`View mode for ${category.name}`}
-            className="inline-flex items-center rounded-xl bg-black/35 border border-white/10 p-0.5"
+            className="inline-flex items-center rounded-lg bg-black/35 border border-white/10 p-0.5"
           >
             <button
               type="button"
@@ -282,7 +282,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
               aria-label="Grid view"
               aria-pressed={viewMode === 'grid'}
               title="Grid view: browse subcategories"
-              className={`flex size-7 items-center justify-center rounded-lg transition-all ${
+              className={`flex size-6 items-center justify-center rounded-md transition-all ${
                 viewMode === 'grid'
                   ? 'bg-white/20 text-white shadow-sm'
                   : 'text-white/40 hover:text-white/80'
@@ -301,7 +301,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
               aria-label="List view"
               aria-pressed={viewMode === 'list'}
               title="List view: all sites in vertical order by subcategory"
-              className={`flex size-7 items-center justify-center rounded-lg transition-all ${
+              className={`flex size-6 items-center justify-center rounded-md transition-all ${
                 viewMode === 'list'
                   ? 'bg-white/20 text-white shadow-sm'
                   : 'text-white/40 hover:text-white/80'
@@ -371,7 +371,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
                     <div
                       key={group.id}
                       data-list-group-id={group.id}
-                      className="glass-inner rounded-2xl p-3.5 border border-white/[0.06] space-y-2.5"
+                      className="glass-inner @container rounded-2xl p-3 border border-white/[0.06] space-y-2"
                     >
                       <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                         <div className="flex items-center gap-2.5">
@@ -418,7 +418,7 @@ export const CategoryCard = memo(function CategoryCard({ category }: CategoryCar
                 onWheel={handleBottomWheel}
                 role="toolbar"
                 aria-label={`Subcategory navigation for ${category.name}`}
-                className="flex items-center justify-between px-3.5 py-2 border-t border-white/[0.06] shrink-0 select-none bg-black/10"
+                className="flex items-center justify-between px-3.5 py-1 border-t border-white/[0.06] shrink-0 select-none bg-black/10"
               >
                 {/* Left: < > Navigation buttons */}
                 <div className="flex items-center gap-1.5">
@@ -516,25 +516,13 @@ function PinButton({ categoryId, name }: { categoryId: string; name: string }) {
       aria-pressed={pinned}
       aria-label={pinned ? `Unpin ${name}` : `Pin ${name}`}
       title={pinned ? 'Unpin — return to its usual place' : 'Pin to the front (one card at a time)'}
-      className={`flex size-7 items-center justify-center rounded-lg transition-all ${
+      className={`flex size-6 items-center justify-center rounded-md transition-all ${
         pinned
           ? 'bg-[var(--color-accent)]/25 text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/60'
           : 'text-white/35 hover:bg-white/10 hover:text-white/80'
       }`}
     >
-      <svg
-        className={`size-4 transition-transform ${pinned ? '' : 'rotate-45'}`}
-        viewBox="0 0 24 24"
-        fill={pinned ? 'currentColor' : 'none'}
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M12 17v5" />
-        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-      </svg>
+      <PinIcon filled={pinned} className="size-4" />
     </button>
   );
 }

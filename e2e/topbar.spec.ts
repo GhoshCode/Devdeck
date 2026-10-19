@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('top bar renders every widget slot', async ({ page }) => {
-  for (const widget of ['time-cluster', 'todo', 'git', 'date-greet']) {
+  for (const widget of ['time-cluster', 'search', 'git', 'date-greet']) {
     await expect(page.locator(`[data-widget="${widget}"]`)).toBeVisible();
   }
   await expect(page.getByTestId('weather-uv')).toBeVisible();
@@ -66,17 +66,26 @@ test('to-do: overdue tasks pin to the top in the danger zone', async ({ page }) 
   await expect(rows.first()).toContainText('Way overdue');
 });
 
-test('command prompt evaluates calc and flags unknown commands', async ({ page }) => {
-  const prompt = page.getByRole('textbox', { name: 'Command prompt' });
-  await prompt.fill('calc (2+3)*4');
-  await prompt.press('Enter');
-  await expect(page.getByTestId('command-result')).toHaveText('(2+3)*4 = 20');
+test('built-in commands run from the search bar', async ({ page }) => {
+  const search = page.getByRole('combobox', { name: 'Search' });
+  await search.fill('calc (2+3)*4');
+  const first = page.getByRole('listbox', { name: 'Search suggestions' }).getByRole('option').first();
+  await expect(first).toContainText('→ (2+3)*4 = 20');
+  await search.press('Enter');
+  await expect(page.getByTestId('search-hint')).toHaveText('(2+3)*4 = 20');
+  await search.fill('> help');
+  await search.press('Enter');
+  await expect(page.getByTestId('search-hint')).toContainText('gh <owner/repo');
+});
 
+test('terminal box explains the desktop helper on the website; admin toggles', async ({ page }) => {
+  const prompt = page.getByRole('textbox', { name: 'Command prompt' });
   await prompt.fill('ipconfig');
   await prompt.press('Enter');
-  await expect(page.getByTestId('command-result')).toContainText('Unknown command');
+  await expect(page.getByTestId('command-result')).toContainText('installed DevDeck extension');
   await page.getByRole('button', { name: 'Administrator mode' }).click();
   await expect(page.getByRole('button', { name: 'Administrator mode' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(prompt).toHaveAttribute('placeholder', /as administrator/);
 });
 
 test('git widget asks for a username when none is set', async ({ page }) => {

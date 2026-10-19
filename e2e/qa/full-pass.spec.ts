@@ -49,13 +49,14 @@ for (const theme of THEMES) {
         await step(page, info, `clock face ${face}`, async () => {});
       }
 
+      const search = page.getByRole('combobox', { name: 'Search' });
+      await search.fill('calc 12*(3+4)');
+      await t.run('command calc result', () => search.press('Enter'), 300);
+      await expect(page.getByTestId('search-hint')).toHaveText('12*(3+4) = 84');
+      await search.fill('> help');
+      await search.press('Enter');
+      await expect(page.getByTestId('search-hint')).toContainText('gh <owner/repo');
       const prompt = page.getByRole('textbox', { name: 'Command prompt' });
-      await prompt.fill('calc 12*(3+4)');
-      await t.run('command calc result', () => prompt.press('Enter'), 300);
-      await expect(page.getByTestId('command-result')).toHaveText('12*(3+4) = 84');
-      await prompt.fill('help');
-      await prompt.press('Enter');
-      await expect(page.getByTestId('command-result')).toContainText('gh <owner/repo');
       await page.getByRole('button', { name: 'Administrator mode' }).click();
       await step(page, info, 'admin mode on', async () => {});
       await expect(page.getByRole('button', { name: 'Administrator mode' })).toHaveAttribute('aria-pressed', 'true');
@@ -77,11 +78,14 @@ for (const theme of THEMES) {
 
       await panel.getByRole('textbox', { name: 'New task' }).fill('Write QA report');
       await panel.getByRole('button', { name: 'Attach due date' }).click();
-      await panel.getByRole('textbox', { name: 'Due date' }).fill('2030-01-15');
+      const picker = page.getByRole('dialog', { name: 'Due date and time' });
+      await picker.getByRole('button', { name: /^Tomorrow/ }).click();
+      await step(page, info, 'date & time picker', async () => {});
+      await picker.getByRole('button', { name: 'Done' }).click();
       await panel.getByRole('textbox', { name: 'New task' }).press('Enter');
       await step(page, info, 'task added', async () => {});
       await expect(panel.getByText('Write QA report')).toBeVisible();
-      await expect(panel.locator('li', { hasText: 'Write QA report' })).toContainText('Jan 15');
+      await expect(panel.locator('li', { hasText: 'Write QA report' })).toContainText('Tomorrow');
       await auditOpen(page, info, 'to-do overlay', '[role="dialog"][aria-label="All tasks"]');
 
       await t.run('complete slides out', () => panel.getByRole('button', { name: 'Complete "Write QA report"' }).click(), 800);
@@ -116,19 +120,69 @@ for (const theme of THEMES) {
       await t.done();
     });
 
-    test('bookmarks drawer — open, expand folder, filter, close', async ({ page }, info) => {
+    test('bookmarks panel — opens, explains the extension, closes', async ({ page }, info) => {
       const t = transitions(page, info);
-      await t.run('drawer slides in', () => page.getByRole('button', { name: 'Bookmarks and site map' }).click());
-      const drawer = page.getByRole('dialog', { name: 'Bookmarks and site map' });
+      await t.run('panel slides in', () => page.getByRole('button', { name: 'Browser bookmarks' }).click());
+      const drawer = page.getByRole('dialog', { name: 'Browser bookmarks' });
       await expect(drawer).toBeVisible();
-      await t.run('expand Frontend folder', () => drawer.getByRole('treeitem', { name: 'Frontend' }).getByRole('button', { name: 'Expand folder' }).click());
-      await expect(drawer.getByRole('treeitem', { name: 'GitHub' }).first()).toBeVisible();
-      await auditOpen(page, info, 'bookmarks drawer', '[role="dialog"][aria-label="Bookmarks and site map"]');
-      await t.run('filter as you type', () => drawer.getByRole('textbox', { name: 'Filter bookmarks' }).pressSequentially('postgres', { delay: 50 }));
-      await expect(drawer.getByRole('treeitem', { name: 'PostgreSQL' })).toBeVisible();
-      await t.run('drawer slides out', () => page.keyboard.press('Escape'));
+      await expect(drawer).toContainText('need the DevDeck extension');
+      await auditOpen(page, info, 'bookmarks panel', '[role="dialog"][aria-label="Browser bookmarks"]');
+      await t.run('panel slides out', () => page.keyboard.press('Escape'));
       await expect(drawer).toHaveCount(0);
       await t.done();
+    });
+
+    test('site map — open, browse, search, keyboard, open site, close', async ({ page }, info) => {
+      const t = transitions(page, info);
+      await t.run('site map opens', () => page.getByRole('button', { name: 'Site Map & Hierarchy' }).click());
+      const dialog = page.getByRole('dialog', { name: 'Site Map & Hierarchy' });
+      await expect(dialog.getByRole('region', { name: 'Currently Processing' }).getByText('DevDeck Core')).toBeVisible();
+      await auditOpen(page, info, 'site map grid', '[role="dialog"][aria-label="Site Map & Hierarchy"]');
+      const grid = dialog.locator('.overflow-y-auto').first();
+      await t.run('scroll the category grid', () => grid.evaluate((el) => el.scrollBy({ top: 900, behavior: 'smooth' })), 900);
+      await dialog.getByRole('link', { name: /PostgreSQL/ }).first().hover();
+      await step(page, info, 'site chip hover', async () => {});
+      const input = dialog.getByRole('combobox', { name: 'Search the site map' });
+      await t.run('palette results while typing', () => input.pressSequentially('git', { delay: 60 }), 600);
+      await expect(dialog.getByRole('option').first()).toContainText('GitHub');
+      await auditOpen(page, info, 'site map results', '[role="dialog"][aria-label="Site Map & Hierarchy"]');
+      await input.press('ArrowDown');
+      await input.press('ArrowDown');
+      await step(page, info, 'third result highlighted', async () => {});
+      await expect(dialog.getByRole('option').nth(2)).toHaveAttribute('aria-selected', 'true');
+      await t.run('Esc clears the search', () => input.press('Escape'), 400);
+      await expect(input).toHaveValue('');
+      await t.run('Esc closes the map', () => input.press('Escape'));
+      await expect(dialog).toHaveCount(0);
+      await t.done();
+    });
+
+    test('search — Gemini mode, voice button, back to Google', async ({ page }, info) => {
+      const t = transitions(page, info);
+      const toggle = page.getByRole('button', { name: 'Gemini mode' });
+      await t.run('Gemini mode on', () => toggle.click(), 500);
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      const input = page.getByRole('combobox', { name: 'Search' });
+      await input.pressSequentially('explain react server components', { delay: 30 });
+      await expect(page.getByRole('option').first()).toContainText('Ask Gemini');
+      await step(page, info, 'Gemini prompt in the dropdown', async () => {});
+      await auditOpen(page, info, 'Gemini dropdown', '#search-suggestions');
+      await page.getByRole('button', { name: 'Search by voice' }).hover();
+      await step(page, info, 'voice button hover', async () => {});
+      await input.fill('');
+      await t.run('Gemini mode off', () => toggle.click(), 500);
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      await t.done();
+    });
+
+    test('git widget — hover a day for its count', async ({ page }, info) => {
+      const git = page.getByTestId('git-widget');
+      await expect(git).toBeVisible();
+      const cell = git.locator('[aria-label^="Contribution graph"] > .flex > div:nth-child(10) span').first();
+      await expect(cell).toBeVisible({ timeout: 15_000 });
+      await cell.hover();
+      await step(page, info, 'git day hover readout', async () => {});
+      await expect(git.getByTestId('git-activity')).toContainText(/contribution/);
     });
 
     test('cards — pin, unpin, subcategory pills, list view, links strip', async ({ page }, info) => {
@@ -172,7 +226,7 @@ for (const theme of THEMES) {
       await expect(dialog.getByText(/Next reminder:/)).toBeVisible();
       await auditOpen(page, info, 'processing editor', '[role="dialog"][aria-label="Manage currently processing"]');
       await t.run('editor closes', () => page.keyboard.press('Escape'));
-      await expect(page.getByRole('region', { name: 'Processing: Focus' }).getByText('Supabase')).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Processing: Currently processing' }).getByText('Supabase')).toBeVisible();
       await t.done();
     });
 
@@ -180,10 +234,11 @@ for (const theme of THEMES) {
       const t = transitions(page, info);
       const news = page.getByRole('region', { name: 'Tech news' });
       await expect(news.locator('[data-feed-item]').first()).toBeVisible({ timeout: 15_000 });
-      const chips = page.getByRole('radiogroup', { name: 'Filter feeds by topic' });
+      const chips = page.getByRole('group', { name: 'Filter feeds by topic' });
       for (const chip of ['#AI', '#Frontend', '#DevOps', 'All']) {
-        await t.run(`topic ${chip}`, () => chips.getByRole('radio', { name: chip }).click(), 400);
-        await expect(chips.getByRole('radio', { name: chip })).toHaveAttribute('aria-checked', 'true');
+        if (chip !== 'All' && (await chips.getByRole('button', { name: chip }).getAttribute('aria-pressed')) === 'true') continue;
+        await t.run(`topic ${chip}`, () => chips.getByRole('button', { name: chip }).click(), 400);
+        await expect(chips.getByRole('button', { name: chip })).toHaveAttribute('aria-pressed', 'true');
       }
       await t.run('refresh feeds', () => page.getByRole('button', { name: 'Refresh feeds' }).click(), 2500);
       await t.done();
@@ -196,8 +251,15 @@ for (const theme of THEMES) {
       await modal.getByRole('button', { name: /Appearance/ }).click();
       await auditOpen(page, info, 'settings appearance', '[role="dialog"][aria-label="DevDeck Settings"]');
       const other = theme === 'light' ? 'dark' : 'light';
-      await t.run(`switch to ${other}`, () => modal.getByRole('button', { name: new RegExp(`Default ${other}`, 'i') }).first().click(), 800);
+      await t.run(`switch to ${other}`, () => modal.getByRole('radio', { name: other === 'light' ? 'Light' : 'Dark', exact: true }).click(), 800);
       await expect(page.locator('html')).toHaveAttribute('data-theme', other);
+      await t.run('accent Purple', () => modal.getByRole('radio', { name: 'Purple', exact: true }).click(), 500);
+      await t.run('filter dark themes', () => modal.getByRole('tab', { name: /^vibrant/i }).click(), 400);
+      await t.run('filter all themes', () => modal.getByRole('tab', { name: /^all/i }).click(), 400);
+      await t.run('reduce transparency on', () => modal.getByRole('switch', { name: 'Reduce transparency' }).click(), 500);
+      await expect(page.locator('html')).toHaveAttribute('data-reduce-transparency', '');
+      await auditOpen(page, info, 'appearance after changes', '[role="dialog"][aria-label="DevDeck Settings"]');
+      await t.run('reduce transparency off', () => modal.getByRole('switch', { name: 'Reduce transparency' }).click(), 500);
       await t.run('settings closes', () => modal.getByRole('button', { name: 'Close Settings' }).click());
       await expect(modal).toHaveCount(0);
       await step(page, info, `dashboard in ${other}`, async () => {});

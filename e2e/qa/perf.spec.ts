@@ -44,11 +44,11 @@ for (const theme of ['light', 'dark'] as const) {
     await modal.getByRole('button', { name: /Appearance/ }).click();
     let flip = theme === 'light';
     results['theme switch'] = await sample(page, async () => {
-      await modal.getByRole('button', { name: flip ? /Default Dark/ : /Default Light/ }).click();
+      await modal.getByRole('radio', { name: flip ? 'Dark' : 'Light', exact: true }).click();
       flip = !flip;
     }, 900);
     // Leave it on the theme under test.
-    await modal.getByRole('button', { name: theme === 'light' ? /Default Light/ : /Default Dark/ }).click();
+    await modal.getByRole('radio', { name: theme === 'light' ? 'Light' : 'Dark', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(modal).toHaveCount(0);
 
@@ -74,8 +74,8 @@ for (const theme of ['light', 'dark'] as const) {
     }, 600);
 
     results['bookmarks drawer'] = await sample(page, async () => {
-      await page.getByRole('button', { name: 'Bookmarks and site map' }).click();
-      await page.getByRole('dialog', { name: 'Bookmarks and site map' }).waitFor();
+      await page.getByRole('button', { name: 'Browser bookmarks' }).click();
+      await page.getByRole('dialog', { name: 'Browser bookmarks' }).waitFor();
       await page.keyboard.press('Escape');
     }, 600);
 

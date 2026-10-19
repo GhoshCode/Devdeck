@@ -16,7 +16,7 @@ test('loading — every component appears, no layout jumps, no console errors', 
     search: '[role="combobox"][aria-label="Search"]',
     linksStrip: '[data-testid="links-strip"]',
     firstCard: '[data-category-id]',
-    processing: '[aria-label="Processing: Focus"]',
+    processing: '[aria-label="Processing: Currently processing"]',
     news: '[aria-label="Tech news"] [data-feed-item]',
   });
   await step(page, info, 'page fully loaded', async () => {});

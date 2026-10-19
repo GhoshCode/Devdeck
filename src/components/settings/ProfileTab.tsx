@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useStore } from '../../store';
 import { clearCache } from '../../lib/cache';
+import { WeatherSourcePicker } from './WeatherSourcePicker';
+import { AiProviderPicker } from './AiProviderPicker';
+import { TerminalHelper } from './TerminalHelper';
 
 // Profile & data sources for the top-bar widgets: GitHub (Git commits) and
 // location (Weather & UV). Phase 6 folds more into this tab.
@@ -100,7 +103,12 @@ export function ProfileTab() {
             className={field}
           />
         </div>
+        <WeatherSourcePicker />
       </section>
+
+      <AiProviderPicker />
+
+      <TerminalHelper />
     </div>
   );
 }

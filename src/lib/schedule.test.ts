@@ -63,3 +63,25 @@ test('describeSchedule / describeDays', () => {
   expect(describeDays([1, 3, 5])).toBe('Mon, Wed, Fri');
   expect(describeDays([0, 1, 2, 3, 4, 5, 6])).toBe('Every day');
 });
+
+describe('weekly and monthly reminders', () => {
+  const sun = new Date(2026, 9, 18, 19, 33); // Sun 18 Oct 2026
+  test('weekly fires on the chosen weekdays, every N weeks from the span start', () => {
+    const s: Schedule = { ...base, frequency: 'weekly', daysOfWeek: [2], timeOfDay: '10:00', interval: 1 };
+    expect(nextFireTime(s, sun)).toEqual(new Date(2026, 9, 20, 10, 0)); // Tue
+    // every 2 weeks, anchored to the week of 1 Oct: weeks 0, 2, 4… → 13 Oct, 27 Oct
+    const two = { ...s, interval: 2 };
+    expect(nextFireTime(two, sun)).toEqual(new Date(2026, 9, 27, 10, 0));
+    expect(describeSchedule(two)).toBe('Every 2 weeks at 10:00 · Tue · Oct–Dec 2026');
+  });
+  test('monthly fires on a day of the month, clamps short months, supports the last day', () => {
+    const s: Schedule = { ...base, frequency: 'monthly', dayOfMonth: 31, timeOfDay: '09:00', interval: 1 };
+    expect(nextFireTime(s, sun)).toEqual(new Date(2026, 9, 31, 9, 0));
+    expect(nextFireTime(s, new Date(2026, 9, 31, 10, 0))).toEqual(new Date(2026, 10, 30, 9, 0)); // Nov has 30 days
+    expect(nextFireTime({ ...s, dayOfMonth: -1 }, new Date(2026, 10, 1))).toEqual(new Date(2026, 10, 30, 9, 0));
+    expect(nextFireTime({ ...s, dayOfMonth: 5, interval: 2 }, sun)).toEqual(new Date(2026, 11, 5, 9, 0)); // Oct, Dec…
+    expect(nextFireTime(s, new Date(2027, 0, 1))).toBeNull(); // span ended in Dec
+    expect(describeSchedule({ ...s, dayOfMonth: -1 })).toBe('Monthly on the last day at 09:00 · Oct–Dec 2026');
+    expect(describeSchedule({ ...s, dayOfMonth: 22, interval: 3 })).toBe('Every 3 months on the 22nd at 09:00 · Oct–Dec 2026');
+  });
+});

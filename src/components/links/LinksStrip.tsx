@@ -34,7 +34,7 @@ export const LinksStrip = memo(function LinksStrip() {
   const open = (link: StripLink) => link.siteId && recordVisit(link.siteId);
 
   return (
-    <div data-testid="links-strip" className="flex min-w-0 items-center gap-2 border-b border-white/[0.07] px-3 py-2.5">
+    <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 rounded-2xl border border-white/10 px-3">
       <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />
@@ -93,7 +93,7 @@ function Chip({
       onClick={() => onOpen(link)}
       data-chip={variant}
       title={link.url}
-      className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-semibold whitespace-nowrap transition-all hover:-translate-y-px ${
+      className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-[12.5px] font-medium whitespace-nowrap transition-all hover:-translate-y-px ${
         variant === 'fixed'
           ? 'glass-inner border-white/15 bg-white/[0.09] text-white/95 hover:bg-white/15'
           : variant === 'auto'

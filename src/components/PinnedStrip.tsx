@@ -46,11 +46,11 @@ const DroppablePill = memo(function DroppablePill({
       data-group-id={group.id}
       aria-current={isActive ? 'true' : undefined}
       onClick={() => onSelect(group.id)}
-      className={`relative flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs sm:text-[13px] font-semibold transition-all duration-150 select-none ${
+      className={`relative flex items-center gap-2 rounded-[9px] px-3 py-1 text-[12.5px] font-medium transition-all duration-150 select-none ${
         isOver
           ? 'scale-105 bg-white/25 text-white ring-2 ring-white/60 shadow-lg'
           : isActive
-          ? 'bg-white/15 text-white font-semibold ring-1 ring-white/20 shadow-md'
+          ? 'bg-white/15 text-white ring-1 ring-white/20 shadow-md'
           : 'text-white/50 hover:bg-white/5 hover:text-white/85'
       }`}
       style={{
@@ -114,7 +114,7 @@ export const PinnedStrip = memo(function PinnedStrip({
     <nav
       ref={navRef}
       aria-label="Subcategory groups"
-      className="shrink-0 flex items-center gap-1.5 px-4 py-2 border-b border-white/[0.04] overflow-x-auto scrollbar-none flex-nowrap whitespace-nowrap select-none"
+      className="shrink-0 flex items-center gap-1.5 px-3 py-1 border-b border-white/[0.04] overflow-x-auto scrollbar-none flex-nowrap whitespace-nowrap select-none"
     >
       {groups.map((group) => (
         <DroppablePill

@@ -57,8 +57,8 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await expect(shell.getByRole('button', { name: 'Search the web' })).toBeVisible();
 
     // 2. G1 bookmark button sits outside the search shell, to its right
-    const g1 = page.getByRole('button', { name: 'Bookmarks and site map' });
-    await expect(shell.getByRole('button', { name: 'Bookmarks and site map' })).toHaveCount(0);
+    const g1 = page.getByRole('button', { name: 'Browser bookmarks' });
+    await expect(shell.getByRole('button', { name: 'Browser bookmarks' })).toHaveCount(0);
     const [shellBox, g1Box] = [await shell.boundingBox(), await g1.boundingBox()];
     expect(g1Box!.x).toBeGreaterThan(shellBox!.x + shellBox!.width - 1);
 
@@ -69,12 +69,12 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('listbox', { name: 'Search suggestions' })).toHaveCount(0);
 
-    // 4. The links strip is the first child of the centre frame, above the cards
+    // 4. The links strip floats above the centre frame (its own bar, with a gap)
     const frame = page.getByTestId('center-frame');
-    const strip = frame.getByTestId('links-strip');
+    const strip = page.getByTestId('links-strip');
     await expect(strip.locator('[data-chip=fixed]')).toHaveCount(4);
-    const [stripBox, cardBox] = [await strip.boundingBox(), await frame.locator('[data-category-id]').first().boundingBox()];
-    expect(stripBox!.y + stripBox!.height).toBeLessThanOrEqual(cardBox!.y);
+    const [stripBox, frameBox] = [await strip.boundingBox(), await frame.boundingBox()];
+    expect(stripBox!.y + stripBox!.height).toBeLessThan(frameBox!.y);
   });
 
   test('Subcategory navigation has sleek indicator dots; switches smoothly back and forth 10 times; thin scroll space below cards with no scroll buttons', async ({ page }) => {
@@ -109,9 +109,8 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     }
     await page.waitForTimeout(200);
 
-    // 5. Verify thin space below cards is present and handles horizontal scroll
-    const thinScrollSpace = page.locator('[data-testid="thin-cards-scroll-space"]');
-    await expect(thinScrollSpace).toBeVisible();
+    // 5. Page dots sit below the cards
+    await expect(page.getByTestId('cards-pager')).toBeVisible();
 
     // Verify page window still has zero scroll
     const pageScroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
@@ -134,7 +133,7 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await appearanceTab.click();
 
     // 1. Test Light Theme toggle
-    const lightThemeBtn = settingsModal.getByRole('button', { name: /Default Light/i });
+    const lightThemeBtn = settingsModal.getByRole('radio', { name: 'Light', exact: true });
     await expect(lightThemeBtn).toBeVisible();
     await lightThemeBtn.click();
     await page.waitForTimeout(200);
@@ -144,7 +143,7 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     expect(themeAttr).toBe('light');
 
     // 2. Test Dark Theme toggle
-    const darkThemeBtn = settingsModal.getByRole('button', { name: /Default Dark/i });
+    const darkThemeBtn = settingsModal.getByRole('radio', { name: 'Dark', exact: true });
     await expect(darkThemeBtn).toBeVisible();
     await darkThemeBtn.click();
     await page.waitForTimeout(200);
@@ -210,17 +209,19 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     expect(pageMetrics.docScrollHeight).toBeLessThanOrEqual(pageMetrics.docClientHeight);
     expect(pageMetrics.docScrollWidth).toBeLessThanOrEqual(pageMetrics.docClientWidth);
 
-    // 4. Test horizontal scroll inside the category deck via the thin scroll space below cards
+    // 4. The deck ignores sideways wheel; the page dots move it a page at a time
     const track = page.locator('[role="region"][aria-label="Scrollable category cards"]');
     await expect(track).toBeVisible();
-
-    const thinSpace = page.locator('[data-testid="thin-cards-scroll-space"]');
-    await expect(thinSpace).toBeVisible();
-    await thinSpace.dispatchEvent('wheel', { deltaY: 400, deltaX: 0 });
+    const tBox = (await track.boundingBox())!;
+    await page.mouse.move(tBox.x + 6, tBox.y + tBox.height - 6);
+    await page.mouse.wheel(400, 0);
     await page.waitForTimeout(300);
+    expect(await track.evaluate((el) => el.scrollLeft)).toBe(0);
 
-    const scrollLeft = await track.evaluate((el) => el.scrollLeft);
-    expect(scrollLeft).toBeGreaterThan(0);
+    const pager = page.getByTestId('cards-pager');
+    await expect(pager).toBeVisible();
+    await pager.getByRole('tab').nth(1).click();
+    await expect.poll(() => track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 
     // 5. Scroll to the last category card and verify its rendering
     const lastCard = cards.last();

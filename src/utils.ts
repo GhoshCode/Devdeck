@@ -1,3 +1,4 @@
+import { UNCATEGORIZED_COLOR, UNCATEGORIZED_ID, UNCATEGORIZED_NAME } from './lib/categories';
 import type { Category, Site, Subcategory } from './types';
 
 // --- URL & Domain Utilities --------------------------------------------------
@@ -26,13 +27,17 @@ export function getHostname(rawUrl: string): string {
   }
 }
 
+// Generic subdomains that say nothing about the site (news.ycombinator.com → Ycombinator).
+const GENERIC_SUBDOMAINS = new Set(['www', 'm', 'news', 'app', 'docs', 'doc', 'blog', 'api', 'web', 'my', 'en', 'portal', 'dashboard', 'console', 'developer', 'developers']);
+
 /**
  * Derives a readable site name from a URL domain (e.g. "https://github.com/..." -> "Github").
  */
 export function deriveNameFromUrl(rawUrl: string): string {
   try {
-    const host = getHostname(rawUrl);
-    const part = host.split('.')[0] || '';
+    const labels = getHostname(rawUrl).split('.');
+    const first = labels.length > 2 && GENERIC_SUBDOMAINS.has(labels[0]) ? 1 : 0;
+    const part = labels[first] || '';
     if (!part) return '';
     return part.charAt(0).toUpperCase() + part.slice(1);
   } catch {
@@ -97,6 +102,8 @@ export function fuzzyMatch(pattern: string, target: string): number {
   return -1;
 }
 
+const UNCATEGORIZED: Category = { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME, color: UNCATEGORIZED_COLOR, order: Number.MAX_SAFE_INTEGER };
+
 export function searchSites(
   query: string,
   sites: Site[],
@@ -110,7 +117,7 @@ export function searchSites(
   const scored: ScoredSite[] = [];
 
   for (const site of sites) {
-    const category = catMap.get(site.categoryId);
+    const category = catMap.get(site.categoryId) ?? (site.categoryId === '' ? UNCATEGORIZED : undefined);
     if (!category) continue;
     const subcategory = site.subcategoryId ? subMap.get(site.subcategoryId) ?? null : null;
 
