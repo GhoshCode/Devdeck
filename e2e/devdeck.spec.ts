@@ -118,10 +118,11 @@ test.describe('Page Load & Header', () => {
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toBeVisible();
 
-    const text = await heading.textContent();
-    // A themed phrase for the time of day (lib/greetings.ts)
-    expect(text?.trim().length).toBeGreaterThan(4);
-    expect(text).toMatch(/[A-Z]{3,}/);
+    // The page opens on the plain greeting; a double-click switches to the
+    // themed phrases (lib/greetings.ts).
+    await expect(heading).toHaveText(/^GOOD (MORNING|AFTERNOON|EVENING|NIGHT)/);
+    await heading.dblclick();
+    await expect(heading).not.toHaveText(/^GOOD (MORNING|AFTERNOON|EVENING|NIGHT)/);
   });
 
   test('shows the current date', async ({ page }) => {

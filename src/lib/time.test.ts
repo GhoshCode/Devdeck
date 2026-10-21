@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { clockParts, formatDateLine, localDateKey } from './time';
+import { clockParts, formatDateLine, greetingFor, localDateKey } from './time';
 import { GREETINGS, greetingPhrase, segmentOf } from './greetings';
 
 const at = (h: number, m = 0, s = 0) => new Date(2026, 9, 15, h, m, s);
@@ -44,4 +44,16 @@ describe('greetings', () => {
 test('date helpers', () => {
   expect(formatDateLine(at(10))).toBe('THURSDAY, OCTOBER 15, 2026');
   expect(localDateKey(at(23, 59))).toBe('2026-10-15');
+});
+
+describe('greetingFor', () => {
+  test.each([
+    [6, 'GOOD MORNING'],
+    [13, 'GOOD AFTERNOON'],
+    [19, 'GOOD EVENING'],
+    [23, 'GOOD NIGHT'],
+    [3, 'GOOD NIGHT'],
+  ])('%i:00 → %s', (h, expected) => {
+    expect(greetingFor(new Date(2026, 9, 15, h))).toBe(expected);
+  });
 });

@@ -3,8 +3,8 @@ import { createContext, useContext } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
-import { cardsAtRest, clampTaken, maxTaken, snapColumns, type SnapGeometry } from '../../lib/cardSnap';
-import { CardSnapHandle } from './CardSnapHandle';
+import { cardsAtRest, freeColumns, sideMax, stepSide, type SnapGeometry } from '../../lib/cardSnap';
+import { CardSnapHandle, EdgeTab } from './CardSnapHandle';
 import { TopSplitHandle } from './TopSplitHandle';
 
 // The v2 page shell (plan §1, §4 Phase 0): Top Bar, Search Row, then the
@@ -15,7 +15,8 @@ import { TopSplitHandle } from './TopSplitHandle';
 //   <1024px     both side columns become slide-out drawers
 // Each side slot is rendered exactly once — inline or in its drawer — so
 // widget state is never duplicated. With all three inline, a handle on each
-// side of the centre resizes by whole category cards (1–3 stay in the centre).
+// side of the centre resizes freely, and a tab on each inside edge of the
+// cards box steps the centre down by whole cards (1 always stays).
 
 interface DashboardLayoutProps {
   topBar: ReactNode;
@@ -71,9 +72,14 @@ export function DashboardLayout({
   }, [drawer]);
 
   const snap = useCardSnap(rightInline);
+  // Unresized, the terminal is as wide as the Git box in the top bar (or the news column without one).
+  const gitWidth = useWidthOf('[data-testid="git-widget"]', rightInline);
+  const terminal = termWidth ?? gitWidth ?? snap.rightWidth;
 
   const columns = rightInline
-    ? 'transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none'
+    ? snap.dragging
+      ? ''
+      : 'transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none'
     : leftInline
       ? 'grid-cols-[200px_minmax(0,1fr)]'
       : 'grid-cols-1';
@@ -109,20 +115,19 @@ export function DashboardLayout({
         style={rightInline ? { ...snap.style, gridTemplateRows: 'calc(var(--links-bar-h) + 7px) minmax(0, 1fr)', rowGap: 12 } : undefined}
       >
         {/* Wide screens: the quick-links bar and the terminal share their own row
-            above the cards and the news. By default the terminal is as wide as the
-            news column (so the bar lines up with the cards); drag the handle
-            between them to size them on their own — double-click to follow the
-            columns again. */}
+            above the cards and the news. By default the terminal is as wide as the Git
+            box in the top bar; drag the handle between them to size them on their
+            own — double-click to go back. */}
         {rightInline && (
           <div ref={topRowRef} data-zone="top-row" className="flex min-w-0 items-end pt-[7px]" style={{ gridColumn: '3 / 6', gridRow: 1 }}>
             <div className="min-w-0 flex-1">{linksRow}</div>
             <TopSplitHandle
-              width={termWidth ?? snap.rightWidth}
+              width={terminal}
               custom={termWidth !== null}
               rowRef={topRowRef}
               onChange={(w) => updateSettings({ topTerminalWidth: w })}
             />
-            <div data-zone="right-top" className="flex shrink-0 items-center" style={{ width: termWidth ?? snap.rightWidth, height: 'var(--links-bar-h)' }}>
+            <div data-zone="right-top" className="flex shrink-0 items-center" style={{ width: terminal, height: 'var(--links-bar-h)' }}>
               <div className="w-full">{rightTop}</div>
             </div>
           </div>
@@ -139,9 +144,11 @@ export function DashboardLayout({
             <CardSnapHandle side="left" {...snap.handle('left')} />
           </div>
         )}
-        <section ref={snap.centerRef} data-zone="center" className="flex min-h-0 min-w-0 flex-col gap-3" style={rightInline ? { gridColumn: 3, gridRow: 2 } : undefined}>
+        <section ref={snap.centerRef} data-zone="center" className="relative flex min-h-0 min-w-0 flex-col gap-3" style={rightInline ? { gridColumn: 3, gridRow: 2 } : undefined}>
           {!rightInline && <div className="mt-[7px] shrink-0">{linksRow}</div>}
           {center}
+          {rightInline && <EdgeTab side="left" cards={snap.cards} onStep={() => snap.step('left')} />}
+          {rightInline && <EdgeTab side="right" cards={snap.cards} onStep={() => snap.step('right')} />}
         </section>
         {rightInline && (
           <div style={{ gridColumn: 4, gridRow: 2 }} className="flex min-h-0">
@@ -205,16 +212,18 @@ const HANDLE = 12; // each resize handle stands in for the old column gap
 const LEFT_BASE = 250;
 const RIGHT_BASE = 300;
 
-// Measures the cockpit and the category cards, and turns the saved "cards
-// taken" per side into column widths.
+// Measures the cockpit and the category cards, and turns the saved side
+// widths into columns. The outside handles set a width freely; the edge tabs
+// step the centre down by whole cards.
 function useCardSnap(enabled: boolean) {
   const cockpitRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLElement>(null);
-  const left = useStore((s) => s.settings.cockpitLeftCards ?? 0);
-  const right = useStore((s) => s.settings.cockpitRightCards ?? 0);
+  const leftW = useStore((s) => s.settings.cockpitLeftWidth ?? null);
+  const rightW = useStore((s) => s.settings.cockpitRightWidth ?? null);
   const categoryCount = useStore((s) => s.categories.length);
   const updateSettings = useStore((s) => s.updateSettings);
   const [geo, setGeo] = useState<SnapGeometry | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   useLayoutEffect(() => {
     const cockpit = cockpitRef.current;
@@ -247,21 +256,64 @@ function useCardSnap(enabled: boolean) {
     };
   }, [enabled, categoryCount]);
 
-  const cols = geo ? snapColumns(geo, left, right) : null;
-  const taken = geo ? clampTaken(geo, left, right) : { left: 0, right: 0 };
-  const max = geo ? maxTaken(geo) : 0;
+  const cols = geo ? freeColumns(geo, leftW, rightW) : null;
+  const left = cols?.left ?? LEFT_BASE;
+  const right = cols?.right ?? RIGHT_BASE;
   const style: CSSProperties = {
-    gridTemplateColumns: `${cols?.left ?? LEFT_BASE}px ${HANDLE}px minmax(0,1fr) ${HANDLE}px ${cols?.right ?? RIGHT_BASE}px`,
+    gridTemplateColumns: `${left}px ${HANDLE}px minmax(0,1fr) ${HANDLE}px ${right}px`,
   };
-  const handle = (side: 'left' | 'right') => ({
-    taken: taken[side],
-    max: max - (side === 'left' ? taken.right : taken.left),
-    unit: geo ? geo.card + geo.gap : 420,
-    onChange: (n: number) => updateSettings(side === 'left' ? { cockpitLeftCards: n } : { cockpitRightCards: n }),
+  const save = (side: Side, w: number | null) => updateSettings(side === 'left' ? { cockpitLeftWidth: w } : { cockpitRightWidth: w });
+  const handle = (side: Side) => ({
+    width: side === 'left' ? left : right,
+    min: side === 'left' ? LEFT_BASE : RIGHT_BASE,
+    max: geo ? sideMax(geo, side === 'left' ? right : left) : side === 'left' ? left : right,
+    onChange: (w: number | null) => {
+      // the first drag of one side pins the other where it is, so it doesn't jump
+      const other: Side = side === 'left' ? 'right' : 'left';
+      if (w !== null && leftW === null && rightW === null) save(other, other === 'left' ? left : right);
+      save(side, w);
+    },
+    onDragging: setDragging,
   });
+  const step = (side: Side) => {
+    if (!geo) return;
+    const w = stepSide(geo, side, left, right);
+    const other: Side = side === 'left' ? 'right' : 'left';
+    if (w !== null && leftW === null && rightW === null) save(other, other === 'left' ? left : right);
+    save(side, w);
+  };
   const cards = cols?.cards ?? (geo ? Math.max(1, cardsAtRest(geo)) : 3);
-  const rightWidth = cols?.right ?? RIGHT_BASE;
-  return { cockpitRef, centerRef, style, handle, cards, rightWidth };
+  return { cockpitRef, centerRef, style, handle, step, cards, rightWidth: right, dragging };
+}
+
+// Width of the first element matching the selector, kept current (null if none).
+function useWidthOf(selector: string, enabled: boolean) {
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let ro: ResizeObserver | null = null;
+    let seen: Element | null = null;
+    const attach = () => {
+      const el = document.querySelector(selector);
+      if (el === seen) return;
+      ro?.disconnect();
+      seen = el;
+      if (!el) return setWidth(null);
+      const read = () => setWidth(Math.round(el.getBoundingClientRect().width));
+      read();
+      ro = new ResizeObserver(read);
+      ro.observe(el);
+    };
+    attach();
+    // the widget can be swapped or hidden in Settings
+    const mo = new MutationObserver(attach);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      ro?.disconnect();
+      mo.disconnect();
+    };
+  }, [selector, enabled]);
+  return width;
 }
 
 function DrawerToggle({ side, label, onClick }: { side: Side; label: string; onClick: () => void }) {

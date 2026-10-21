@@ -2,7 +2,7 @@ import { useState, type PointerEvent, type RefObject } from 'react';
 
 // The handle between the quick-links bar and the terminal. Drag to size the
 // terminal on its own (independent of the news column below); arrow keys step
-// 24 px; double-click goes back to following the column.
+// 24 px; double-click goes back to the Git box's width.
 
 const MIN_TERMINAL = 240;
 const MIN_LINKS = 380;
@@ -41,7 +41,7 @@ export function TopSplitHandle({ width, custom, rowRef, onChange }: { width: num
       aria-label="Resize quick links and terminal"
       aria-valuenow={Math.round(width)}
       tabIndex={0}
-      title={custom ? 'Drag to resize · double-click to line up with the news column' : 'Drag to resize the quick links and the terminal'}
+      title={custom ? 'Drag to resize · double-click to match the Git box width' : 'Drag to resize the quick links and the terminal'}
       onPointerDown={onPointerDown}
       onDoubleClick={() => onChange(null)}
       onKeyDown={(e) => {

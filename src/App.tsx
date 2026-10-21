@@ -122,13 +122,6 @@ export default function App() {
     }
   }, []);
 
-  // Opened as a new tab (?focus): the cursor goes straight to the search bar.
-  useEffect(() => {
-    if (!location.search.includes('focus')) return;
-    const t = setTimeout(() => searchRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-  }, []);
-
   // Global hotkeys (§7 Q4): Ctrl/⌘+K and "/" focus the search bar; "," opens
   // Settings; Escape closes Settings.
   useEffect(() => {

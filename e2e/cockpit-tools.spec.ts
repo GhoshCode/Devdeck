@@ -176,3 +176,28 @@ test('sites reorder in the Site Map by dropping onto another site', async ({ pag
   expect(after.slice(1)).toEqual([before[0], before[1], ...before.slice(3)]);
 });
 
+
+test('edge tabs step the cards down a whole card at a time; the handles resize freely', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  const cockpit = page.locator('[data-zone="cockpit"]');
+  const cols = () => cockpit.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
+  const tab = page.locator('[data-edge-tab="left"]');
+  await expect(tab).toHaveAttribute('aria-label', 'Widen Currently processing by one card');
+  const start = await cols();
+  await tab.click();
+  await expect.poll(async () => (await cols())[0]).toBeGreaterThan(start[0] + 300); // 3 → 2 cards
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-label', 'Give Currently processing its space back'); // 2 → 1
+  await tab.click();
+  await expect.poll(async () => (await cols())[0]).toBe(start[0]);
+
+  // the outside handle moves px by px
+  const handle = page.locator('[data-snap-handle="left"]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 100, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await cols())[0]).toBe(start[0] + 100);
+});

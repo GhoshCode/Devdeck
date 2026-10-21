@@ -10,6 +10,25 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22b — free resize + card-step edge tabs, plain greeting, CPU temperature, growing terminal
+
+- **Cockpit resizing** (`lib/cardSnap.ts`, `layout/CardSnapHandle.tsx`, `DashboardLayout` `useCardSnap`):
+  - The settings `cockpitLeftCards` / `cockpitRightCards` (cards taken) are replaced by `cockpitLeftWidth` / `cockpitRightWidth` (px, null = not resized).
+  - `freeColumns(g, leftW, rightW)`: with neither side set, the rest layout (`restColumns`) applies. Otherwise each width is clamped between its base (250 / 300) and `sideMax`, which leaves the centre one card.
+  - **Outside handles** (`CardSnapHandle`) drag freely, px by px. Arrow keys move 24 px; double-click or Home resets. The grid's column transition is off while dragging. The first resize of one side pins the other side where it is, so it doesn't jump.
+  - **Edge tabs** (`EdgeTab`, `data-edge-tab`): half-cut tabs on the inside left and right edges of the cards box, the `panel-notch` look turned on its side. A click runs `stepSide()`:
+    - The centre goes to the whole cards below what it shows (2.5 → 2, 3 → 2 → 1). A view only a sliver (< 0.15) past whole cards counts as whole.
+    - The clicked side takes the freed space.
+    - At one card the click gives the side's space back (null).
+  - `LayoutContext.cards` = `wholeCards()` (1–3).
+- **Greeting** (`DateGreet`): `roll` starts as null, so the page opens on the plain `greetingFor()` (restored in `lib/time.ts`, with its test). The first double-click switches to the themed phrases; later ones re-roll. Click and right-click still cycle the style.
+- **CPU temperature** (`SystemStats`): `chrome.system.cpu.getInfo().temperatures` (the hottest zone, °C) shows beside the CPU meter when Chrome reports any. Only ChromeOS does; Windows, macOS and Linux return an empty list, so nothing shows there.
+- **Terminal:**
+  - Unresized (`topTerminalWidth` null), it is as wide as the Git box (`useWidthOf('[data-testid="git-widget"]')`), else the news column.
+  - The input is an auto-height `<textarea>`. The box is absolutely positioned in its 40 px slot, so a long command wraps and the box grows down over the news column. Enter runs the command, Shift+Enter adds a new line, and the arrows walk history only from an empty box or a history entry.
+- **Removed:** new-tab search focus (`focusNewTab` in `main.tsx`, the `?focus` effect in `App`, the Search settings checkbox, `newTabFocus`).
+- **Tests:** 264 unit (`cardSnap` free and step maths, `greetingFor`). 90/90 Chromium end-to-end (the quote-shuffle test is flaky against the live API), including a new cockpit-tools test for the tabs and the free drag.
+
 ## Round 2026-10-22 — own row for quick links + terminal, greeting clicks, CPU/RAM size
 
 - **Top row** (`DashboardLayout`, `layout/TopSplitHandle.tsx`): with all three columns inline the cockpit is a two-row grid.
@@ -29,7 +48,7 @@ Implemented from `devdeck-requirements.md` (deleted afterwards). Item numbers re
   - Settings fields: `notifyAll` (default true), `notifyChrome`, `notifyPopups`. `alertPrefs()` resolves them to `{ popups, chrome }`.
   - Page (`useInPageAlerts`): pop-ups gate `pushAlert` (fired events, snoozes, overdue summary, replies to the worker); Chrome gates `notifyWeb`. With pop-ups off and Chrome on, a visible tab sends a system notification instead.
   - The page mirrors the prefs to `chrome.storage.local['devdeck:alert-prefs']`. The worker's `deliver()` only tries the DevDeck tab and the on-site overlay when pop-ups are on, and only creates a `chrome.notifications` notification when Chrome is on.
-- **2.1 New tab → DevDeck search** (`main.tsx` `focusNewTab`):
+- **2.1 New tab → DevDeck search** (removed in 2026-10-22b) (`main.tsx` `focusNewTab`):
   - On a fresh new tab (extension, no `?focus`, `history.length === 1`, `newTabFocus` not false), DevDeck calls `chrome.tabs.getCurrent` + `tabs.update(index.html?focus=1 + hash)` and skips rendering.
   - A tab navigated by the extension focuses the page, not the omnibox, so `App` focuses the search bar on `?focus`. The trade-off is that the address bar shows the extension URL.
   - Opt-in since 2026-10-22 (default off, so the address bar stays empty): Settings → Profile → Search → "Type straight into DevDeck on a new tab".

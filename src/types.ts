@@ -71,8 +71,8 @@ export interface Settings {
   feedJobsCount?: number; // 0–100 posts shown in Dev jobs (default 4)
   greetStyle?: GreetStyle; // how the greeting words (not the name) are drawn
   nameFont?: NameFont; // typeface of your name in the greeting
-  cockpitLeftCards?: number; // category cards' width the left column has taken from the centre (0–2)
-  cockpitRightCards?: number; // …and the right column
+  cockpitLeftWidth?: number | null; // px of the left column when resized; unset = the rest layout
+  cockpitRightWidth?: number | null; // …and the news column
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
   gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
@@ -90,7 +90,6 @@ export interface Settings {
   notifyPopups?: boolean; // DevDeck's alert pop-ups, in-page and on other sites (default true)
   searchEngine?: SearchEngineId; // Enter / Ctrl+Enter search (default google)
   topTerminalWidth?: number | null; // px of the terminal beside the links bar; unset = as wide as the news column
-  newTabFocus?: boolean; // extension: put the cursor in DevDeck's search on a new tab (opt-in, default false)
 }
 
 export type SearchEngineId = 'google' | 'bing' | 'duckduckgo' | 'brave' | 'startpage' | 'ecosia';

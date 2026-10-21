@@ -1,40 +1,44 @@
 import { useState, type PointerEvent } from 'react';
-import { dragSteps } from '../../lib/cardSnap';
 
-// The handle between a side column and the category cards. It moves in whole
-// cards: a short pull already snaps the centre one card narrower (or wider),
-// so the cards are never cut in half. Arrow keys step one card; double-click
-// gives the cards back.
+// The handle between a side column and the category cards. It resizes freely,
+// px by px (the centre always keeps one card); arrow keys step 24 px;
+// double-click gives the space back. For whole-card steps use the tabs inside
+// the cards box (EdgeTab).
 
 export function CardSnapHandle({
   side,
-  taken,
+  width,
+  min,
   max,
-  unit,
   onChange,
+  onDragging,
 }: {
   side: 'left' | 'right';
-  taken: number; // cards this side has taken from the centre
-  max: number; // most it may take right now
-  unit: number; // one card plus the gap, px
-  onChange: (taken: number) => void;
+  width: number; // this side column, px
+  min: number;
+  max: number; // most it may have right now
+  onChange: (width: number | null) => void;
+  onDragging: (on: boolean) => void;
 }) {
   const [dragging, setDragging] = useState(false);
-  // Dragging towards the centre takes cards: rightwards for the left handle.
+  // Dragging towards the centre widens the side: rightwards for the left handle.
   const dir = side === 'left' ? 1 : -1;
-  const set = (n: number) => onChange(Math.max(0, Math.min(max, n)));
+  const set = (w: number) => onChange(Math.round(Math.max(min, Math.min(max, w))));
+  const active = max > min;
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
     const startX = e.clientX;
-    const start = taken;
+    const start = width;
     const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
     setDragging(true);
-    const move = (ev: globalThis.PointerEvent) => set(start + dir * dragSteps(ev.clientX - startX, unit));
+    onDragging(true);
+    const move = (ev: globalThis.PointerEvent) => set(start + dir * (ev.clientX - startX));
     const up = () => {
       setDragging(false);
+      onDragging(false);
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', up);
       el.removeEventListener('pointercancel', up);
@@ -49,22 +53,22 @@ export function CardSnapHandle({
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label={`Resize ${cards} by whole category cards`}
-      aria-valuemin={0}
-      aria-valuemax={max}
-      aria-valuenow={taken}
-      tabIndex={max > 0 || taken > 0 ? 0 : -1}
+      aria-label={`Resize ${cards}`}
+      aria-valuemin={Math.round(min)}
+      aria-valuemax={Math.round(max)}
+      aria-valuenow={Math.round(width)}
+      tabIndex={active ? 0 : -1}
       data-snap-handle={side}
-      title={max > 0 ? 'Drag to resize by whole cards · double-click to reset' : 'No room to resize — the cards need the space'}
-      onPointerDown={max > 0 || taken > 0 ? onPointerDown : undefined}
-      onDoubleClick={() => set(0)}
+      title={active ? 'Drag to resize · double-click to reset' : 'No room to resize — the cards need the space'}
+      onPointerDown={active ? onPointerDown : undefined}
+      onDoubleClick={() => onChange(null)}
       onKeyDown={(e) => {
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
           e.preventDefault();
-          set(taken + (e.key === 'ArrowRight' ? dir : -dir));
-        } else if (e.key === 'Home') set(0);
+          set(width + (e.key === 'ArrowRight' ? dir : -dir) * 24);
+        } else if (e.key === 'Home') onChange(null);
       }}
-      className={`group/snap flex h-full touch-none items-center justify-center ${max > 0 || taken > 0 ? 'cursor-col-resize' : 'cursor-default'}`}
+      className={`group/snap flex h-full touch-none items-center justify-center ${active ? 'cursor-col-resize' : 'cursor-default'}`}
     >
       <span
         className={`w-1 rounded-full transition-all ${
@@ -72,5 +76,32 @@ export function CardSnapHandle({
         }`}
       />
     </div>
+  );
+}
+
+// A half-cut tab on the inside edge of the cards box (the "Currently
+// processing" notch turned on its side). Each click narrows the centre by one
+// whole card — a part-card view snaps to the whole cards below it — and gives
+// the space to this side; at one card it gives the space back.
+export function EdgeTab({ side, cards, onStep }: { side: 'left' | 'right'; cards: number; onStep: () => void }) {
+  const what = side === 'left' ? 'Currently processing' : 'Tech news';
+  const label = cards <= 1 ? `Give ${what} its space back` : `Widen ${what} by one card`;
+  // the arrow points the way the edge moves
+  const into = (side === 'left') === cards > 1;
+  return (
+    <button
+      type="button"
+      data-edge-tab={side}
+      aria-label={label}
+      title={label}
+      onClick={onStep}
+      className={`panel-notch absolute top-1/2 z-10 flex h-16 w-4 -translate-y-1/2 items-center justify-center border text-white/50 transition-colors hover:text-white ${
+        side === 'left' ? 'left-0 rounded-r-xl border-l-0' : 'right-0 rounded-l-xl border-r-0'
+      }`}
+    >
+      <svg className="size-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d={into ? 'M4 2l4 4-4 4' : 'M8 2L4 6l4 4'} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
   );
 }

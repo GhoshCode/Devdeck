@@ -17,6 +17,23 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22b — resize tabs, plain greeting, CPU temperature
+
+- **Resize the cards area two ways:**
+  - Drag the thin bars between the cards and the side columns to resize freely.
+  - Or click the small tabs on the inside left and right edges of the cards box. Each click shrinks the cards to one whole card fewer (3 → 2 → 1; a part-cut card snaps to the whole cards) and widens that side. At one card, a click gives the side its space back.
+  - Double-click a bar to reset it.
+- **Greeting:** opens as GOOD MORNING / AFTERNOON / EVENING / NIGHT. Double-click it for the themed phrases (and again for another one). Click and right-click still change the style.
+- **CPU temperature** shows next to the CPU meter where Chrome provides it (ChromeOS only; Chrome on Windows and Mac doesn't expose it).
+- **Terminal** is as wide as the Git box by default; long commands wrap and the box grows downward.
+- **Removed:** the "type straight into DevDeck on a new tab" option.
+
+**Manual test checklist**
+- [ ] Refresh: the greeting is the plain one; double-click gives a themed phrase.
+- [ ] Click the left edge tab twice: 3 → 2 → 1 cards; a third click restores the left column. Same for the right tab and the news column.
+- [ ] Drag a bar halfway into a card, then click that side's tab: it snaps to the whole cards below.
+- [ ] Type a long command: the terminal box grows down; Enter runs it.
+
 ## Round 2026-10-22 — quick links + terminal row
 
 - The quick-links bar and the terminal sit in their own row. By default the bar is exactly as wide as the cards below it and the terminal as wide as the news column, with 1, 2 or 3 cards. Drag the small handle between them to size them yourself; double-click it to line them up again.
@@ -31,7 +48,7 @@ wide where layout is involved.
 ## Round 2026-10-21 — notifications, search keys, stats, greetings
 
 - **Settings → Processing → Notifications:** All notifications / Chrome built-in notifications / Alert pop-up notifications. With All ticked the other two are ticked and locked.
-- **New tab:** start typing right away and it goes into DevDeck's search, not Chrome's address bar. The address bar shows the extension address; this is off by default — turn it on in Settings → Profile → Search (the address bar then shows the extension address).
+- **New tab** (removed in 2026-10-22b): start typing right away and it goes into DevDeck's search, not Chrome's address bar. The address bar shows the extension address; this is off by default — turn it on in Settings → Profile → Search (the address bar then shows the extension address).
 - **Search keys:** Enter searches in a new tab · Ctrl+Enter in a new window · Alt+Enter asks your AI. Choose the search engine in Settings → Profile → Search. Scroll on the AI icon to switch AIs.
 - **Alerts:** To-do and Queue alerts stay 10 s; Currently processing 5 s. Clear all is bigger.
 - **Quick links:** in 1- and 2-card views the bar fits without scrolling; the fixed sites have a neon accent border. Main sites in a card show a pin; click it to unpin.

@@ -32,3 +32,18 @@ export const formatDateLine = (d: Date): string => dateFormatter.format(d).toUpp
 // Local 'YYYY-MM-DD' (not UTC — toISOString would shift the day near midnight).
 export const localDateKey = (d: Date): string =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// §7 Q5: a clean time-of-day greeting, uppercase, optionally with the name.
+export function greetingFor(d: Date, name = ''): string {
+  const h = d.getHours();
+  const base =
+    h >= 5 && h < 12
+      ? 'GOOD MORNING'
+      : h >= 12 && h < 17
+        ? 'GOOD AFTERNOON'
+        : h >= 17 && h < 22
+          ? 'GOOD EVENING'
+          : 'GOOD NIGHT';
+  const trimmed = name.trim();
+  return trimmed ? `${base}, ${trimmed.toUpperCase()}` : base;
+}

@@ -3,9 +3,12 @@ import { memo, useEffect, useState } from 'react';
 // CPU and RAM use, beside the Settings button (extension only: needs the
 // system.cpu / system.memory permissions; the website build shows nothing).
 // CPU % = busy time / total time across all cores since the last sample.
+// The CPU temperature shows when Chrome reports one (ChromeOS; Windows, macOS and
+// Linux browsers don't expose it).
 
 interface CpuInfo {
   processors: Array<{ usage: { user: number; kernel: number; idle: number; total: number } }>;
+  temperatures?: number[]; // °C per thermal zone — ChromeOS only; empty or missing elsewhere
 }
 interface MemInfo {
   capacity: number;
@@ -20,7 +23,7 @@ const systemApi = () => (globalThis as { chrome?: { system?: SystemApi } }).chro
 const SAMPLE_MS = 2000;
 
 export const SystemStats = memo(function SystemStats() {
-  const [stats, setStats] = useState<{ cpu: number | null; ram: number | null; usedGb: number; totalGb: number } | null>(null);
+  const [stats, setStats] = useState<{ cpu: number | null; temp: number | null; ram: number | null; usedGb: number; totalGb: number } | null>(null);
 
   useEffect(() => {
     const sys = systemApi();
@@ -33,10 +36,12 @@ export const SystemStats = memo(function SystemStats() {
         const total = info.processors.reduce((n, p) => n + p.usage.total, 0);
         const cpu = last && total > last.total ? Math.round(((busy - last.busy) / (total - last.total)) * 100) : null;
         last = { busy, total };
+        const temps = (info.temperatures ?? []).filter((t) => t > 0);
+        const temp = temps.length ? Math.round(Math.max(...temps)) : null;
         sys.memory!.getInfo((m) => {
           if (!alive) return;
           const used = m.capacity - m.availableCapacity;
-          setStats({ cpu, ram: Math.round((used / m.capacity) * 100), usedGb: used / 2 ** 30, totalGb: m.capacity / 2 ** 30 });
+          setStats({ cpu, temp, ram: Math.round((used / m.capacity) * 100), usedGb: used / 2 ** 30, totalGb: m.capacity / 2 ** 30 });
         });
       });
     };
@@ -51,13 +56,18 @@ export const SystemStats = memo(function SystemStats() {
   if (!stats) return null;
   return (
     <div data-testid="system-stats" className="sys-stats glass-raised flex h-10 w-1/2 min-w-0 flex-col justify-center gap-1 rounded-xl px-2.5" aria-label="System usage">
-      <Meter label="CPU" value={stats.cpu} title={stats.cpu === null ? 'Measuring CPU…' : `CPU ${stats.cpu}% across all cores`} />
+      <Meter
+        label="CPU"
+        value={stats.cpu}
+        extra={stats.temp === null ? undefined : `${stats.temp}°`}
+        title={(stats.cpu === null ? 'Measuring CPU…' : `CPU ${stats.cpu}% across all cores`) + (stats.temp === null ? '' : ` · ${stats.temp} °C`)}
+      />
       <Meter label="RAM" value={stats.ram} title={`RAM ${stats.usedGb.toFixed(1)} of ${stats.totalGb.toFixed(1)} GB used`} />
     </div>
   );
 });
 
-function Meter({ label, value, title }: { label: string; value: number | null; title: string }) {
+function Meter({ label, value, title, extra }: { label: string; value: number | null; title: string; extra?: string }) {
   const v = value ?? 0;
   const tone = v >= 85 ? 'is-hot' : v >= 60 ? 'is-warm' : '';
   return (
@@ -67,6 +77,7 @@ function Meter({ label, value, title }: { label: string; value: number | null; t
         <span className={`sys-fill block h-full rounded-full ${tone}`} style={{ width: `${v}%` }} />
       </span>
       <span className="w-7 shrink-0 text-right text-white/75">{value === null ? '—' : `${v}%`}</span>
+      {extra && <span data-testid="cpu-temp" className="shrink-0 text-white/55">{extra}</span>}
     </div>
   );
 }
