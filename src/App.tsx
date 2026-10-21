@@ -209,7 +209,7 @@ export default function App() {
           <div className="flex h-full min-h-0 flex-col gap-3">
             {/* All categories stands on its own, left of the quick links + recent
                 bar; it moves with the bar as the centre column resizes. */}
-            <div className="mt-[7px] flex min-w-0 shrink-0 items-center gap-2">
+            <div className="mx-3 mt-[7px] flex min-w-0 shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setOverview((v) => !v)}
