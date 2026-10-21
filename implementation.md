@@ -10,6 +10,16 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22 — own row for quick links + terminal, greeting clicks, CPU/RAM size
+
+- **Top row** (, ): with all three columns inline the cockpit is a two-row grid.
+  - Row 1 (, columns 3–5) holds the links row (All categories + quick links, new  prop from ), a resize handle, then the terminal. Row 2 holds the left handle, the cards, the right handle and the news. The left column spans both rows.
+  - The terminal width is , or the news column's width when unset. So by default the bar lines up with the cards and the terminal with the news column in the 1-, 2- and 3-card layouts. Measured at 1920 px: 714–1156 / 298–1160 / 298–1572.
+  - Dragging the handle (or ←/→ in 24 px steps) sizes them independently of the columns below, clamped to 240 px for the terminal and 380 px for the links. Double-click (or Home) goes back to following the news column.
+  - Narrower screens are unchanged: the links row sits above the cards in the centre column.
+- **CPU / RAM** box is half the footer width (), directly right of the Settings button.
+- **Greeting:** click = next style, right-click = previous style (like the clock), double-click = another phrase. A single click waits 240 ms so a double-click doesn't also change the style.
+
 ## Round 2026-10-21 — requirements file (notifications, search keys, layout, stats, greetings)
 
 Implemented from `devdeck-requirements.md` (deleted afterwards). Item numbers refer to that file.

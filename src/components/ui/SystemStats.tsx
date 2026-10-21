@@ -50,7 +50,7 @@ export const SystemStats = memo(function SystemStats() {
 
   if (!stats) return null;
   return (
-    <div data-testid="system-stats" className="sys-stats glass-raised flex h-10 min-w-0 flex-1 flex-col justify-center gap-1 rounded-xl px-2.5" aria-label="System usage">
+    <div data-testid="system-stats" className="sys-stats glass-raised flex h-10 w-1/2 min-w-0 flex-col justify-center gap-1 rounded-xl px-2.5" aria-label="System usage">
       <Meter label="CPU" value={stats.cpu} title={stats.cpu === null ? 'Measuring CPU…' : `CPU ${stats.cpu}% across all cores`} />
       <Meter label="RAM" value={stats.ram} title={`RAM ${stats.usedGb.toFixed(1)} of ${stats.totalGb.toFixed(1)} GB used`} />
     </div>

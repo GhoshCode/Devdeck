@@ -89,6 +89,7 @@ export interface Settings {
   notifyChrome?: boolean; // Chrome / system notifications (default true)
   notifyPopups?: boolean; // DevDeck's alert pop-ups, in-page and on other sites (default true)
   searchEngine?: SearchEngineId; // Enter / Ctrl+Enter search (default google)
+  topTerminalWidth?: number | null; // px of the terminal beside the links bar; unset = as wide as the news column
   newTabFocus?: boolean; // extension: put the cursor in DevDeck's search on a new tab (opt-in, default false)
 }
 

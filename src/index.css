@@ -3238,3 +3238,9 @@ html[data-theme='light'] .tile-pin { background: #fff; box-shadow: 0 0 0 1px rgb
 .sys-fill.is-warm { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.6); }
 .sys-fill.is-hot { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.6); }
 html[data-theme='light'] .sys-track { background: rgba(15, 23, 42, 0.1); }
+
+/* Handle between the quick-links bar and the terminal */
+.top-split-grip { background: rgba(255, 255, 255, 0.14); transition: background-color 0.15s, height 0.15s, box-shadow 0.15s; }
+.top-split:hover .top-split-grip, .top-split:focus-visible .top-split-grip, .top-split.is-dragging .top-split-grip { height: 2.5rem; background: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); }
+.top-split:focus-visible { outline: none; }
+html[data-theme='light'] .top-split-grip { background: rgba(15, 23, 42, 0.18); }

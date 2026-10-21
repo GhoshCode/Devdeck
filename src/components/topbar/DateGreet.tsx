@@ -163,11 +163,14 @@ export const DateGreet = memo(function DateGreet() {
   const showQuote = useStore((s) => s.settings.showQuote ?? true);
   const greetStyle = useStore((s) => s.settings.greetStyle ?? 'classic');
   const updateSettings = useStore((s) => s.updateSettings);
-  // Click the greeting for another phrase of this time of day; right-click for the next style.
+  // Click the greeting for the next style, right-click for the previous one (like
+  // the clock); double-click for another phrase of this time of day.
   const at = Math.max(0, GREET_STYLES.findIndex((g) => g.id === greetStyle));
   const segment = segmentOf(now);
   const [roll, setRoll] = useState(() => Math.floor(Math.random() * 1000));
   const phrase = greetingPhrase(segment, roll);
+  const greetClick = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (greetClick.current && clearTimeout(greetClick.current)), []);
   const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
   const showOnThisDay = useStore((s) => s.settings.showOnThisDay ?? true);
   // Quote from the quotes API (kept for the day); the built-in list only
@@ -200,12 +203,21 @@ export const DateGreet = memo(function DateGreet() {
     <div className="group/greet flex min-w-0 flex-col items-center gap-1 text-center">
       <div className="relative max-w-full">
       <h1
-        onClick={() => setRoll((r) => r + 1 + Math.floor(Math.random() * 3))}
+        onClick={(e) => {
+          // a double-click re-rolls the phrase instead (the second click of it is ignored)
+          if (e.detail > 1) return;
+          if (greetClick.current) clearTimeout(greetClick.current);
+          greetClick.current = setTimeout(() => step(1), 240);
+        }}
+        onDoubleClick={() => {
+          if (greetClick.current) clearTimeout(greetClick.current);
+          setRoll((r) => r + 1 + Math.floor(Math.random() * 3));
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
-          step(1);
+          step(-1);
         }}
-        title={`Click: another greeting · right-click: next style (${GREET_STYLES[at].name})`}
+        title={`Style: ${GREET_STYLES[at].name} — click: next style · right-click: previous · double-click: another greeting`}
         className="max-w-full font-display text-[2.15rem] leading-[1.2] font-bold tracking-tight text-balance break-words text-white/95 cursor-pointer select-none"
       >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}

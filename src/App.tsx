@@ -205,11 +205,9 @@ export default function App() {
           </div>
         }
         rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
-        center={
-          <div className="flex h-full min-h-0 flex-col gap-3">
-            {/* All categories stands on its own, left of the quick links + recent
-                bar; it moves with the bar as the centre column resizes. */}
-            <div className="mx-3 mt-[7px] flex min-w-0 shrink-0 items-center gap-2">
+        linksRow={
+            // All categories stands on its own, left of the quick links + recent bar.
+            <div className="mx-3 flex min-w-0 shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setOverview((v) => !v)}
@@ -226,6 +224,8 @@ export default function App() {
                 <LinksStrip />
               </div>
             </div>
+        }
+        center={
           <div data-testid="center-frame" className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div data-center-body className="relative flex min-h-0 flex-1 px-3 pb-3">
               {/* The overview replaces the cards (one view at a time keeps it light). */}
@@ -236,7 +236,6 @@ export default function App() {
               )}
               <OfflineBanner />
             </div>
-          </div>
           </div>
         }
         right={<FeedColumn onManage={() => openSettings('scraping')} />}

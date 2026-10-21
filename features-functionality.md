@@ -17,6 +17,17 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22 — quick links + terminal row
+
+- The quick-links bar and the terminal sit in their own row. By default the bar is exactly as wide as the cards below it and the terminal as wide as the news column, with 1, 2 or 3 cards. Drag the small handle between them to size them yourself; double-click it to line them up again.
+- CPU / RAM box is half as wide, right next to the Settings button.
+- Greeting: click for the next style, right-click for the previous one, double-click for a different greeting.
+
+**Manual test checklist**
+- [ ] With 1, 2 and 3 cards (drag the card handles), the quick-links bar matches the cards and the terminal matches the news column.
+- [ ] Drag the handle between the bar and the terminal: only that row changes; double-click restores it.
+- [ ] Greeting: click / right-click change the style; double-click changes the phrase only.
+
 ## Round 2026-10-21 — notifications, search keys, stats, greetings
 
 - **Settings → Processing → Notifications:** All notifications / Chrome built-in notifications / Alert pop-up notifications. With All ticked the other two are ticked and locked.

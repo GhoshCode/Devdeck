@@ -5,6 +5,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
 import { cardsAtRest, clampTaken, maxTaken, snapColumns, type SnapGeometry } from '../../lib/cardSnap';
 import { CardSnapHandle } from './CardSnapHandle';
+import { TopSplitHandle } from './TopSplitHandle';
 
 // The v2 page shell (plan §1, §4 Phase 0): Top Bar, Search Row, then the
 // 3-column cockpit — D on the left, the E/F + cards frame in the centre, I/J on
@@ -24,9 +25,10 @@ interface DashboardLayoutProps {
   right: ReactNode;
   // Pinned to the foot of the left column (the main settings gear).
   leftFooter?: ReactNode;
-  // Sits above the right column, level with the floating quick-links bar
-  // (the terminal box), so both side columns start where the cards start.
+  // The terminal box, beside the quick-links bar.
   rightTop?: ReactNode;
+  // All categories + the quick-links bar, above the cards.
+  linksRow?: ReactNode;
 }
 
 // Lets the top bar know whether the right column (and its terminal slot) is
@@ -45,7 +47,11 @@ export function DashboardLayout({
   right,
   leftFooter,
   rightTop,
+  linksRow,
 }: DashboardLayoutProps) {
+  const termWidth = useStore((s) => s.settings.topTerminalWidth ?? null);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const topRowRef = useRef<HTMLDivElement>(null);
   const wide = useMediaQuery('(min-width: 1440px)');
   const medium = useMediaQuery('(min-width: 1024px)');
   const leftInline = medium;
@@ -100,25 +106,50 @@ export function DashboardLayout({
         ref={snap.cockpitRef}
         data-zone="cockpit"
         className={`grid min-h-0 flex-1 max-lg:min-h-[600px] [--links-bar-h:56px] ${rightInline ? '' : 'gap-3'} ${columns}`}
-        style={rightInline ? snap.style : undefined}
+        style={rightInline ? { ...snap.style, gridTemplateRows: 'calc(var(--links-bar-h) + 7px) minmax(0, 1fr)', rowGap: 12 } : undefined}
       >
+        {/* Wide screens: the quick-links bar and the terminal share their own row
+            above the cards and the news. By default the terminal is as wide as the
+            news column (so the bar lines up with the cards); drag the handle
+            between them to size them on their own — double-click to follow the
+            columns again. */}
+        {rightInline && (
+          <div ref={topRowRef} data-zone="top-row" className="flex min-w-0 items-end pt-[7px]" style={{ gridColumn: '3 / 6', gridRow: 1 }}>
+            <div className="min-w-0 flex-1">{linksRow}</div>
+            <TopSplitHandle
+              width={termWidth ?? snap.rightWidth}
+              custom={termWidth !== null}
+              rowRef={topRowRef}
+              onChange={(w) => updateSettings({ topTerminalWidth: w })}
+            />
+            <div data-zone="right-top" className="flex shrink-0 items-center" style={{ width: termWidth ?? snap.rightWidth, height: 'var(--links-bar-h)' }}>
+              <div className="w-full">{rightTop}</div>
+            </div>
+          </div>
+        )}
         {leftInline && (
-          <aside data-zone="left" aria-label="Currently processing" className="flex min-h-0 flex-col gap-3">
+          <aside data-zone="left" aria-label="Currently processing" className="flex min-h-0 flex-col gap-3" style={rightInline ? { gridRow: '1 / span 2' } : undefined}>
             {/* breathing space level with the quick-links bar */}
             <div aria-hidden className="shrink-0" style={{ height: 'var(--links-bar-h)' }} />
             <div className="min-h-0 flex-1">{leftColumn}</div>
           </aside>
         )}
-        {rightInline && <CardSnapHandle side="left" {...snap.handle('left')} />}
-        <section ref={snap.centerRef} data-zone="center" className="flex min-h-0 min-w-0 flex-col">
+        {rightInline && (
+          <div style={{ gridColumn: 2, gridRow: 2 }} className="flex min-h-0">
+            <CardSnapHandle side="left" {...snap.handle('left')} />
+          </div>
+        )}
+        <section ref={snap.centerRef} data-zone="center" className="flex min-h-0 min-w-0 flex-col gap-3" style={rightInline ? { gridColumn: 3, gridRow: 2 } : undefined}>
+          {!rightInline && <div className="mt-[7px] shrink-0">{linksRow}</div>}
           {center}
         </section>
-        {rightInline && <CardSnapHandle side="right" {...snap.handle('right')} />}
         {rightInline && (
-          <aside data-zone="right" aria-label="Tech news and topics" className="flex min-h-0 flex-col gap-3">
-            <div data-zone="right-top" className="mt-[7px] flex shrink-0 items-center" style={{ height: 'var(--links-bar-h)' }}>
-              <div className="w-full">{rightTop}</div>
-            </div>
+          <div style={{ gridColumn: 4, gridRow: 2 }} className="flex min-h-0">
+            <CardSnapHandle side="right" {...snap.handle('right')} />
+          </div>
+        )}
+        {rightInline && (
+          <aside data-zone="right" aria-label="Tech news and topics" className="flex min-h-0 flex-col gap-3" style={{ gridColumn: 5, gridRow: 2 }}>
             <div className="min-h-0 flex-1">{right}</div>
           </aside>
         )}
@@ -229,7 +260,8 @@ function useCardSnap(enabled: boolean) {
     onChange: (n: number) => updateSettings(side === 'left' ? { cockpitLeftCards: n } : { cockpitRightCards: n }),
   });
   const cards = cols?.cards ?? (geo ? Math.max(1, cardsAtRest(geo)) : 3);
-  return { cockpitRef, centerRef, style, handle, cards };
+  const rightWidth = cols?.right ?? RIGHT_BASE;
+  return { cockpitRef, centerRef, style, handle, cards, rightWidth };
 }
 
 function DrawerToggle({ side, label, onClick }: { side: Side; label: string; onClick: () => void }) {

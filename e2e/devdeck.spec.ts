@@ -144,7 +144,7 @@ test.describe('Page Load & Header', () => {
     const dateGreet = page.locator('[data-widget="date-greet"]');
     const heading = dateGreet.getByRole('heading', { level: 1 });
     const phrase = await heading.textContent();
-    await heading.click(); // click re-rolls the phrase
+    await heading.dblclick(); // double-click re-rolls the phrase (click changes the style)
     await expect(heading).not.toHaveText(phrase ?? '');
     const quote = dateGreet.getByTestId('greeting-quote');
     const first = await quote.textContent();
