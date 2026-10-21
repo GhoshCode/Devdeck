@@ -258,7 +258,7 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
       if (!c.classList.contains('out')) c.style.animation = 'none';
     });
     // auto-hide, paused while hovered
-    let left = a.kind === 'overdue' ? 20000 : 12000;
+    let left = a.kind === 'overdue' ? 20000 : a.kind === 'processing' ? 5000 : 10000;
     let started = Date.now();
     let timer = setTimeout(() => remove(a, c), left);
     c.onmouseenter = () => {

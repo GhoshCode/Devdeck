@@ -11,6 +11,7 @@ export interface SnapGeometry {
   chrome: number; // centre frame minus the cards themselves (padding, borders), px
   card: number; // one category card, px
   gap: number; // between cards, px
+  rightMax?: number; // the news column grows to this before the left column gets any (default 560)
 }
 
 export const MAX_CARDS = 3;
@@ -38,7 +39,7 @@ export function clampTaken(g: SnapGeometry, left: number, right: number): { left
 export function snapColumns(g: SnapGeometry, left: number, right: number): { left: number; right: number; cards: number } | null {
   const t = clampTaken(g, left, right);
   const taken = t.left + t.right;
-  if (!taken) return null;
+  if (!taken) return restColumns(g);
   const cards = cardsAtRest(g) - taken;
   const centre = g.chrome + cards * g.card + (cards - 1) * g.gap;
   const slack = g.width - 2 * g.handle - g.leftBase - g.rightBase - centre;
@@ -47,6 +48,20 @@ export function snapColumns(g: SnapGeometry, left: number, right: number): { lef
     right: Math.round(g.rightBase + (slack * t.right) / taken),
     cards,
   };
+}
+
+// Nothing dragged, 1 or 2 cards showing: the centre is exactly as wide as its
+// cards, and the width left over widens the scraped-news column first (up to
+// rightMax), then the left column. Three cards (the widest view) keep the
+// default columns.
+export function restColumns(g: SnapGeometry): { left: number; right: number; cards: number } | null {
+  const cards = cardsAtRest(g);
+  if (cards < 1 || cards >= MAX_CARDS) return null;
+  const centre = g.chrome + cards * g.card + (cards - 1) * g.gap;
+  const slack = g.width - 2 * g.handle - g.leftBase - g.rightBase - centre;
+  if (slack <= 0) return null;
+  const toRight = Math.min(slack, Math.max(0, (g.rightMax ?? 560) - g.rightBase));
+  return { left: Math.round(g.leftBase + slack - toRight), right: Math.round(g.rightBase + toRight), cards };
 }
 
 // A drag of dx px becomes whole-card steps: a short pull (past `dead` px)

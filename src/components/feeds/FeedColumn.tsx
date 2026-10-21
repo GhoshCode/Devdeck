@@ -8,11 +8,11 @@ import { relativeAge } from '../../services/search';
 import { SlidersIcon } from '../ui/icons';
 import { LoadingBar } from '../ui/LoadingBar';
 
-// Right column (plan Phase 5): I — tech news (items 1–4) and developer jobs
-// (items 5–8) — over J, the topic chips that filter both panels.
+// Right column (plan Phase 5): I — tech news and developer jobs (20 each by
+// default) — over J, the topic chips that filter both panels.
 
 // Items per panel: Settings → Scraping sets each from 0 to 100.
-const DEFAULT_PER_PANEL = 4;
+const DEFAULT_PER_PANEL = 20;
 const perPanel = (n: number | undefined) => Math.min(100, Math.max(0, Math.round(n ?? DEFAULT_PER_PANEL)));
 
 export const FeedColumn = memo(function FeedColumn({ onManage }: { onManage: () => void }) {

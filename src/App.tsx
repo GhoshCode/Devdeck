@@ -14,6 +14,7 @@ import { UndoToast } from './components/ui/UndoToast';
 import { LinkPeek } from './components/ui/LinkPeek';
 import { OfflineBanner } from './components/ui/OfflineBanner';
 import { CogIcon } from './components/ui/icons';
+import { SystemStats } from './components/ui/SystemStats';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
 import { DateLine } from './components/topbar/DateGreet';
@@ -121,6 +122,13 @@ export default function App() {
     }
   }, []);
 
+  // Opened as a new tab (?focus): the cursor goes straight to the search bar.
+  useEffect(() => {
+    if (!location.search.includes('focus')) return;
+    const t = setTimeout(() => searchRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, []);
+
   // Global hotkeys (§7 Q4): Ctrl/⌘+K and "/" focus the search bar; "," opens
   // Settings; Escape closes Settings.
   useEffect(() => {
@@ -190,7 +198,12 @@ export default function App() {
             <ProcessingPanel />
           </>
         }
-        leftFooter={settingsButton}
+        leftFooter={
+          <div className="flex min-w-0 items-center gap-2">
+            {settingsButton}
+            <SystemStats />
+          </div>
+        }
         rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
         center={
           <div className="flex h-full min-h-0 flex-col gap-3">

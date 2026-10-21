@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { clockParts, formatDateLine, greetingFor, localDateKey } from './time';
+import { clockParts, formatDateLine, localDateKey } from './time';
+import { GREETINGS, greetingPhrase, segmentOf } from './greetings';
 
 const at = (h: number, m = 0, s = 0) => new Date(2026, 9, 15, h, m, s);
 
@@ -15,19 +16,28 @@ describe('clockParts', () => {
   });
 });
 
-describe('greetingFor', () => {
-  test.each([
-    [6, 'GOOD MORNING'],
-    [13, 'GOOD AFTERNOON'],
-    [19, 'GOOD EVENING'],
-    [23, 'GOOD NIGHT'],
-    [3, 'GOOD NIGHT'],
-  ])('%i:00 → %s', (h, expected) => {
-    expect(greetingFor(at(h))).toBe(expected);
+describe('greetings', () => {
+  it.each([
+    [10, 'office'],
+    [14, 'office'],
+    [15, 'afternoon'],
+    [19, 'afternoon'],
+    [20, 'geek'],
+    [1, 'geek'],
+    [2, 'night'],
+    [8, 'night'],
+  ] as const)('%i:00 is %s', (h, seg) => {
+    expect(segmentOf(at(h))).toBe(seg);
   });
 
-  test('appends the uppercased name', () => {
-    expect(greetingFor(at(19), ' ada ')).toBe('GOOD EVENING, ADA');
+  it('has 5–8 phrases per segment and re-rolls within it', () => {
+    for (const list of Object.values(GREETINGS)) {
+      expect(list.length).toBeGreaterThanOrEqual(5);
+      expect(list.length).toBeLessThanOrEqual(8);
+    }
+    expect(greetingPhrase('geek', 0)).toBe('LATE-NIGHT HACKING');
+    expect(greetingPhrase('geek', GREETINGS.geek.length)).toBe('LATE-NIGHT HACKING');
+    expect(greetingPhrase('night', -1)).toBe(GREETINGS.night.at(-1));
   });
 });
 

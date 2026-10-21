@@ -119,8 +119,9 @@ test.describe('Page Load & Header', () => {
     await expect(heading).toBeVisible();
 
     const text = await heading.textContent();
-    // At least one of these should match the current time
-    expect(text).toMatch(/morning|afternoon|evening|night/i);
+    // A themed phrase for the time of day (lib/greetings.ts)
+    expect(text?.trim().length).toBeGreaterThan(4);
+    expect(text).toMatch(/[A-Z]{3,}/);
   });
 
   test('shows the current date', async ({ page }) => {
@@ -141,7 +142,10 @@ test.describe('Page Load & Header', () => {
     // │  heading and a motivational quote (↻ for another).      │
     // └─────────────────────────────────────────────────────────┘
     const dateGreet = page.locator('[data-widget="date-greet"]');
-    await expect(dateGreet.getByRole('heading', { level: 1 })).toContainText('GOOD');
+    const heading = dateGreet.getByRole('heading', { level: 1 });
+    const phrase = await heading.textContent();
+    await heading.click(); // click re-rolls the phrase
+    await expect(heading).not.toHaveText(phrase ?? '');
     const quote = dateGreet.getByTestId('greeting-quote');
     const first = await quote.textContent();
     await quote.hover();

@@ -43,7 +43,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
           onClick={() => openBoard({ tab: 'processing' })}
           aria-label="Expand currently processing"
           title="Expand currently processing"
-          className="manage-btn absolute top-1.5 right-2 flex size-7 items-center justify-center rounded-lg"
+          className="manage-btn absolute right-2 bottom-2 z-10 flex size-7 items-center justify-center rounded-lg"
         >
           <ExpandGlyph />
         </button>

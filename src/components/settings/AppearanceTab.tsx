@@ -404,7 +404,7 @@ export function AppearanceTab() {
                 onClick={() => updateSettings({ greetStyle: g.id })}
                 className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
               >
-                <span className={`greet-words greet-${g.id} font-display text-[15px] leading-tight font-bold tracking-tight`}>GOOD MORNING,</span>
+                <span className={`greet-words greet-${g.id} font-display text-[15px] leading-tight font-bold tracking-tight`}>LATE-NIGHT HACKING,</span>
                 <span className="text-[10.5px] text-white/55">{g.name}</span>
               </button>
             );

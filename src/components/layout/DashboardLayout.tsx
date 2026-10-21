@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
-import { clampTaken, maxTaken, snapColumns, type SnapGeometry } from '../../lib/cardSnap';
+import { cardsAtRest, clampTaken, maxTaken, snapColumns, type SnapGeometry } from '../../lib/cardSnap';
 import { CardSnapHandle } from './CardSnapHandle';
 
 // The v2 page shell (plan §1, §4 Phase 0): Top Bar, Search Row, then the
@@ -31,7 +31,8 @@ interface DashboardLayoutProps {
 
 // Lets the top bar know whether the right column (and its terminal slot) is
 // on screen or folded into a drawer.
-export const LayoutContext = createContext<{ rightInline: boolean }>({ rightInline: false });
+// cards: whole category cards in view (1–3); the links bar fits without scrolling below 3.
+export const LayoutContext = createContext<{ rightInline: boolean; cards: number }>({ rightInline: false, cards: 3 });
 export const useLayout = () => useContext(LayoutContext);
 
 type Side = 'left' | 'right';
@@ -79,7 +80,7 @@ export function DashboardLayout({
   );
 
   return (
-    <LayoutContext.Provider value={{ rightInline }}>
+    <LayoutContext.Provider value={{ rightInline, cards: rightInline ? snap.cards : 3 }}>
     <div
       data-testid="dashboard"
       className="relative z-0 flex h-screen w-screen flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 pt-4 pb-4 sm:px-6 lg:overflow-y-hidden"
@@ -227,7 +228,8 @@ function useCardSnap(enabled: boolean) {
     unit: geo ? geo.card + geo.gap : 420,
     onChange: (n: number) => updateSettings(side === 'left' ? { cockpitLeftCards: n } : { cockpitRightCards: n }),
   });
-  return { cockpitRef, centerRef, style, handle };
+  const cards = cols?.cards ?? (geo ? Math.max(1, cardsAtRest(geo)) : 3);
+  return { cockpitRef, centerRef, style, handle, cards };
 }
 
 function DrawerToggle({ side, label, onClick }: { side: Side; label: string; onClick: () => void }) {

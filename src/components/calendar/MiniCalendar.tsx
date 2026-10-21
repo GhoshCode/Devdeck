@@ -34,6 +34,7 @@ const daysInYear = (y: number) => (new Date(y, 1, 29).getMonth() === 1 ? 366 : 3
 export const MiniCalendarButton = memo(function MiniCalendarButton() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
+  const today = useNow(60_000);
   return (
     <>
       <button
@@ -45,13 +46,16 @@ export const MiniCalendarButton = memo(function MiniCalendarButton() {
         aria-haspopup="dialog"
         aria-expanded={open}
         data-testid="mini-calendar-button"
-        className={`mini-cal-btn glass-raised flex h-[58px] w-[52px] shrink-0 items-center justify-center rounded-2xl ${open ? 'is-open' : ''}`}
+        className={`mini-cal-btn glass-raised flex h-[58px] w-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl ${open ? 'is-open' : ''}`}
       >
-        <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg viewBox="0 0 24 24" className="size-[20px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
           <path d="M3.5 9.5h17M8 3v4M16 3v4" />
           <path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01" strokeWidth="2.6" />
         </svg>
+        <span data-testid="mini-calendar-date" className="mini-cal-btn-date font-mono text-[10px] leading-none font-semibold tabular-nums">
+          {today.getDate()} {today.toLocaleDateString(undefined, { month: 'short' })}
+        </span>
       </button>
       {createPortal(<AnimatePresence>{open && ref.current && <MiniCalendar anchor={ref.current} onClose={() => setOpen(false)} />}</AnimatePresence>, document.body)}
     </>

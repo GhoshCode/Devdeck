@@ -13,6 +13,7 @@ import {
   type AlertData,
 } from '../lib/alertEvents';
 import { pushAlert, takeDueSnoozes, wasSeen } from '../components/ui/alertStore';
+import { ALERT_PREFS_KEY, alertPrefs } from '../lib/alertPrefs';
 
 export { overdueSummary, upcomingEvents, reminderAlert } from '../lib/alertEvents';
 
@@ -54,6 +55,9 @@ export function useInPageAlerts() {
   const processing = useStore((s) => s.processing);
   const todos = useStore((s) => s.todos);
   const events = useStore((s) => s.events);
+  // Settings → Notifications: pop-ups (in-page and on other sites) and Chrome notifications.
+  const popups = useStore((s) => alertPrefs(s.settings).popups);
+  const chromeOn = useStore((s) => alertPrefs(s.settings).chrome);
   const lastCheck = useRef(Date.now());
   const ext = isExtension();
 
@@ -65,16 +69,18 @@ export function useInPageAlerts() {
       const fired = upcomingEvents(processing, todos, lastCheck.current - 1, events).filter((e) => e.at > lastCheck.current - 1 && e.at <= now + 250);
       lastCheck.current = now;
       for (const e of fired) {
-        if (visible()) pushAlert(e.data);
-        else if (!ext && !wasSeen(e.data.key)) {
-          notifyWeb(e.data);
-          pushAlert(e.data); // remembered; still in the stack if you come back soon
+        if (visible()) {
+          if (popups) pushAlert(e.data);
+          else if (chromeOn && !wasSeen(e.data.key)) notifyWeb(e.data);
+        } else if (!ext) {
+          if (chromeOn && !wasSeen(e.data.key)) notifyWeb(e.data);
+          if (popups) pushAlert(e.data); // remembered; still in the stack if you come back soon
         }
         // extension + not in view: the service worker shows it on the site you're on
       }
       for (const d of takeDueSnoozes(now).due) {
-        if (visible()) pushAlert(d, true);
-        else if (!ext) notifyWeb(d);
+        if (visible() && popups) pushAlert(d, true);
+        else if (chromeOn && (visible() || !ext)) notifyWeb(d);
       }
       const next = upcomingEvents(processing, todos, now, events)[0]?.at ?? null;
       const snoozeNext = takeDueSnoozes(now).next;
@@ -92,7 +98,7 @@ export function useInPageAlerts() {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [processing, todos, events, ext]);
+  }, [processing, todos, events, ext, popups, chromeOn]);
 
   // Extension: give the service worker the upcoming to-do / timer alerts (it
   // already has the scheduled reminders) and the theme colours for the overlay.
@@ -103,6 +109,11 @@ export function useInPageAlerts() {
     const upcoming = upcomingEvents(processing, todos, now, events).filter((e) => !e.reminder && e.at < now + MIRROR_DAYS * 864e5).slice(0, 200);
     void storage.set({ [ALERT_EVENTS_KEY]: upcoming });
   }, [processing, todos, events, ext]);
+  useEffect(() => {
+    const storage = chromeApi()?.storage?.local;
+    if (!ext || !storage) return;
+    void storage.set({ [ALERT_PREFS_KEY]: { popups, chrome: chromeOn } });
+  }, [ext, popups, chromeOn]);
   useEffect(() => {
     const storage = chromeApi()?.storage?.local;
     if (!ext || !storage) return;
@@ -142,6 +153,7 @@ export function useInPageAlerts() {
         return;
       }
       if (!visible()) return; // only a DevDeck tab you're looking at answers
+      if (!alertPrefs(useStore.getState().settings).popups) return; // pop-ups off: the worker sends a Chrome notification instead
       if (msg?.type === 'devdeck:alert-due' && msg.alert) {
         pushAlert(msg.alert); // the page's own timer may have shown it already — either way it's on screen
         reply({ shown: true });
@@ -178,7 +190,9 @@ export function useInPageAlerts() {
       } catch {
         // ignore
       }
-      pushAlert(summary);
+      const prefs = alertPrefs(s.settings);
+      if (prefs.popups) pushAlert(summary);
+      else if (prefs.chrome) notifyWeb(summary);
     }, 1500);
     return () => clearTimeout(t);
   }, []);

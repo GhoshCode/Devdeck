@@ -42,8 +42,8 @@ export function ScrapingTab() {
 // How many items each feed section shows: 0–100.
 // The panels reload with the new amounts when Settings closes.
 function SectionCounts() {
-  const news = useStore((s) => s.settings.feedNewsCount ?? 4);
-  const jobs = useStore((s) => s.settings.feedJobsCount ?? 4);
+  const news = useStore((s) => s.settings.feedNewsCount ?? 20);
+  const jobs = useStore((s) => s.settings.feedJobsCount ?? 20);
   const updateSettings = useStore((s) => s.updateSettings);
   return (
     <section aria-label="Items per section" className="glass-inner space-y-4 rounded-xl p-4">

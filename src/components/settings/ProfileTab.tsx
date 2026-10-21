@@ -3,6 +3,7 @@ import { useStore } from '../../store';
 import { clearCache } from '../../lib/cache';
 import { WeatherSourcePicker } from './WeatherSourcePicker';
 import { AiProviderPicker } from './AiProviderPicker';
+import { SearchSettings } from './SearchSettings';
 import { TerminalHelper } from './TerminalHelper';
 
 // Profile & data sources for the top-bar widgets: GitHub (Git commits) and
@@ -105,6 +106,8 @@ export function ProfileTab() {
         </div>
         <WeatherSourcePicker />
       </section>
+
+      <SearchSettings />
 
       <AiProviderPicker />
 

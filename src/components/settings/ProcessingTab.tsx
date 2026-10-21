@@ -1,4 +1,5 @@
 import { ProcessingEditor } from '../processing/ProcessingEditor';
+import { NotificationSettings } from './NotificationSettings';
 
 // Settings → Processing (plan Phase 6): the same editor the panel's cog opens.
 export function ProcessingTab() {
@@ -10,6 +11,7 @@ export function ProcessingTab() {
           Sites you're actively working on, grouped in sections, each with its own reminder schedule.
         </p>
       </div>
+      <NotificationSettings />
       <ProcessingEditor />
     </div>
   );

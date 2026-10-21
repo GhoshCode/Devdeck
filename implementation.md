@@ -10,6 +10,52 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-21 — requirements file (notifications, search keys, layout, stats, greetings)
+
+Implemented from `devdeck-requirements.md` (deleted afterwards). Item numbers refer to that file.
+
+- **1 Notifications** (`settings/NotificationSettings.tsx`, `lib/alertPrefs.ts`):
+  - Settings → Processing → Notifications has three checkboxes: All notifications, Chrome built-in notifications, Alert pop-up notifications. With All ticked, the other two show ticked and are `disabled`; unticking All keeps their last values editable.
+  - Settings fields: `notifyAll` (default true), `notifyChrome`, `notifyPopups`. `alertPrefs()` resolves them to `{ popups, chrome }`.
+  - Page (`useInPageAlerts`): pop-ups gate `pushAlert` (fired events, snoozes, overdue summary, replies to the worker); Chrome gates `notifyWeb`. With pop-ups off and Chrome on, a visible tab sends a system notification instead.
+  - The page mirrors the prefs to `chrome.storage.local['devdeck:alert-prefs']`. The worker's `deliver()` only tries the DevDeck tab and the on-site overlay when pop-ups are on, and only creates a `chrome.notifications` notification when Chrome is on.
+- **2.1 New tab → DevDeck search** (`main.tsx` `focusNewTab`):
+  - On a fresh new tab (extension, no `?focus`, `history.length === 1`, `newTabFocus` not false), DevDeck calls `chrome.tabs.getCurrent` + `tabs.update(index.html?focus=1 + hash)` and skips rendering.
+  - A tab navigated by the extension focuses the page, not the omnibox, so `App` focuses the search bar on `?focus`. The trade-off is that the address bar shows the extension URL.
+  - Off switch: Settings → Profile → Search → "Type straight into DevDeck on a new tab".
+  - Verified in a real Chromium with the extension loaded: `chrome.tabs.create({})` → `?focus=1`, `activeElement` is the search box, and typed text lands in it.
+- **2.2 Keys** (`SearchBar.tsx`):
+  - Enter: the pick, or a search with the chosen engine, in a new active tab.
+  - Ctrl/⌘ + Enter: the same in a new window (`openInNewWindow`).
+  - Alt + Enter: `askAi` with the selected AI.
+  - The hints are in the placeholder, the suggestions footer and the composer footer.
+  - The engine is chosen in Settings → Profile → Search (`searchEngine`: Google, Bing, DuckDuckGo, Brave, Startpage, Ecosia; `SEARCH_ENGINES`, `searchUrl`, `destinationFor(q, engine)` in `services/search.ts`). Suggestion rows and "Search … for" use it too; suggestions still come from Google Suggest.
+- **2.3 AI icon wheel:** the wheel over the AI toggle cycles Gemini → ChatGPT → Claude → Perplexity (→ Custom when it has a `{q}` URL) and saves `aiProvider`. A 40 px threshold and a 220 ms lock give one step per notch.
+- **3.1 Alert lifetimes:** To-do and Queue alerts last 10 s; Currently processing 5 s (`LIFE_MS` in `AlertCenter`, and the overlay on other sites). The time-left line follows automatically through `--life`.
+- **4.1 Links bar fit:** `LayoutContext` now carries `cards` (whole cards in view). Below 3, `LinksStrip` is in fit mode (`data-fit`): no horizontal scroll or wheel scroll, no fade mask, and chips or the RECENT label that don't fully fit get `visibility:hidden` (ResizeObserver).
+- **4.2 Neon border:** fixed quick-link chips get `.chip-neon`, a 1 px accent border with a soft glow.
+- **4.3 Pins on main sites:** each tile in a card's main-sites row (`PrimaryRow`) has a pin badge. Clicking it calls `togglePrimary` to unpin (label "<name>: unpin from the main sites", chosen so it can't collide with the card pin or site-remove buttons).
+- **5.1 / 5.2 Widths:** `restColumns()` in `lib/cardSnap.ts`: with nothing dragged and 1–2 cards in view, the centre is exactly as wide as its cards. The leftover goes to the Tech news column first (up to `rightMax`, 560 px), then the left column. The links row therefore matches the cards panel. Three-card views keep the defaults. Unit-tested.
+- **6.1:** the Currently processing expand button moved to the card's bottom-right.
+- **6.2 Tab smoothness:**
+  - *Cause:* a trackpad flick over the tab bar fired a switch on every wheel event.
+  - *Fix:* tab bar, dots and lists share `swipeBy`: deltas add up past 50 px, then the gesture is locked (450 ms, extended while events keep coming). One gesture moves one tab. The Processing and Queue panes are memoised so switching doesn't re-render them.
+- **7.1:** feeds show 20 items per section by default (`feedNewsCount` / `feedJobsCount` default 4 → 20). The sources already fetch 30.
+- **8 Quotes:** online, the DummyJSON quote changes every 30 minutes (`QUOTE_SLOT_MS`; cache keyed by half-hour slot; the id comes from the slot). Offline or if the API fails, the bundled quotes fill in.
+- **9 CPU / RAM** (`ui/SystemStats.tsx`): two meters beside the Settings button, using `chrome.system.cpu` (busy/total delta across cores, every 2 s) and `chrome.system.memory`. Amber from 60 %, red from 85 %. New permissions `system.cpu` and `system.memory`; the website build shows nothing.
+- **10 Greetings** (`lib/greetings.ts`):
+  - 7–8 themed phrases per segment: 09–15 office, 15–20 casual-pro, 20–02 geek, 02–09 night-crawler cyberpunk.
+  - Click re-rolls (1–3 steps, always a different phrase); right-click cycles the greeting style.
+  - `greetingFor` was removed; `time.test.ts` now tests segments and phrases.
+  - The quote line hard-cuts: `white-space: nowrap; overflow: hidden; text-overflow: clip`, no "…".
+- **11:** the mini calendar button is 64 px wide and shows the short date under the icon (`21 Oct`).
+- **12:** the CLI Sophisticated clock cycles 48 scripts, each 26 characters or fewer, in a ticker capped at 75 % of the box.
+- **13:** the UV badge sits a little lower; the date line is 15 px (was 13) and 15 px further right.
+- **14:** the Clear all pill and button are larger (14 px text, more padding).
+- **Tests:** 258 unit tests; 89/90 Chromium end-to-end (the quote-shuffle test is flaky because it depends on the live quotes API); the extension QA spec passes.
+  - Tests updated for the new behaviour: the greeting is a phrase that re-rolls on click, and feeds show 20.
+  - A throwaway extension spec confirmed new-tab focus and the CPU/RAM meters, then was deleted.
+
 ## Round 2026-10-20m — layout tidy-ups, smooth work panel, OS-matched terminal, v3.0.0 (branch `vfinal2.0`)
 
 Commits `fdcee53` and `0ccb3b0` on `vfinal2.0` (pushed; not merged into `main` — a week of local testing first).

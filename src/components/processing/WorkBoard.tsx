@@ -1,4 +1,4 @@
-import { type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, type WheelEvent as ReactWheelEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
@@ -70,8 +70,8 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
   tabRef.current = tab;
 
   const sorted = useMemo(() => [...processing].sort((a, b) => a.order - b.order), [processing]);
-  const doing = sorted.filter((p) => p.section === FIRST_SECTION);
-  const queued = sorted.filter((p) => p.section !== FIRST_SECTION);
+  const doing = useMemo(() => sorted.filter((p) => p.section === FIRST_SECTION), [sorted]);
+  const queued = useMemo(() => sorted.filter((p) => p.section !== FIRST_SECTION), [sorted]);
   const counts = [doing.length, queued.length, todoCount];
 
   useIdleTimeout(cardRef, true, TODO_IDLE_MS, onClose);
@@ -102,21 +102,24 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, go]);
 
-  const flip = (d: number) => {
-    if (Math.abs(d) > 4) go(tabRef.current + (d > 0 ? 1 : -1));
-  };
-  // A sideways trackpad swipe / shift-wheel over the lists: one tab per gesture.
-  const onSwipe = (e: ReactWheelEvent) => {
-    const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
-    if (!dx) return;
+  // One tab per wheel / trackpad gesture: deltas add up past a threshold, then
+  // the rest of that gesture is ignored, so a flick never races through tabs.
+  const swipeBy = (d: number) => {
+    if (!d) return;
     const now = Date.now();
-    if (now < swipe.current.lock) return;
-    swipe.current.sum += dx;
-    if (Math.abs(swipe.current.sum) > 60) {
+    if (now < swipe.current.lock) {
+      swipe.current.lock = now + 180; // still the same gesture: keep it locked
+      return;
+    }
+    swipe.current.sum += d;
+    if (Math.abs(swipe.current.sum) > 50) {
       go(tabRef.current + (swipe.current.sum > 0 ? 1 : -1));
-      swipe.current = { sum: 0, lock: now + 550 };
+      swipe.current = { sum: 0, lock: now + 450 };
     }
   };
+  const dominant = (e: ReactWheelEvent) => (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY);
+  // Over the lists only a sideways swipe (or Shift + wheel) switches; plain wheel scrolls the list.
+  const onSwipe = (e: ReactWheelEvent) => swipeBy(Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0);
 
   return (
     <>
@@ -138,7 +141,7 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
             <div
               role="tablist"
               aria-label="Work lists"
-              onWheel={(e) => flip(Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY)}
+              onWheel={(e) => swipeBy(dominant(e))}
               className="pane-switch @container relative grid w-full max-w-[760px] grid-cols-3 rounded-2xl border p-1"
             >
               <span
@@ -190,7 +193,7 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
            </div>
           </div>
 
-          <div data-pane-dots onWheel={(e) => flip(Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY)} className="flex shrink-0 justify-center gap-1.5 pt-1 pb-3">
+          <div data-pane-dots onWheel={(e) => swipeBy(dominant(e))} className="flex shrink-0 justify-center gap-1.5 pt-1 pb-3">
             {TABS.map((t, i) => (
               <button
                 key={t.id}
@@ -209,7 +212,7 @@ function WorkBoard({ req, onClose, onManage }: { req: Open; onClose: () => void;
 
 // ---- Currently processing / Queue lists ------------------------------------------
 
-function WorkList({ kind, items, now, onManage }: { kind: 'processing' | 'queue'; items: ProcessingItem[]; now: Date; onManage: () => void }) {
+const WorkList = memo(function WorkList({ kind, items, now, onManage }: { kind: 'processing' | 'queue'; items: ProcessingItem[]; now: Date; onManage: () => void }) {
   const t = now.getTime();
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
   const due = (p: ProcessingItem) => (p.dueDate ? dueTimestamp({ dueDate: p.dueDate, dueTime: p.dueTime ?? null }) : null);
@@ -273,7 +276,7 @@ function WorkList({ kind, items, now, onManage }: { kind: 'processing' | 'queue'
       )}
     </div>
   );
-}
+});
 
 function WorkCard({ item, kind, now }: { item: ProcessingItem; kind: 'processing' | 'queue'; now: Date }) {
   const recordVisit = useStore((s) => s.recordVisit);

@@ -17,6 +17,30 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-21 — notifications, search keys, stats, greetings
+
+- **Settings → Processing → Notifications:** All notifications / Chrome built-in notifications / Alert pop-up notifications. With All ticked the other two are ticked and locked.
+- **New tab:** start typing right away and it goes into DevDeck's search, not Chrome's address bar. The address bar shows the extension address; turn this off in Settings → Profile → Search.
+- **Search keys:** Enter searches in a new tab · Ctrl+Enter in a new window · Alt+Enter asks your AI. Choose the search engine in Settings → Profile → Search. Scroll on the AI icon to switch AIs.
+- **Alerts:** To-do and Queue alerts stay 10 s; Currently processing 5 s. Clear all is bigger.
+- **Quick links:** in 1- and 2-card views the bar fits without scrolling; the fixed sites have a neon accent border. Main sites in a card show a pin; click it to unpin.
+- **Layout:** in 1- and 2-card views the links row is as wide as the cards; extra width goes to Tech news first, then the left column.
+- **Work panel:** the Currently processing expand button is in its bottom-right corner; switching tabs by scrolling is smooth (one tab per gesture).
+- **Feeds** show 20 items per section. **Quotes** change every 30 minutes online (bundled ones offline) and are cut to fit with no "…".
+- **CPU and RAM** meters beside the Settings button (extension).
+- **Greeting:** a themed phrase for the time of day (office, afternoon, geek, night crawler); click for another, right-click for the next style.
+- **Mini calendar** button shows today's date under the icon. **CLI clock** cycles 48 commands. The date line is larger and the UV badge a little lower.
+
+**Manual test checklist**
+- [ ] Notifications: All ticked locks the two below; untick it and turn pop-ups off, then a due to-do arrives as a Chrome notification only.
+- [ ] Press Ctrl+T and type: the text appears in DevDeck's search.
+- [ ] Enter / Ctrl+Enter / Alt+Enter do search in a new tab / search in a new window / ask the AI; the engine setting changes the search site; scrolling on the AI icon switches the AI.
+- [ ] A Processing alert disappears after 5 s, a To-do or Queue alert after 10 s.
+- [ ] Resize to a 2-card view: the links bar doesn't scroll, chips never overflow, and the news column is wider.
+- [ ] Click a main site's pin badge: it leaves the main row and stays in its list.
+- [ ] CPU / RAM meters update about every 2 s.
+- [ ] Click the greeting a few times: the phrases change and fit the time of day.
+
 ## Round 2026-10-20m — tidy-ups
 
 - The quick-links bar no longer spills into the terminal; extra chips stay inside the bar.

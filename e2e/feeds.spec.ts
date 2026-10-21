@@ -48,15 +48,15 @@ test.beforeEach(async ({ page }) => {
   await page.locator('[data-category-id]').first().waitFor({ state: 'visible' });
 });
 
-test('news shows items 1–4 and jobs 5–8, numbered and newest first', async ({ page }) => {
+test('news and jobs list up to 20 items each, numbered and newest first', async ({ page }) => {
   const news = page.getByRole('region', { name: 'Tech news' });
   const jobs = page.getByRole('region', { name: 'Developer jobs' });
-  await expect(news.locator('[data-feed-item]')).toHaveCount(4);
+  await expect(news.locator('[data-feed-item]')).toHaveCount(5); // every fixture story (up to 20)
   await expect(news.locator('[data-feed-item]').first()).toContainText('1');
   await expect(news.locator('[data-feed-item]').first()).toContainText('New AI agents ship in browsers');
 
   await expect(jobs.locator('[data-feed-item]')).toHaveCount(3);
-  await expect(jobs.locator('[data-feed-item]').first()).toContainText('5');
+  await expect(jobs.locator('[data-feed-item]').first()).toContainText('21'); // jobs are numbered after the news section's 20
   await expect(jobs.locator('[data-feed-item]').first()).toContainText('Stripe');
 });
 
@@ -79,7 +79,7 @@ test('topic chips filter both panels; "ai" does not match "email"', async ({ pag
 
   await chips.getByRole('button', { name: 'All' }).click();
   await expect(chips.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(news.locator('[data-feed-item]')).toHaveCount(4);
+  await expect(news.locator('[data-feed-item]')).toHaveCount(5);
 });
 
 test('a topic added in Settings → Scraping appears as a chip', async ({ page }) => {

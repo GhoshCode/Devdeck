@@ -28,7 +28,7 @@ export function AiProviderPicker() {
       <div>
         <span className="block text-xs font-semibold tracking-wider text-white/80 uppercase">AI assistant</span>
         <p className="mt-0.5 text-[11px] text-white/55">
-          With the AI toggle in the search bar on, Enter opens a new {current.name} chat with your text already sent.
+          Alt+Enter in the search bar (or Enter with the AI toggle on) opens a new {current.name} chat with your text already sent. Scroll on the AI icon to switch.
         </p>
       </div>
       <div role="radiogroup" aria-label="AI assistant" className="grid grid-cols-2 gap-2 sm:grid-cols-5">

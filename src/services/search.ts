@@ -1,7 +1,7 @@
 // Search row (Zone 3) and links strip (Zone 4) logic — plan Phase 2, §7 Q7/Q8/Q12.
 
 import { netFetch } from '../lib/netFetch';
-import type { QuickLink, Site } from '../types';
+import type { QuickLink, SearchEngineId, Site } from '../types';
 import { getHostname, normalizeUrl } from '../utils';
 import { isExtension } from '../lib/env';
 
@@ -25,9 +25,20 @@ const FILE_EXTENSIONS = new Set(['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'md', 'cs
 export const googleSearchUrl = (q: string) =>
   `https://www.google.com/search?q=${encodeURIComponent(q.trim())}`;
 
-export function destinationFor(raw: string): string {
+export const SEARCH_ENGINES: ReadonlyArray<{ id: SearchEngineId; name: string; url: string }> = [
+  { id: 'google', name: 'Google', url: 'https://www.google.com/search?q={q}' },
+  { id: 'bing', name: 'Bing', url: 'https://www.bing.com/search?q={q}' },
+  { id: 'duckduckgo', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={q}' },
+  { id: 'brave', name: 'Brave Search', url: 'https://search.brave.com/search?q={q}' },
+  { id: 'startpage', name: 'Startpage', url: 'https://www.startpage.com/do/search?q={q}' },
+  { id: 'ecosia', name: 'Ecosia', url: 'https://www.ecosia.org/search?q={q}' },
+];
+export const searchEngine = (id?: SearchEngineId) => SEARCH_ENGINES.find((e) => e.id === id) ?? SEARCH_ENGINES[0];
+export const searchUrl = (q: string, id?: SearchEngineId) => searchEngine(id).url.replace('{q}', encodeURIComponent(q.trim()));
+
+export function destinationFor(raw: string, engine?: SearchEngineId): string {
   const q = raw.trim();
-  if (!looksLikeUrl(q)) return googleSearchUrl(q);
+  if (!looksLikeUrl(q)) return searchUrl(q, engine);
   return /^localhost|^\d/.test(q) ? `http://${q}` : normalizeUrl(q);
 }
 

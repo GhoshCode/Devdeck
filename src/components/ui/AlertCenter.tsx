@@ -25,7 +25,8 @@ import { clearAllAlerts, dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, 
 // the stack: the busy top-middle of the page is blurred and can't be clicked.
 
 const VISIBLE = 3;
-const LIFE_MS = { processing: 12_000, queue: 12_000, todo: 12_000, overdue: 20_000, calendar: null } as const;
+// To-do / Queue stay 10 s, Currently processing 5 s; calendar capsules stay until acted on.
+const LIFE_MS = { processing: 5_000, queue: 10_000, todo: 10_000, overdue: 20_000, calendar: null } as const;
 const CLEAR_STAGGER_S = 0.04;
 
 export function AlertCenter() {
@@ -101,14 +102,14 @@ export function AlertCenter() {
             initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.15 } }}
-            className="alert-clear pointer-events-auto flex items-center gap-2 rounded-full border py-1 pr-1 pl-3 backdrop-blur-md"
+            className="alert-clear pointer-events-auto flex items-center gap-2.5 rounded-full border py-1.5 pr-1.5 pl-3.5 backdrop-blur-md"
           >
-            <span className="alert-clear-count font-mono text-[11px] font-semibold tracking-wider tabular-nums">{list.length} ACTIVE</span>
+            <span className="alert-clear-count font-mono text-[12px] font-semibold tracking-wider tabular-nums">{list.length} ACTIVE</span>
             <button
               type="button"
               onClick={clearAll}
               data-testid="alerts-clear-all"
-              className="alert-clear-btn flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-semibold tabular-nums"
+              className="alert-clear-btn flex items-center gap-2 rounded-full px-4 py-1.5 text-[14px] font-semibold tabular-nums"
             >
               <SweepIcon />
               Clear all ({list.length})

@@ -84,7 +84,15 @@ export interface Settings {
   weatherSource?: string; // "auto" (default), a built-in provider id, or a custom source id
   customWeatherSources?: CustomWeatherSource[];
   calendar?: CalendarPrefs; // Command Calendar: last view and the second time-zone rail
+  // Notifications (Settings → Processing). "All" on = both kinds on.
+  notifyAll?: boolean; // default true
+  notifyChrome?: boolean; // Chrome / system notifications (default true)
+  notifyPopups?: boolean; // DevDeck's alert pop-ups, in-page and on other sites (default true)
+  searchEngine?: SearchEngineId; // Enter / Ctrl+Enter search (default google)
+  newTabFocus?: boolean; // extension: put the cursor in DevDeck's search on a new tab (default true)
 }
+
+export type SearchEngineId = 'google' | 'bing' | 'duckduckgo' | 'brave' | 'startpage' | 'ecosia';
 
 export type CalendarView = 'day' | 'week' | 'month' | 'agenda';
 

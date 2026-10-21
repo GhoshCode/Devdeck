@@ -18,6 +18,7 @@ import { nextFireTime } from './lib/schedule';
 import { REMINDERS_STORAGE_KEY, type ReminderItem } from './lib/reminders-shared';
 import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, CALENDAR_SNOOZE_MS, PENDING_ACTIONS_KEY, notificationText, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
 import { renderAlertOverlay, type OverlayTheme } from './lib/alertOverlay';
+import { ALERT_PREFS_KEY, type AlertPrefs } from './lib/alertPrefs';
 import type { ProcessingItem } from './types';
 
 // Minimal typings for the chrome.* APIs used here (no @types/chrome needed).
@@ -156,10 +157,21 @@ function notify(alert: AlertData) {
   chrome.notifications.create(NOTE_PREFIX + alert.key, { type: 'basic', iconUrl: 'icons/icon-128.png', title, message });
 }
 
+async function prefs(): Promise<AlertPrefs> {
+  const got = await chrome.storage.local.get(ALERT_PREFS_KEY);
+  const p = got[ALERT_PREFS_KEY] as AlertPrefs | undefined;
+  return { popups: p?.popups ?? true, chrome: p?.chrome ?? true };
+}
+
+// Settings → Notifications decides which of the three routes are allowed.
 const lastNote = new Map<string, AlertData>();
 async function deliver(alert: AlertData, reminder?: { id: string; at: number }) {
-  if (await shownInDevDeckTab(alert, reminder)) return;
-  if (await shownOnCurrentSite(alert)) return;
+  const p = await prefs();
+  if (p.popups) {
+    if (await shownInDevDeckTab(alert, reminder)) return;
+    if (await shownOnCurrentSite(alert)) return;
+  }
+  if (!p.chrome) return;
   lastNote.set(NOTE_PREFIX + alert.key, alert);
   notify(alert);
 }

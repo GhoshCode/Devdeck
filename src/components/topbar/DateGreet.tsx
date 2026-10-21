@@ -1,17 +1,18 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
+import { greetingPhrase, segmentOf } from '../../lib/greetings';
 import { useNow } from '../../hooks/useNow';
-import { formatDateLine, greetingFor } from '../../lib/time';
+import { formatDateLine } from '../../lib/time';
 import { quoteFor, type Quote } from '../../lib/greeting';
-import { cachedQuote, fetchQuote } from '../../services/quotes';
+import { QUOTE_SLOT_MS, cachedQuote, fetchQuote } from '../../services/quotes';
 import { fetchOnThisDay, type DayEvent } from '../../services/onThisDay';
 import { GREET_STYLES, NAME_FONTS, type NameFont } from '../../types';
 
 // The uppercase date line, under the clock.
 export const DateLine = memo(function DateLine() {
   const now = useNow(60_000);
-  return <p className="text-gradient font-display text-[13px] font-semibold tracking-[0.22em]">{formatDateLine(now)}</p>;
+  return <p data-testid="date-line" className="text-gradient ml-[15px] font-display text-[15px] font-semibold tracking-[0.22em]">{formatDateLine(now)}</p>;
 });
 
 // Every 10 minutes a soft spotlight sweeps across your name, left to right
@@ -162,21 +163,24 @@ export const DateGreet = memo(function DateGreet() {
   const showQuote = useStore((s) => s.settings.showQuote ?? true);
   const greetStyle = useStore((s) => s.settings.greetStyle ?? 'classic');
   const updateSettings = useStore((s) => s.updateSettings);
-  // Click the greeting for the next style, right-click for the previous one.
+  // Click the greeting for another phrase of this time of day; right-click for the next style.
   const at = Math.max(0, GREET_STYLES.findIndex((g) => g.id === greetStyle));
+  const segment = segmentOf(now);
+  const [roll, setRoll] = useState(() => Math.floor(Math.random() * 1000));
+  const phrase = greetingPhrase(segment, roll);
   const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
   const showOnThisDay = useStore((s) => s.settings.showOnThisDay ?? true);
   // Quote from the quotes API (kept for the day); the built-in list only
   // fills in until it arrives, or offline.
   const [quote, setQuote] = useState<Quote>(() => cachedQuote(new Date()) ?? quoteFor(new Date()));
-  const qday = `${now.getMonth()}-${now.getDate()}`;
+  const qslot = Math.floor(now.getTime() / QUOTE_SLOT_MS); // a new quote every 30 minutes
   useEffect(() => {
     let alive = true;
     void fetchQuote(new Date()).then((q) => alive && setQuote(q));
     return () => {
       alive = false;
     };
-  }, [qday]);
+  }, [qslot]);
   const nextQuote = () => void fetchQuote(new Date(), true).then(setQuote);
   // Your name: click for the next typeface, right-click for the previous one,
   // double-click to rename it right here.
@@ -196,17 +200,17 @@ export const DateGreet = memo(function DateGreet() {
     <div className="group/greet flex min-w-0 flex-col items-center gap-1 text-center">
       <div className="relative max-w-full">
       <h1
-        onClick={() => step(1)}
+        onClick={() => setRoll((r) => r + 1 + Math.floor(Math.random() * 3))}
         onContextMenu={(e) => {
           e.preventDefault();
-          step(-1);
+          step(1);
         }}
-        title={`Greeting style: ${GREET_STYLES[at].name} — click: next · right-click: previous`}
+        title={`Click: another greeting · right-click: next style (${GREET_STYLES[at].name})`}
         className="max-w-full font-display text-[2.15rem] leading-[1.2] font-bold tracking-tight text-balance break-words text-white/95 cursor-pointer select-none"
       >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}
         <span data-testid="greet-words" className={`greet-words greet-${greetStyle}`}>
-          {greetingFor(now)}
+          {phrase}
           {name.trim() && ','}
         </span>
         {name.trim() && (
@@ -277,7 +281,7 @@ export const DateGreet = memo(function DateGreet() {
               <p
                 data-testid="greeting-quote"
                 title={`${quote.text} — ${quote.author}`}
-                className="line-clamp-1 text-[12px] leading-snug text-white/75 italic"
+                className="overflow-hidden text-[12px] leading-snug whitespace-nowrap text-white/75 italic [text-overflow:clip]"
               >
                 “{quote.text}” <span className="text-[10.5px] tracking-wide text-white/50 not-italic">— {quote.author}</span>
               </p>
