@@ -89,7 +89,7 @@ export interface Settings {
   notifyChrome?: boolean; // Chrome / system notifications (default true)
   notifyPopups?: boolean; // DevDeck's alert pop-ups, in-page and on other sites (default true)
   searchEngine?: SearchEngineId; // Enter / Ctrl+Enter search (default google)
-  newTabFocus?: boolean; // extension: put the cursor in DevDeck's search on a new tab (default true)
+  newTabFocus?: boolean; // extension: put the cursor in DevDeck's search on a new tab (opt-in, default false)
 }
 
 export type SearchEngineId = 'google' | 'bing' | 'duckduckgo' | 'brave' | 'startpage' | 'ecosia';

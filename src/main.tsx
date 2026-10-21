@@ -23,14 +23,15 @@ if (import.meta.env.MODE === 'demo') {
 // 2.1 New tab: Chrome gives its address bar the cursor on a new-tab page and
 // an extension can't take it back — but a tab it navigates itself focuses the
 // page. So a fresh new tab reopens DevDeck once (?focus) and the search bar
-// takes the cursor. Off in Settings → Profile → Search.
+// takes the cursor. Opt-in (Settings → Profile → Search): the address bar then
+// shows the extension URL, so it is off by default.
 function focusNewTab(): boolean {
   type TabsApi = { tabs?: { getCurrent?: (cb: (t?: { id?: number }) => void) => void; update?: (id: number, p: { url: string }) => void }; runtime?: { getURL?: (p: string) => string } };
   const c = (globalThis as { chrome?: TabsApi }).chrome;
   if (!c?.tabs?.getCurrent || !c.runtime?.getURL || location.search.includes('focus')) return false;
   try {
     const saved = JSON.parse(localStorage.getItem('devdeck') ?? '{}') as { state?: { settings?: { newTabFocus?: boolean } } };
-    if (saved.state?.settings?.newTabFocus === false) return false;
+    if (saved.state?.settings?.newTabFocus !== true) return false; // opt-in: off by default
   } catch {
     // unreadable storage: keep the default (on)
   }

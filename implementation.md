@@ -22,7 +22,7 @@ Implemented from `devdeck-requirements.md` (deleted afterwards). Item numbers re
 - **2.1 New tab → DevDeck search** (`main.tsx` `focusNewTab`):
   - On a fresh new tab (extension, no `?focus`, `history.length === 1`, `newTabFocus` not false), DevDeck calls `chrome.tabs.getCurrent` + `tabs.update(index.html?focus=1 + hash)` and skips rendering.
   - A tab navigated by the extension focuses the page, not the omnibox, so `App` focuses the search bar on `?focus`. The trade-off is that the address bar shows the extension URL.
-  - Off switch: Settings → Profile → Search → "Type straight into DevDeck on a new tab".
+  - Opt-in since 2026-10-22 (default off, so the address bar stays empty): Settings → Profile → Search → "Type straight into DevDeck on a new tab".
   - Verified in a real Chromium with the extension loaded: `chrome.tabs.create({})` → `?focus=1`, `activeElement` is the search box, and typed text lands in it.
 - **2.2 Keys** (`SearchBar.tsx`):
   - Enter: the pick, or a search with the chosen engine, in a new active tab.

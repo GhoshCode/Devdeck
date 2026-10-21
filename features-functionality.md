@@ -20,7 +20,7 @@ wide where layout is involved.
 ## Round 2026-10-21 — notifications, search keys, stats, greetings
 
 - **Settings → Processing → Notifications:** All notifications / Chrome built-in notifications / Alert pop-up notifications. With All ticked the other two are ticked and locked.
-- **New tab:** start typing right away and it goes into DevDeck's search, not Chrome's address bar. The address bar shows the extension address; turn this off in Settings → Profile → Search.
+- **New tab:** start typing right away and it goes into DevDeck's search, not Chrome's address bar. The address bar shows the extension address; this is off by default — turn it on in Settings → Profile → Search (the address bar then shows the extension address).
 - **Search keys:** Enter searches in a new tab · Ctrl+Enter in a new window · Alt+Enter asks your AI. Choose the search engine in Settings → Profile → Search. Scroll on the AI icon to switch AIs.
 - **Alerts:** To-do and Queue alerts stay 10 s; Currently processing 5 s. Clear all is bigger.
 - **Quick links:** in 1- and 2-card views the bar fits without scrolling; the fixed sites have a neon accent border. Main sites in a card show a pin; click it to unpin.

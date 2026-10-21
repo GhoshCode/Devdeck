@@ -6,7 +6,7 @@ import { isExtension } from '../../lib/env';
 // (extension) whether a new tab puts the cursor in DevDeck's search.
 export function SearchSettings() {
   const engine = useStore((s) => s.settings.searchEngine ?? 'google');
-  const focus = useStore((s) => s.settings.newTabFocus ?? true);
+  const focus = useStore((s) => s.settings.newTabFocus ?? false);
   const updateSettings = useStore((s) => s.updateSettings);
   return (
     <section aria-label="Search" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
