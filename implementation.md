@@ -10,6 +10,21 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22c — backdrop, calendar mark, instant greeting clicks, voice append, growing search bar
+
+- **Backdrop** (`Backdrop.tsx`): the dots and lines are brighter in dark (dots 0.05 → 0.09, lines 0.03 → 0.055 white). In light they are charcoal grey (`rgba(74,78,86)`: dots 0.30, lines 0.16) instead of indigo.
+- **Full-screen calendar header** (`CommandCalendar`):
+  - The "AXIOM // COMMAND" title and the "Pro workspace" pill are gone. The date is now the title line, with "Events · To-do · Processing · Queue on one timeline" under it.
+  - The new `MatteCalendarIcon` is a chamfered slab with binding clips, an accent rail and a status dot, and shows the day in mono (two digits). It sits on a matte `.cc-logo` tile (`.cc-mark-*` colours, light variants), replacing the glossy gradient ring.
+- **Greeting clicks** (`DateGreet`): the 240 ms wait for a possible double-click is gone. A click steps the style at once; a double-click steps it back (undoing its first click) and changes the phrase.
+- **Voice typing** (`SearchBar`): the text in the box when the mic starts (`voiceBase`) is kept, and what is heard is appended after a space (it used to replace everything).
+- **Search bar** (`SearchBar`):
+  - The expand button and the composer footer are removed.
+  - Text longer than the bar (`overflowing`: scrollWidth on one line, scrollHeight > 24 px once wrapped) or with a line break wraps, and the bar grows to two lines as an overlay (`data-composer="grown"`).
+  - A 16 px strip under it, separated by a hairline, holds a down caret (`composer-expand`). It shows all the text, up to 240 px then scrolling (`expanded`), and flips up to fold it back.
+  - The AI, mic and Search icons stay in the row. Suggestions are hidden while the text wraps.
+- **Tests:** 264 unit; 90/90 Chromium end-to-end (the quote-shuffle test is flaky against the live API).
+
 ## Round 2026-10-22b — free resize + card-step edge tabs, plain greeting, CPU temperature, growing terminal
 
 - **Cockpit resizing** (`lib/cardSnap.ts`, `layout/CardSnapHandle.tsx`, `DashboardLayout` `useCardSnap`):

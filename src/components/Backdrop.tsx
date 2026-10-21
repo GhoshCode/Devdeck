@@ -52,8 +52,8 @@ export const Backdrop = memo(function Backdrop() {
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = isLight ? 'rgba(99, 102, 241, 0.16)' : 'rgba(255, 255, 255, 0.05)';
-      ctx.strokeStyle = isLight ? 'rgba(99, 102, 241, 0.09)' : 'rgba(255, 255, 255, 0.03)';
+      ctx.fillStyle = isLight ? 'rgba(74, 78, 86, 0.30)' : 'rgba(255, 255, 255, 0.09)';
+      ctx.strokeStyle = isLight ? 'rgba(74, 78, 86, 0.16)' : 'rgba(255, 255, 255, 0.055)';
       ctx.font = '14px var(--font-sans)';
 
       for (let i = 0; i < nodes.length; i++) {

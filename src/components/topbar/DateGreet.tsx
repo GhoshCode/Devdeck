@@ -171,8 +171,6 @@ export const DateGreet = memo(function DateGreet() {
   // themed phrases, and each one after re-rolls.
   const [roll, setRoll] = useState<number | null>(null);
   const phrase = roll === null ? greetingFor(now) : greetingPhrase(segment, roll);
-  const greetClick = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (greetClick.current && clearTimeout(greetClick.current)), []);
   const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
   const showOnThisDay = useStore((s) => s.settings.showOnThisDay ?? true);
   // Quote from the quotes API (kept for the day); the built-in list only
@@ -206,13 +204,13 @@ export const DateGreet = memo(function DateGreet() {
       <div className="relative max-w-full">
       <h1
         onClick={(e) => {
-          // a double-click re-rolls the phrase instead (the second click of it is ignored)
+          // the style changes at once (no wait to rule out a double-click); a double-click
+          // puts the style back and changes the phrase instead
           if (e.detail > 1) return;
-          if (greetClick.current) clearTimeout(greetClick.current);
-          greetClick.current = setTimeout(() => step(1), 240);
+          step(1);
         }}
         onDoubleClick={() => {
-          if (greetClick.current) clearTimeout(greetClick.current);
+          step(-1); // undo the style step of its first click
           setRoll((r) => (r === null ? Math.floor(Math.random() * 1000) : r + 1 + Math.floor(Math.random() * 3)));
         }}
         onContextMenu={(e) => {

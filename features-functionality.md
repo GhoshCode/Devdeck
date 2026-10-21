@@ -17,6 +17,19 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22c — polish
+
+- The background dot-and-line animation is a little more visible; in the light theme it is charcoal grey.
+- The full-screen calendar shows the date as its title (no "AXIOM / Pro workspace" label) beside a new matte calendar mark.
+- Clicking the greeting changes the style instantly (double-click still changes the phrase).
+- Voice typing adds to the text already in the search bar instead of replacing it.
+- Search bar: long text wraps and the bar grows to two lines. Click the caret in the thin strip under it to see all of the text, and again to fold it.
+
+**Manual test checklist**
+- [ ] Light theme: the background dots are grey and visible.
+- [ ] Type "hello", click the mic and speak: the result is "hello <your words>".
+- [ ] Paste a long paragraph into the search bar: two lines show, and the caret shows all of it.
+
 ## Round 2026-10-22b — resize tabs, plain greeting, CPU temperature
 
 - **Resize the cards area two ways:**

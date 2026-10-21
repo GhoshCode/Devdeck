@@ -1,6 +1,5 @@
 import { openInNewTab, openInNewWindow } from '../../lib/openTab';
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import { searchSites, getHostname } from '../../utils';
 import { destinationFor, fetchSuggestions, looksLikeUrl, searchEngine, searchUrl } from '../../services/search';
@@ -23,14 +22,15 @@ import { Favicon } from '../Favicon';
 // Google suggestions are hidden then, your sites still match.
 //
 // Type-to-capture: a printable key (or a paste) anywhere outside a field lands
-// here. Long or multi-line text reveals a small expand button; the expanded
-// composer grows to 280px (Shift+Enter new line, Enter submits) and collapses
-// back without losing the text.
+// here. Text longer than the bar wraps and the bar grows to two lines (over
+// the page below); a thin strip under it with a caret shows all of the text
+// (up to 240px, then it scrolls) and folds it back. The icons stay in the row.
 
 const SITE_LIMIT = 5;
 const WEB_LIMIT = 5;
 const SUGGEST_DEBOUNCE_MS = 150;
-const LONG_TEXT = 65; // characters before the composer offers to expand
+const LINE_H = 24; // one line of the search text, px
+const FULL_H = 240; // the most the bar shows before the text scrolls
 const SUGGEST_MAX = 120; // longer text reads as a prompt: no Google suggestions
 
 type Item =
@@ -83,8 +83,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   const caretToEnd = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const q = query.trim();
-  const multiline = !!query && (query.includes('\n') || query.length > LONG_TEXT || overflowing);
-  const lines = query ? query.split('\n').length : 0;
+  const multiline = !!query && (query.includes('\n') || overflowing);
 
   useTypeToCapture((text) => {
     caretToEnd.current = true;
@@ -94,14 +93,15 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     inputRef.current?.focus();
   });
 
-  // Compact: one row that scrolls sideways. Expanded: grows with the text up
-  // to the composer's max height, then scrolls inside.
+  // One line: the text scrolls sideways. Longer: it wraps, two lines show, and
+  // the caret strip shows the rest (up to FULL_H, then it scrolls inside).
   useLayoutEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    if (expanded) {
+    if (multiline) {
       el.style.height = 'auto';
-      el.style.height = `${el.scrollHeight}px`;
+      setOverflowing(el.scrollHeight > LINE_H + 1);
+      el.style.height = `${Math.min(el.scrollHeight, expanded ? FULL_H : 2 * LINE_H)}px`;
     } else {
       el.style.height = '';
       setOverflowing(el.scrollWidth > el.clientWidth + 1);
@@ -113,11 +113,11 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
       el.scrollTop = el.scrollHeight;
       el.scrollLeft = el.scrollWidth;
     }
-  }, [query, expanded, inputRef]);
+  }, [query, expanded, multiline, inputRef]);
 
   useEffect(() => {
-    if (!query) setExpanded(false);
-  }, [query]);
+    if (!multiline) setExpanded(false);
+  }, [multiline]);
 
   const toggleExpanded = () => {
     caretToEnd.current = true;
@@ -126,8 +126,12 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     inputRef.current?.focus();
   };
 
+  // Voice adds to what is already typed: the text in the box when the mic
+  // started stays, and what is heard goes after it.
+  const voiceBase = useRef('');
   const speech = useSpeechInput((text, final) => {
-    setQuery(text);
+    const base = voiceBase.current;
+    setQuery(base && text ? `${base}${/\s$/.test(base) ? '' : ' '}${text}` : base || text);
     setActive(-1);
     setOpen(true);
     if (final) inputRef.current?.focus();
@@ -265,7 +269,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     if (e.nativeEvent.isComposing) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       // Multi-line text: the arrows move the caret between lines.
-      if (!items.length || expanded || query.includes('\n')) return;
+      if (!items.length || multiline) return;
       e.preventDefault();
       setOpen(true);
       // -1 is "the input itself"; wrapping passes through it in both directions.
@@ -286,7 +290,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
         setExpanded(false);
         return;
       }
-      const pick = active >= 0 && !expanded ? items[active] : undefined;
+      const pick = active >= 0 && !multiline ? items[active] : undefined;
       if ((e.ctrlKey || e.metaKey) && q && pick?.kind !== 'command' && pick?.kind !== 'gemini' && pick?.kind !== 'add') {
         if (pick?.kind === 'site') recordVisit(pick.siteId);
         openInNewWindow(pick ? pick.url : destinationFor(q, engineId));
@@ -306,12 +310,12 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
     }
   };
 
-  const showDropdown = open && items.length > 0 && !expanded;
+  const showDropdown = open && items.length > 0 && !multiline;
 
   const firstWeb = items.findIndex((i) => i.kind === 'web');
   const goIndex = items.findIndex((i) => i.kind === 'go');
 
-  // Clear, voice, AI mode and Search: in the bar, or in the composer footer when expanded.
+  // Clear, voice, AI mode and Search, always in the bar's row.
   const actions = (
     <div className="flex shrink-0 items-center gap-2.5">
       {query ? (
@@ -334,7 +338,11 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
       {speech.supported && (
         <button
           type="button"
-          onClick={() => (speech.listening ? speech.stop() : void speech.start())}
+          onClick={() => {
+            if (speech.listening) return speech.stop();
+            voiceBase.current = query.trimEnd();
+            void speech.start();
+          }}
           aria-label={speech.listening ? 'Stop voice input' : 'Search by voice'}
           aria-pressed={speech.listening}
           title={speech.listening ? 'Stop listening' : 'Search by voice'}
@@ -377,26 +385,26 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
   );
 
   return (
-    <div ref={rootRef} className={`h-[52px] min-w-0 flex-1 max-sm:basis-full ${expanded ? '' : 'relative'}`}>
+    <div ref={rootRef} className="relative h-[52px] min-w-0 flex-1 max-sm:basis-full">
       <div
         data-gemini={geminiMode || undefined}
         data-ai={geminiMode ? ai.id : undefined}
-        data-composer={expanded ? 'expanded' : 'compact'}
+        data-composer={expanded ? 'expanded' : multiline ? 'grown' : 'compact'}
         className={`glass-raised isolate flex flex-col rounded-2xl transition-[border-color,box-shadow] duration-300 focus-within:border-white/30 ${
           geminiMode ? 'gemini-ring' : ''
-        } ${expanded ? 'search-composer absolute inset-x-0 top-0 z-40 max-h-[280px] bg-[var(--color-base-elevated)]/95' : 'relative h-[52px]'}`}
+        } ${multiline ? 'search-composer absolute inset-x-0 top-0 z-40 bg-[var(--color-base-elevated)]/95' : 'relative h-[52px]'}`}
       >
-       <div className={`flex min-h-0 gap-2.5 pl-4 ${expanded ? 'flex-1 items-start pt-2 pr-3' : 'h-[52px] items-center pr-1.5'}`}>
+       <div className={`flex min-h-0 items-center gap-2.5 pr-1.5 pl-4 ${multiline ? 'min-h-[52px] py-1.5' : 'h-[52px]'}`}>
         {geminiMode ? (
-          <AiIcon provider={ai} className={`size-5 shrink-0 ${expanded ? 'mt-2.5' : ''}`} />
+          <AiIcon provider={ai} className="size-5 shrink-0" />
         ) : (
-          <SearchIcon className={`size-5 shrink-0 text-white/45 ${expanded ? 'mt-2.5' : ''}`} />
+          <SearchIcon className="size-5 shrink-0 text-white/45" />
         )}
-        <div className={`relative flex min-h-0 min-w-0 flex-1 self-stretch ${expanded ? 'pt-1.5 pb-1' : 'items-center'}`}>
+        <div className="relative flex min-h-0 min-w-0 flex-1 items-center self-stretch">
         <textarea
           ref={inputRef}
           rows={1}
-          wrap={expanded ? 'soft' : 'off'}
+          wrap={multiline ? 'soft' : 'off'}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -414,56 +422,31 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
           aria-controls="search-suggestions"
           aria-activedescendant={active >= 0 ? `search-opt-${active}` : undefined}
           aria-autocomplete="list"
-          aria-multiline={expanded}
+          aria-multiline={multiline}
           spellCheck={false}
           autoComplete="off"
           className={`block w-full min-w-0 resize-none bg-transparent text-[15px] leading-6 font-medium text-white placeholder-white/40 outline-none ${
-            expanded ? 'composer-scroll max-h-[214px] overflow-y-auto pr-2' : `h-6 overflow-hidden ${multiline ? 'pr-6' : ''}`
+            multiline ? `composer-scroll pr-2 ${expanded ? 'overflow-y-auto' : 'overflow-hidden'}` : 'h-6 overflow-hidden'
           }`}
         />
-        <AnimatePresence>
-          {multiline && !expanded && (
-            <motion.button
-              key="expand"
-              type="button"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.6 }}
-              transition={{ duration: 0.14 }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={toggleExpanded}
-              aria-label="Expand search composer"
-              title={`Expand (${lines} line${lines === 1 ? '' : 's'} · ${query.length} chars)`}
-              data-testid="composer-expand"
-              className="composer-toggle absolute right-0 bottom-[3px] flex h-[15px] items-center gap-0.5 rounded-[5px] border border-white/15 px-1 text-white/60 hover:border-white/30 hover:text-white"
-            >
-              <ExpandIcon className="size-[10px]" />
-            </motion.button>
-          )}
-        </AnimatePresence>
         </div>
-        {!expanded && actions}
+        {actions}
        </div>
-        {expanded && (
-          <div className="flex shrink-0 items-center gap-3 border-t border-white/10 py-1.5 pr-1.5 pl-4 font-mono text-[10.5px] whitespace-nowrap text-white/45 tabular-nums">
-            <span data-testid="composer-lines">
-              {lines} line{lines === 1 ? '' : 's'} · {query.length} chars
-            </span>
-            <span className="hidden min-[1800px]:inline">⇧↵ new line · ↵ {geminiMode ? `ask ${ai.name}` : `search · Ctrl+↵ new window · Alt+↵ ask ${ai.name}`} · Esc collapse</span>
-            <span className="ml-auto" />
-            {actions}
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={toggleExpanded}
-              aria-label="Collapse search composer"
-              title="Collapse (Esc) · Shift+Enter adds a line"
-              data-testid="composer-collapse"
-              className="composer-toggle flex size-8 items-center justify-center rounded-xl border border-white/15 text-white/60 hover:border-white/30 hover:text-white"
-            >
-              <CollapseIcon className="size-3.5" />
-            </button>
-          </div>
+        {multiline && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={toggleExpanded}
+            aria-label={expanded ? 'Show less of the search text' : 'Show all of the search text'}
+            aria-expanded={expanded}
+            title={expanded ? 'Show less' : 'Show all the text'}
+            data-testid="composer-expand"
+            className="flex h-4 shrink-0 items-center justify-center border-t border-white/10 text-white/45 hover:text-white"
+          >
+            <svg viewBox="0 0 12 12" className={`size-2.5 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 4.5l3 3 3-3" />
+            </svg>
+          </button>
         )}
       </div>
 
@@ -607,22 +590,6 @@ function GeminiSparkle({ className }: { className: string }) {
         fill={`url(#${id})`}
         d="M12 2c.6 5.2 4.8 9.4 10 10-5.2.6-9.4 4.8-10 10-.6-5.2-4.8-9.4-10-10 5.2-.6 9.4-4.8 10-10z"
       />
-    </svg>
-  );
-}
-
-function ExpandIcon({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" />
-    </svg>
-  );
-}
-
-function CollapseIcon({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M13.5 6.5h-4v-4M9.5 6.5 14 2M2.5 9.5h4v4M6.5 9.5 2 14" />
     </svg>
   );
 }

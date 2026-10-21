@@ -2809,11 +2809,20 @@ html[data-theme='light'] .cc-glow { background: radial-gradient(650px 320px at 2
 /* command bar + briefing strip */
 .cc-bar { background: var(--cc-bar); backdrop-filter: blur(20px); }
 .cc-strip { background: var(--cc-strip); }
-.cc-logo { background: linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 70%, #000) 55%, color-mix(in srgb, var(--color-accent) 45%, #fff)); box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--color-accent) 55%, transparent); }
-.cc-logo-in { background: var(--color-base); color: color-mix(in srgb, var(--color-accent) 45%, #fff); }
-html[data-theme='light'] .cc-logo-in { background: #fff; color: color-mix(in srgb, var(--color-accent) 70%, #000); }
-.cc-pro { color: color-mix(in srgb, var(--color-accent) 45%, #fff); background: color-mix(in srgb, var(--color-accent) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent); }
-html[data-theme='light'] .cc-pro { color: color-mix(in srgb, var(--color-accent) 70%, #000); background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+/* Matte calendar mark (top-left of the full-screen calendar): no gloss, a soft
+   inner edge and one accent rail. */
+.cc-logo { background: #1b1d22; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 16px -10px rgba(0, 0, 0, 0.8); }
+.cc-mark-body { fill: #2a2d34; stroke: rgba(255, 255, 255, 0.14); stroke-width: 1; }
+.cc-mark-line { stroke: rgba(255, 255, 255, 0.12); }
+.cc-mark-clip { fill: #9aa0aa; }
+.cc-mark-rail { stroke: var(--color-accent); }
+.cc-mark-led { fill: color-mix(in srgb, var(--color-accent) 60%, #fff); }
+.cc-mark-day { fill: #e6e8ec; }
+html[data-theme='light'] .cc-logo { background: #e9eaed; box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(15, 23, 42, 0.08); }
+html[data-theme='light'] .cc-mark-body { fill: #f7f7f8; stroke: rgba(15, 23, 42, 0.16); }
+html[data-theme='light'] .cc-mark-line { stroke: rgba(15, 23, 42, 0.12); }
+html[data-theme='light'] .cc-mark-clip { fill: #5b616b; }
+html[data-theme='light'] .cc-mark-day { fill: #2b2f36; }
 .cc-search { background: rgba(0, 0, 0, 0.22); border-color: var(--cc-line2); transition: border-color 0.2s, box-shadow 0.2s; }
 .cc-search:hover { border-color: rgba(255, 255, 255, 0.25); }
 .cc-search:focus-within { background: rgba(0, 0, 0, 0.3); border-color: color-mix(in srgb, var(--color-accent) 70%, transparent); box-shadow: 0 0 25px -5px color-mix(in srgb, var(--color-accent) 35%, transparent); }
@@ -3099,7 +3108,6 @@ html[data-theme='light'] .mini-cal-day.is-today { color: #fff; }
 html[data-theme='light'] .mini-cal-foot { background: rgba(15, 23, 42, 0.04); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.07); }
 html[data-theme='light'] .mini-cal-rel { color: color-mix(in srgb, var(--color-accent) 80%, #000); background: color-mix(in srgb, var(--color-accent) 15%, transparent); }
 @media (prefers-reduced-motion: reduce) { .mini-cal-blink { animation: none; } }
-.cc-brand-sep { color: var(--color-accent); font-weight: 500; }
 
 /* ---- Work panel (Currently processing → Queue → To-do) -------------------- */
 .work-card {

@@ -410,21 +410,14 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
       {/* Command bar */}
       <header className="cc-bar cc-line relative z-10 flex flex-wrap items-center gap-x-5 gap-y-2 border-b px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="cc-logo flex size-10 shrink-0 items-center justify-center rounded-xl p-px">
-            <span className="cc-logo-in flex size-full items-center justify-center rounded-[11px]">
-              <CalendarIcon className="size-5" day={new Date(now).getDate()} />
-            </span>
+          <span className="cc-logo flex size-11 shrink-0 items-center justify-center rounded-xl">
+            <MatteCalendarIcon className="size-7" day={new Date(now).getDate()} />
           </span>
           <div className="min-w-0">
-            <p className="flex items-center gap-2">
-              <span className="cc-fg text-[13.5px] font-bold tracking-tight">
-                AXIOM <span className="cc-brand-sep">{'//'}</span> COMMAND
-              </span>
-              <span className="cc-pro rounded-full px-2 py-px text-[9.5px] font-bold tracking-[0.16em] uppercase">Pro workspace</span>
+            <p className="cc-fg truncate text-[13.5px] font-bold tracking-tight">
+              {new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
-            <p className="cc-fg3 hidden truncate text-[11px] sm:block">
-              {new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · Events · To-do · Processing · Queue on one timeline
-            </p>
+            <p className="cc-fg3 hidden truncate text-[11px] sm:block">Events · To-do · Processing · Queue on one timeline</p>
           </div>
         </div>
 
@@ -674,6 +667,24 @@ function CalendarIcon({ className, day }: { className: string; day: number }) {
       <path d="M3.5 9.5h17M8 3v4M16 3v4" />
       <text x="12" y="18" textAnchor="middle" fontSize="7.5" fontWeight="700" fill="currentColor" stroke="none" fontFamily="ui-monospace, monospace">
         {day}
+      </text>
+    </svg>
+  );
+}
+
+// The full-screen panel's mark: a matte, chamfered calendar slab with
+// binding clips, a status rail in the accent and today's date in mono.
+function MatteCalendarIcon({ className, day }: { className: string; day: number }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} fill="none" aria-hidden>
+      <path d="M7 6h18l3 3v16l-3 3H7l-3-3V9z" className="cc-mark-body" />
+      <path d="M4 12h24" className="cc-mark-line" strokeWidth="1" />
+      <rect x="9.5" y="3.5" width="2.5" height="5" rx="1" className="cc-mark-clip" />
+      <rect x="20" y="3.5" width="2.5" height="5" rx="1" className="cc-mark-clip" />
+      <path d="M7.5 9.2h7" className="cc-mark-rail" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="24.5" cy="9.2" r="0.9" className="cc-mark-led" />
+      <text x="16" y="23.6" textAnchor="middle" fontSize="10" fontWeight="700" letterSpacing="-0.3" className="cc-mark-day" fontFamily="ui-monospace, 'JetBrains Mono', monospace">
+        {String(day).padStart(2, '0')}
       </text>
     </svg>
   );
