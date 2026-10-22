@@ -11,7 +11,7 @@ export interface SnapGeometry {
   chrome: number; // centre frame minus the cards themselves (padding, borders), px
   card: number; // one category card, px
   gap: number; // between cards, px
-  rightMax?: number; // the news column grows to this before the left column gets any (default 560)
+  count?: number; // categories there are (fewer than fit: the centre sizes to them)
 }
 
 export const MAX_CARDS = 3;
@@ -21,21 +21,25 @@ export const MAX_CARDS = 3;
 const SLIVER = 0.15;
 export function cardsAtRest(g: SnapGeometry): number {
   const room = g.width - 2 * g.handle - g.leftBase - g.rightBase - g.chrome;
-  return Math.max(0, Math.min(MAX_CARDS, Math.floor((room + g.gap) / (g.card + g.gap) + SLIVER)));
+  return Math.max(0, Math.min(MAX_CARDS, g.count ?? MAX_CARDS, Math.floor((room + g.gap) / (g.card + g.gap) + SLIVER)));
 }
 
 // Nothing resized, 1 or 2 cards showing: the centre is exactly as wide as its
-// cards, and the width left over widens the scraped-news column first (up to
-// rightMax), then the left column. Three cards (the widest view) keep the
-// default columns.
+// cards and the two side columns share the rest equally, so the page is
+// symmetric (neither drops below its base). Three cards (the widest view)
+// keep the default columns.
 export function restColumns(g: SnapGeometry): { left: number; right: number; cards: number } | null {
   const cards = cardsAtRest(g);
   if (cards < 1 || cards >= MAX_CARDS) return null;
-  const centre = centreFor(g, cards);
-  const slack = g.width - 2 * g.handle - g.leftBase - g.rightBase - centre;
-  if (slack <= 0) return null;
-  const toRight = Math.min(slack, Math.max(0, (g.rightMax ?? 560) - g.rightBase));
-  return { left: Math.round(g.leftBase + slack - toRight), right: Math.round(g.rightBase + toRight), cards };
+  const sides = g.width - 2 * g.handle - centreFor(g, cards);
+  if (sides - g.leftBase - g.rightBase <= 0) return null;
+  let right = Math.max(g.rightBase, Math.round(sides / 2));
+  let left = sides - right;
+  if (left < g.leftBase) {
+    left = g.leftBase;
+    right = sides - left;
+  }
+  return { left, right, cards };
 }
 
 // The centre's width between these side widths, px.
@@ -52,7 +56,7 @@ export function centreCards(g: SnapGeometry, left: number, right: number): numbe
 
 // Whole cards in view (1–3); a card cut by only a sliver still counts.
 export const wholeCards = (g: SnapGeometry, left: number, right: number) =>
-  Math.max(1, Math.min(MAX_CARDS, Math.floor(centreCards(g, left, right) + SLIVER)));
+  Math.max(1, Math.min(MAX_CARDS, g.count ?? MAX_CARDS, Math.floor(centreCards(g, left, right) + SLIVER)));
 
 // Most px a side may have next to the other side's width (the centre keeps one card).
 export const sideMax = (g: SnapGeometry, other: number) => Math.max(0, g.width - 2 * g.handle - centreFor(g, 1) - other);

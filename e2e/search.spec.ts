@@ -31,7 +31,9 @@ test.describe('Links strip (E/F)', () => {
     await expect(fixed.first()).toHaveText('Mail');
 
     const before = await fixed.first().boundingBox();
-    await strip.locator('[data-strip=scroll]').evaluate((el) => (el.scrollLeft = 400));
+    const scroller = strip.locator('[data-strip=scroll]');
+    await scroller.evaluate((el) => (el.scrollLeft = 400));
+    await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0); // the rest really scrolled
     const after = await fixed.first().boundingBox();
     expect(after!.x).toBe(before!.x);
   });

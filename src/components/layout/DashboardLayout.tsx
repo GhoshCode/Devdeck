@@ -244,6 +244,7 @@ function useCardSnap(enabled: boolean) {
         chrome: centre.offsetWidth - track.clientWidth + pad,
         card: card.offsetWidth,
         gap: parseFloat(cs.columnGap) || 0,
+        count: categoryCount || undefined,
       });
     };
     measure();

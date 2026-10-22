@@ -17,6 +17,17 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22e — balanced layout
+
+- With only one or two categories (or a 1–2-card view), the cards area is exactly as wide as its cards, and the To-do / Processing column and the news column share the rest equally, for a symmetric page.
+- The search suggestions and the long-text panel now show over the terminal box.
+- The long-search panel lines up with the bar's left edge.
+- The first four quick links stay fixed while the rest scroll, even on a narrow bar.
+
+**Manual test checklist**
+- [ ] With two categories, the left and right columns are the same width and the two cards fill the centre.
+- [ ] Type a URL into search: the suggestions cover the terminal box.
+
 ## Round 2026-10-22d — resize tab grip, scrolling links, long-search panel
 
 - The tabs inside the cards box have a three-line grip. Click: one card fewer. Drag: whole cards either way (in for fewer, out for more). The thin bars outside still resize freely.

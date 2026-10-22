@@ -56,7 +56,7 @@ for (const theme of ['dark', 'light'] as const) {
     });
     await step(page, info, 'card row scrolled', async () => {});
 
-    const strip = page.locator('[data-strip-scroller]');
+    const strip = page.locator('[data-strip="scroll"]');
     const sBox = (await strip.boundingBox())!;
     const links = await measureFrames(page, async () => {
       await page.mouse.move(sBox.x + sBox.width / 2, sBox.y + sBox.height / 2);

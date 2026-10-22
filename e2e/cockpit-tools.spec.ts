@@ -248,8 +248,11 @@ test('the links / terminal handle sits midway, and a shrunk links bar still scro
   await page.mouse.down();
   await page.mouse.move(h.x - 700, h.y + h.height / 2, { steps: 8 });
   await page.mouse.up();
-  const scroller = page.locator('[data-strip-scroller]');
+  const scroller = page.locator('[data-strip="scroll"]');
   await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth + 20)).toBe(true);
+  // the scrolling part is never squeezed to nothing
+  const widths = await strip.evaluate((el) => [el.clientWidth, el.querySelector('[data-strip="scroll"]')!.clientWidth]);
+  expect(widths[1]).toBeGreaterThan(widths[0] * 0.35);
   const sb = (await scroller.boundingBox())!;
   await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
   await page.mouse.wheel(0, 2000);

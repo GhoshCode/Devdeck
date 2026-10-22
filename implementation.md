@@ -10,6 +10,20 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22e — symmetric layout for few categories, stacking and links fixes
+
+- **Symmetric rest layout** (`lib/cardSnap.ts`):
+  - `SnapGeometry.count` (the number of categories, from `useCardSnap`) caps `cardsAtRest` and `wholeCards`. With two categories on a screen that fits three, the centre is sized to two cards.
+  - `restColumns` now splits the leftover width equally between the side columns (neither below its base) instead of news-first up to 560 px. `rightMax` was removed.
+  - At 1920 × 1080 with two categories: 500 | 848 | 500.
+- **Stacking:** the top bar zone is `relative z-40`, so the search suggestions and the long-text panel paint over the terminal box (an absolute `z-30` overlay since it grows downward).
+- **Long-search panel:** starts at the bar's left edge (`left-0`, 150 % wide), 25 % right of the centred position.
+- **Links bar:**
+  - Back to two scrollers: the first four chips stay put while the rest scroll (`e2e/search.spec.ts` now also checks that the rest really scrolled).
+  - The scrolling part keeps at least 45 % of the bar, and the fixed group scrolls on its own when space is tight.
+  - The 2026-10-22d single scroller is replaced.
+- **Tests:** 266 unit (symmetric split, two categories). The Chromium end-to-end tests pass.
+
 ## Round 2026-10-22d — edge-tab grip and drag, centred split, scrolling links, search panel
 
 - **Edge tabs** (`EdgeTab` in `layout/CardSnapHandle.tsx`):

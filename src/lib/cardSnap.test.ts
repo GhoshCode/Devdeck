@@ -35,19 +35,20 @@ describe('restColumns (nothing resized)', () => {
   // 1748px: room for two cards plus 314px that is not quite a third
   const g: SnapGeometry = { width: 1748, handle: 12, leftBase: 250, rightBase: 300, chrome: 24, card: 400, gap: 12 };
 
-  it('gives the leftover width to the news column first, then the left one', () => {
+  it('splits the leftover evenly so both side columns match', () => {
     const r = restColumns(g)!;
     expect(r.cards).toBe(2);
     const centre = g.chrome + 2 * g.card + g.gap;
     expect(r.left + r.right + 2 * g.handle + centre).toBe(g.width); // the centre is exactly two cards
-    expect(r.right).toBe(560); // news grows to its cap first
-    expect(r.left).toBeGreaterThan(g.leftBase); // the rest widens the left column
+    expect(Math.abs(r.left - r.right)).toBeLessThanOrEqual(1); // symmetric
   });
 
-  it('only the news column grows while the leftover fits under its cap', () => {
-    const r = restColumns({ ...g, width: 1500 })!; // 90px over
-    expect(r.left).toBe(g.leftBase);
-    expect(r.right).toBeGreaterThan(g.rightBase);
+  it('never squeezes a side below its base', () => {
+    const r = restColumns({ ...g, width: 1500 })!; // 640px for both sides
+    expect(r).toMatchObject({ left: 320, right: 320 });
+    const tight = restColumns({ ...g, rightBase: 400, width: 1520 })!; // 660px: half would be under 400
+    expect(tight.right).toBe(400);
+    expect(tight.left).toBe(260); // the rest
   });
 
   it('keeps the default columns with three cards', () => {
@@ -63,5 +64,15 @@ describe('sideFor (dragging an edge tab)', () => {
     expect(sideFor(g, 'left', 1116, 300, 2)).toBe(696); // back out again
     expect(sideFor(g, 'left', 696, 300, 3)).toBeNull(); // three cards: the side gives its space back
     expect(centreCards(g, 250, sideFor(g, 'right', 250, 300, 2)!)).toBeCloseTo(2);
+  });
+});
+
+describe('only two categories', () => {
+  const g: SnapGeometry = { width: 1900, handle: 12, leftBase: 250, rightBase: 300, chrome: 60, card: 400, gap: 20, count: 2 };
+  it('sizes the centre to the two cards and balances the sides, even with room for three', () => {
+    const r = restColumns(g)!;
+    expect(r.cards).toBe(2);
+    expect(r.left + r.right + 24 + 60 + 820).toBe(1900);
+    expect(Math.abs(r.left - r.right)).toBeLessThanOrEqual(1);
   });
 });
