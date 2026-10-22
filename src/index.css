@@ -3257,3 +3257,14 @@ html[data-theme='light'] .top-split-grip { background: rgba(15, 23, 42, 0.18); }
 .edge-grip { display: block; width: 1px; height: 18px; border-radius: 1px; background: rgba(255, 255, 255, 0.4); transition: background 0.15s; }
 .edge-tab:hover .edge-grip, .edge-tab.is-dragging .edge-grip { background: var(--color-accent); }
 html[data-theme='light'] .edge-grip { background: rgba(60, 60, 67, 0.45); }
+
+/* Search: the panel under the bar that holds long text (a darker accent tone) */
+.search-panel {
+  background: color-mix(in srgb, var(--color-accent) 12%, #07080c);
+  border-color: color-mix(in srgb, var(--color-accent) 32%, transparent);
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.8);
+  animation: composer-in 0.16s ease-out both;
+}
+.search-panel-foot { color: rgba(255, 255, 255, 0.4); }
+html[data-theme='light'] .search-panel { background: color-mix(in srgb, var(--color-accent) 14%, #dfe2e8); border-color: color-mix(in srgb, var(--color-accent) 35%, transparent); box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.35); }
+html[data-theme='light'] .search-panel-foot { color: rgba(15, 23, 42, 0.5); }

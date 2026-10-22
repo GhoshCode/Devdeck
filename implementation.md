@@ -10,6 +10,28 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22d — edge-tab grip and drag, centred split, scrolling links, search panel
+
+- **Edge tabs** (`EdgeTab` in `layout/CardSnapHandle.tsx`):
+  - They sit just inside the cards box's edges (`left-3` / `right-3`, the `data-center-body` padding) and carry three 1 px grip lines (`.edge-grip`, accent on hover or drag).
+  - A press without movement (under 6 px) steps as before.
+  - Dragging moves by whole cards in either direction (half a card's pull = one card; towards the centre = fewer cards, outward = more). It calls `toCards(side, n)` → `sideFor()` in `lib/cardSnap.ts`, which gives that side's width for exactly n cards, or null when the rest layout already shows n.
+  - The outside handles still resize freely.
+- **Links / terminal split:** the terminal slot gets `ml-3`, matching the links row's `mx-3`, so the grip sits midway (12 px either side).
+- **Links bar** (`LinksStrip`):
+  - The 1–2-card "fit" mode (hiding chips) is gone.
+  - All chips (fixed, auto and recent) share one scroller (`data-strip-scroller`) with the right-edge fade, so a narrow bar still reaches every chip. Scroll by trackpad, drag or the vertical wheel.
+  - `e2e/qa/baseline.spec.ts` now targets the new scroller.
+- **Search** (`SearchBar`) replaces the two-line growth and the caret strip:
+  - Text too long for the bar (`overflowing`, measured on the preview) or containing a line break: the bar stays 52 px and shows a one-line preview (`search-preview`, `truncate`, so it ends with "…").
+  - The textarea moves into `search-panel` under the bar. The panel is `w-[150%]`, centred, at most 50vh tall and scrolling. Its colour is `color-mix(accent 12%, #07080c)`, with a light variant. A footer shows the character count and the key hints.
+  - Focus and the caret follow the textarea when it moves. Clicking the preview focuses the panel. The icons never move.
+- **Tests:** 265 unit (`sideFor`). The new Chromium end-to-end tests cover:
+  - the tab position, grip and drag both ways;
+  - the split sitting midway;
+  - a shrunk links bar scrolling to every chip;
+  - the search panel's size, centring, scrolling and the ellipsis preview.
+
 ## Round 2026-10-22c — backdrop, calendar mark, instant greeting clicks, voice append, growing search bar
 
 - **Backdrop** (`Backdrop.tsx`): the dots and lines are brighter in dark (dots 0.05 → 0.09, lines 0.03 → 0.055 white). In light they are charcoal grey (`rgba(74,78,86)`: dots 0.30, lines 0.16) instead of indigo.

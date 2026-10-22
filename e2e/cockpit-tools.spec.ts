@@ -259,3 +259,23 @@ test('the links / terminal handle sits midway, and a shrunk links bar still scro
   await last.scrollIntoViewIfNeeded();
   await expect(last).toBeInViewport();
 });
+
+test('long search text: the bar keeps one line with "…" and a wider panel below holds it all', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  const input = page.getByRole('combobox', { name: 'Search' });
+  await input.fill('short');
+  await expect(page.getByTestId('search-panel')).toHaveCount(0);
+  await input.fill('a very long prompt that keeps going and going well past the width of the search bar '.repeat(60));
+  const panel = page.getByTestId('search-panel');
+  await expect(panel).toBeVisible();
+  const bar = (await page.locator('[data-composer]').boundingBox())!;
+  const p = (await panel.boundingBox())!;
+  expect(bar.height).toBe(52); // the icons don't move
+  expect(Math.abs(p.width - bar.width * 1.5)).toBeLessThanOrEqual(2);
+  expect(Math.abs(p.x + p.width / 2 - (bar.x + bar.width / 2))).toBeLessThanOrEqual(2);
+  await expect.poll(() => panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await expect(page.getByTestId('search-preview')).toHaveCSS('text-overflow', 'ellipsis');
+  await page.keyboard.type(' tail');
+  await expect(input).toHaveValue(/ tail$/); // typing continues in the panel
+});
