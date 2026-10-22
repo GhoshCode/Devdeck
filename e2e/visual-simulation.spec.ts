@@ -18,7 +18,7 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
 
     // Check the 4 fixed quick links rendered
     const quickLinks = linksStrip.locator('[data-chip=fixed]');
-    await expect(quickLinks).toHaveCount(4);
+    await expect(quickLinks).toHaveCount(5);
 
     // Check category cards rendered
     const cards = page.locator('[data-category-id]');

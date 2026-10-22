@@ -240,7 +240,7 @@ export function QuickLinksTab() {
   );
 }
 
-// E/F strip behaviour (§7 Q7/Q8): the first 4 links above stay fixed; this
+// E/F strip behaviour (§7 Q7/Q8): the first 5 links above stay fixed; this
 // controls what scrolls after them.
 function StripSettings() {
   const autoCount = useStore((s) => s.settings.autoQuickLinkCount);
@@ -252,7 +252,7 @@ function StripSettings() {
   return (
     <section className="glass-inner space-y-4 rounded-xl p-4">
       <p className="text-xs text-white/50">
-        The first 4 links are pinned to the left of the strip. After them come auto-picked sites (most visited,
+        The first 5 links are pinned to the left of the strip. After them come auto-picked sites (most visited,
         boosted by recency), then your recently opened sites.
       </p>
       <label className="block space-y-1.5">

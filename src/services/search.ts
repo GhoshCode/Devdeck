@@ -44,7 +44,7 @@ export function destinationFor(raw: string, engine?: SearchEngineId): string {
 
 // ---- Links strip (E + F) ----------------------------------------------------
 
-export const FIXED_QUICK_LINKS = 4;
+export const FIXED_QUICK_LINKS = 5;
 
 export interface StripLink {
   id: string;
@@ -63,12 +63,13 @@ export function linkScore(site: Pick<Site, 'visits' | 'lastVisited'>, now: numbe
 }
 
 export interface StripModel {
-  fixed: StripLink[]; // first 4 configured quick links — never scroll
+  fixed: StripLink[]; // first 5 configured quick links — never scroll
   scrolling: StripLink[]; // remaining quick links, then auto-picked sites
   recent: StripLink[]; // F: most recently opened sites
 }
 
-// E: the first 4 quick links are fixed; configured links beyond 4 come next,
+// E: the first 5 quick links are fixed (topped up from the auto-picks when
+// fewer are configured); configured links beyond 5 come next,
 // then `autoCount` sites ranked by linkScore, skipping anything already shown
 // (matched by hostname). A fresh deck has no visits yet, so it falls back to
 // the categories' primary sites in deck order to keep the strip useful.
@@ -106,6 +107,9 @@ export function buildStrip(
     .sort((a, b) => b.lastVisited! - a.lastVisited!)
     .slice(0, recentCount)
     .map(siteLink);
+
+  // Fewer than five configured: the top auto-picked sites fill the fixed slots.
+  if (fixed.length < FIXED_QUICK_LINKS) fixed.push(...auto.splice(0, FIXED_QUICK_LINKS - fixed.length));
 
   return { fixed, scrolling: [...extra, ...auto], recent };
 }

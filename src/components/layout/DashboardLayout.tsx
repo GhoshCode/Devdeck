@@ -118,21 +118,21 @@ export function DashboardLayout({
       >
         {/* Wide screens: the quick-links bar and the terminal share their own row
             above the cards and the news. The links bar sits right under the search
-            row, as wide as it, whatever the columns below do (it only gives way
-            when the terminal needs the room). By default the terminal is as wide
+            row (same left edge, whatever the columns below do) and fills the
+            row up to the terminal, growing when the terminal narrows. By default the terminal is as wide
             as the Git box in the top bar; drag the handle between them to size it
             — double-click to go back. */}
         {rightInline && (
           <div ref={topRowRef} data-zone="top-row" className="flex min-w-0 items-end pt-[7px]" style={{ gridColumn: '1 / 6', gridRow: 1 }}>
             <div
               data-zone="links-row"
-              className="min-w-0 shrink [&>*]:mx-0"
-              style={searchSpan ? { marginLeft: searchSpan.left, width: searchSpan.width } : { flex: 1 }}
+              className="min-w-0 flex-1 [&>*]:mx-0"
+              style={searchSpan ? { marginLeft: searchSpan.left } : undefined}
             >
               {linksRow}
             </div>
-            {/* the handle stays put just left of the terminal's border */}
-            <div className="min-w-3 flex-1" />
+            {/* the handle sits 12px from both: the links fill up to it */}
+            <div className="w-3 shrink-0" />
             <TopSplitHandle
               width={terminal}
               custom={termWidth !== null}

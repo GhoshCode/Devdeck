@@ -6,7 +6,7 @@ import { Favicon } from '../Favicon';
 
 // Header strip of the centre frame (Zone 4, §7 Q7/Q8):
 //   [E][E][E][E] fixed │ more E (auto-picked) … │ F recent … →
-// The first four quick links never move; everything after them shares one
+// The first five quick links never move; everything after them shares one
 // horizontal scroller with a fade mask on the right edge.
 
 export const LinksStrip = memo(function LinksStrip() {
@@ -35,9 +35,8 @@ export const LinksStrip = memo(function LinksStrip() {
 
   return (
     <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-3">
-      {/* One horizontal scroller for every chip: nothing overlaps or gets cut,
-          and a narrow bar still reaches them all. */}
-      <div ref={scrollerRef} onWheel={onWheel} data-strip="scroll" className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
+      {/* The first five quick links stay put (never cut or scrolled); the rest
+          and the recent links scroll sideways beside them. */}
       <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />
@@ -45,7 +44,12 @@ export const LinksStrip = memo(function LinksStrip() {
       </div>
 
       {(strip.scrolling.length > 0 || strip.recent.length > 0) && (
-        <div data-strip="rest" className="flex shrink-0 items-center gap-2 pl-1">
+        <div
+          ref={scrollerRef}
+          onWheel={onWheel}
+          data-strip="scroll"
+          className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pl-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-40px),transparent)]"
+        >
           {strip.scrolling.map((link) => (
             <Chip key={link.id} link={link} variant="auto" onOpen={open} />
           ))}
@@ -70,7 +74,6 @@ export const LinksStrip = memo(function LinksStrip() {
           <span aria-hidden className="w-6 shrink-0" />
         </div>
       )}
-      </div>
     </div>
   );
 });

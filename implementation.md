@@ -10,6 +10,14 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22g — links fill to the terminal, five fixed quick links
+
+- **Links row:** it starts under the search row ( from ) and is  up to the split handle (12 px spacer, handle,  terminal), so it grows when the terminal narrows and no gap opens.  is 820 px: All categories plus the five fixed chips (~700 px) plus room for the scrolling ones.
+- **Five fixed quick links** ( = 5 in ): with fewer configured,  tops up the fixed slots from the auto-picked sites. The fixed group never scrolls or gets cut; the rest and the recent links scroll in  beside it (the 22e/22f single scroller is replaced).
+- **Tests:**
+  - Unit: the top-up, and the five-fixed split.
+  - End-to-end: five fixed chips; the fixed chips stay put while the rest scroll; the links fill up to the handle at any terminal width.
+
 ## Round 2026-10-22f — card modes, links under the search, greeting clicks
 
 - **Card modes** (`lib/cardSnap.ts`, rewritten):

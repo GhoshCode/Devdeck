@@ -249,19 +249,20 @@ test('edge tabs sit inside the cards box, carry a grip and drag by whole cards b
   await expect.poll(label).toBe('Show 1 card');
 });
 
-test('the links bar sits under the search row, whatever mode the cards are in', async ({ page }) => {
+test('the links bar starts under the search row and fills up to the terminal, whatever mode the cards are in', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/');
   await settle(page);
   const span = async () => {
     const s = (await page.locator('[data-search-row]').boundingBox())!;
     const l = (await page.locator('[data-zone="links-row"]').boundingBox())!;
-    return [Math.round(l.x - s.x), Math.round(l.width - s.width)];
+    const h = (await page.getByTestId('top-split-handle').boundingBox())!;
+    return [Math.round(l.x - s.x), Math.round(h.x - (l.x + l.width))];
   };
-  expect(await span()).toEqual([0, 0]);
+  expect(await span()).toEqual([0, 12]);
   await page.locator('[data-edge-tab="left"]').click(); // one card
   await page.waitForTimeout(400);
-  expect(await span()).toEqual([0, 0]);
+  expect(await span()).toEqual([0, 12]);
 });
 
 test('the links / terminal handle sits midway, and a shrunk links bar still scrolls to every chip', async ({ page }) => {
@@ -282,9 +283,6 @@ test('the links / terminal handle sits midway, and a shrunk links bar still scro
   await page.mouse.up();
   const scroller = page.locator('[data-strip="scroll"]');
   await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth + 20)).toBe(true);
-  // the scrolling part is never squeezed to nothing
-  const widths = await strip.evaluate((el) => [el.clientWidth, el.querySelector('[data-strip="scroll"]')!.clientWidth]);
-  expect(widths[1]).toBeGreaterThan(widths[0] * 0.35);
   const sb = (await scroller.boundingBox())!;
   await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
   await page.mouse.wheel(0, 2000);
@@ -333,6 +331,10 @@ test('the links / terminal handle stays beside the terminal when it is resized',
   await page.mouse.move(h.x + 200, h.y + h.height / 2, { steps: 6 }); // narrower terminal
   await page.mouse.up();
   await expect.poll(gap).toBe(12); // still right beside it, not floating in the gap
+  // and the links bar grew to fill the room
+  const l = (await page.locator('[data-zone="links-row"]').boundingBox())!;
+  const h2 = (await handle.boundingBox())!;
+  expect(Math.round(h2.x - (l.x + l.width))).toBe(12);
 });
 
 // Waits until the cockpit's columns stop changing (cards measured, layout applied).

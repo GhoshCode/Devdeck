@@ -17,6 +17,11 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22g — quick links
+
+- Five quick links are always pinned at the start of the bar. If you've set fewer, your most-visited sites fill the spare slots. The other links and the recent ones scroll sideways beside them.
+- The quick-links bar starts under the search bar and stretches up to the terminal, so making the terminal narrower gives the links more room, with no gap.
+
 ## Round 2026-10-22f — card modes
 
 - The page opens with two category cards, with the To-do / Processing and news columns balanced on either side.
