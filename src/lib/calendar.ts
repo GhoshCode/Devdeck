@@ -35,6 +35,7 @@ export interface CalItem {
   location?: string;
   notes?: string;
   url?: string;
+  members?: CalItem[]; // a reminder group: the reminders that fire at this same time
 }
 
 export const EVENT_CATEGORIES: ReadonlyArray<{ id: EventCategory; label: string }> = [
@@ -202,6 +203,44 @@ export function collectItems(src: CalendarSources, from: number, to: number): Ca
     }
   }
 
+  return out.sort((a, b) => a.start - b.start || Number(b.allDay) - Number(a.allDay) || a.title.localeCompare(b.title));
+}
+
+// Reminders are a rhythm, and with hundreds of scheduled sites many fire at the
+// same minute: those become one item ("9:00 · 14 reminders") that opens the
+// list, instead of hundreds of slivers. Due dates, events and to-dos stay as
+// they are, and so does a reminder that is alone at its time.
+export function groupReminders(items: readonly CalItem[]): CalItem[] {
+  const byStart = new Map<number, CalItem[]>();
+  const out: CalItem[] = [];
+  for (const i of items) {
+    if (!i.reminder || i.members) {
+      out.push(i);
+      continue;
+    }
+    const list = byStart.get(i.start);
+    if (list) list.push(i);
+    else byStart.set(i.start, [i]);
+  }
+  for (const [start, list] of byStart) {
+    if (list.length === 1) {
+      out.push(list[0]);
+      continue;
+    }
+    const processing = list.filter((i) => i.kind === 'processing').length;
+    const names = list.slice(0, 3).map((i) => i.title).join(', ');
+    out.push({
+      key: `reminders:${start}`,
+      kind: processing >= list.length - processing ? 'processing' : 'queue',
+      sourceId: '',
+      title: `${list.length} reminders · ${names}${list.length > 3 ? '…' : ''}`,
+      start,
+      end: Math.max(...list.map((i) => i.end)),
+      allDay: false,
+      reminder: true,
+      members: list,
+    });
+  }
   return out.sort((a, b) => a.start - b.start || Number(b.allDay) - Number(a.allDay) || a.title.localeCompare(b.title));
 }
 

@@ -206,7 +206,7 @@ export interface FeedsConfig {
   sources: FeedSource[];
 }
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface PersistedState {
   schemaVersion: number; // starts at 1; bump with every schema change

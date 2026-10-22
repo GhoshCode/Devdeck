@@ -23,7 +23,7 @@ import { openBoard } from '../../lib/workBoard';
 
 export const ProcessingPanel = memo(function ProcessingPanel() {
   const processing = useStore((s) => s.processing);
-  const [managerOpen, setManagerOpen] = useState(false);
+  const [managerOpen, setManagerOpen] = useState<false | 'processing' | 'queue'>(false);
   const now = useNow(60_000);
 
   const groups = useMemo(() => {
@@ -47,7 +47,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
         >
           <ExpandGlyph />
         </button>
-        <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />
+        <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen('processing')} />} />
       </section>
 
       <QueueAndTodo queueTitle={rest.length === 1 ? rest[0].name : 'Queue'} queueCount={rest.reduce((n, g) => n + g.items.length, 0)}>
@@ -76,9 +76,9 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
         </button>
         <button
           type="button"
-          onClick={() => setManagerOpen(true)}
+          onClick={() => setManagerOpen('queue')}
           aria-label="Manage currently processing"
-          title="Add/remove sites and set reminders"
+          title="Add/remove sites in the queue and set reminders"
           className="manage-btn group flex size-8 items-center justify-center rounded-lg"
         >
           <SlidersIcon className="size-6" />
@@ -88,7 +88,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
       </QueueAndTodo>
       </SplitPanes>
 
-      <AnimatePresence>{managerOpen && <ProcessingManager onClose={() => setManagerOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{managerOpen && <ProcessingManager from={managerOpen} onClose={() => setManagerOpen(false)} />}</AnimatePresence>
     </>
   );
 });
@@ -246,7 +246,7 @@ function ExpandGlyph() {
   );
 }
 
-export function ProcessingManager({ onClose }: { onClose: () => void }) {
+export function ProcessingManager({ onClose, from = 'processing' }: { onClose: () => void; from?: 'processing' | 'queue' }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -255,29 +255,32 @@ export function ProcessingManager({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" />
+      {/* A centred panel: add on the left, your lists on the right. */}
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div
         role="dialog"
         aria-label="Manage currently processing"
-        initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -16 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-        className="glass-raised fixed top-4 bottom-4 left-4 z-50 flex w-[min(400px,calc(100vw-2rem))] flex-col rounded-[var(--radius-card)] bg-[var(--color-base-elevated)]/95"
+        initial={{ opacity: 0, y: 10, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 6, scale: 0.99 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        className="sites-modal glass-raised pointer-events-auto flex h-[min(760px,calc(100vh-2rem))] w-[min(1040px,100%)] flex-col rounded-[var(--radius-card)]"
       >
         <header className="flex items-center gap-3 border-b border-white/[0.07] px-5 pt-4 pb-3">
           <div className="flex-1">
-            <h2 className="font-display text-sm font-semibold tracking-[0.18em] text-white">CURRENTLY PROCESSING</h2>
-            <p className="text-[11px] text-white/40">Sites you're actively working on, with reminders.</p>
+            <h2 className="font-display text-sm font-semibold tracking-[0.18em] text-white">YOUR SITES</h2>
+            <p className="text-[11px] text-white/45">What you're working on now and what's lined up next, with reminders.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="flex size-8 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white">
             ✕
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <ProcessingEditor />
+          <ProcessingEditor startSection={from === 'queue' ? 'Queue' : undefined} />
         </div>
       </motion.div>
+      </div>
     </>
   );
 }

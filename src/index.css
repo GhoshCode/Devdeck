@@ -3289,3 +3289,12 @@ html[data-theme='light'] .links-grip:hover { color: rgba(60, 60, 67, 0.8); }
 .links-panel-edge:hover .links-panel-handle { color: var(--color-accent); }
 html[data-theme='light'] .links-panel { background: rgba(255, 255, 255, 0.62); border-color: rgba(15, 23, 42, 0.12); box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.3); }
 html[data-theme='light'] .links-panel-handle { color: rgba(15, 23, 42, 0.35); }
+
+/* Sites panel (Queue / Currently processing): list pickers and the panel surface */
+.sites-modal { background: color-mix(in srgb, var(--color-base-elevated) 88%, transparent); }
+.sites-tab { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: background 0.15s, color 0.15s; }
+.sites-tab:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.sites-tab.is-on { background: color-mix(in srgb, var(--color-accent) 24%, transparent); color: #fff; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent); }
+html[data-theme='light'] .sites-tab { background: rgba(15, 23, 42, 0.04); color: rgba(15, 23, 42, 0.7); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1); }
+html[data-theme='light'] .sites-tab.is-on { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: rgba(15, 23, 42, 0.95); }
+html[data-theme='light'] .sites-modal { background: rgba(255, 255, 255, 0.9); }

@@ -17,6 +17,22 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22i — sites panel, quick-links panel, busy calendars
+
+- **Your sites panel** (the sliders button in the Queue box, or Manage in Currently processing): a centred panel.
+  - On the left, choose the list (Currently processing, Queue, or make a new one), search your sites or paste a link, pick a starting reminder, and add.
+  - A site can't be added to the same list twice.
+  - On the right, see each list with counts, find a site, and open it to change its reminder or move it to another list.
+  - New reminders keep going with no end date. Old ones that would have stopped at the end of this month now keep going too.
+- **Quick links:** drag the six-dot grip down, or click it, to open every other and recent site, up to 15. Drag the panel's bottom edge up to close it. The panel matches your theme.
+- **Busy calendars:** reminders at the same time show as one item ("5 reminders · …"); click it for the list. Month days always show "+ N more", agenda cards stay readable, and moving between weeks is about four times faster.
+- The pin on a card's main sites is just the pin icon.
+
+**Manual test checklist**
+- [ ] Open the sites panel from the Queue box: Queue is selected; Currently processing and "+ New list" are there too.
+- [ ] Add the same site twice to one list: the second time it shows "Added to …".
+- [ ] With many reminders, open Week and Day views: grouped reminders open as a list.
+
 ## Round 2026-10-22h — QA pass
 
 - On smaller screens (1440–1700 px) the terminal narrows first, so the quick links keep their room. If the pinned links still don't fit, they scroll instead of being cut.

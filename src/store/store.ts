@@ -98,7 +98,7 @@ export const defaultSchedule = (): Schedule => ({
   interval: 1,
   dayOfMonth: new Date().getDate(),
   from: thisMonth(),
-  to: thisMonth(),
+  to: '', // no end: keeps reminding until you set a last month
 });
 
 const normalizeProcessing = (raw: unknown, i: number): ProcessingItem | null => {
@@ -183,8 +183,13 @@ export function normalizePersisted(input: unknown): PersistedState {
 // v1 → v2 is purely additive: normalizePersisted fills every new collection
 // and setting with its default, so no v1 data is rewritten or dropped.
 export function migrate(persisted: unknown, fromVersion: number): PersistedState {
-  void fromVersion;
-  return normalizePersisted(persisted);
+  const out = normalizePersisted(persisted);
+  // v3: a new reminder used to stop at the end of the month it was made in
+  // (from = to). That was never chosen on purpose, so those keep going now.
+  if (fromVersion < 3) {
+    out.processing = out.processing.map((p) => (p.schedule.to && p.schedule.to === p.schedule.from ? { ...p, schedule: { ...p.schedule, to: '' } } : p));
+  }
+  return out;
 }
 
 const STORAGE_KEY = 'devdeck';

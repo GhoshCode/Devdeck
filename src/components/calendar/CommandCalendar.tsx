@@ -14,6 +14,7 @@ import {
   findConflicts,
   fmtRange,
   focusShieldSlot,
+  groupReminders,
   hhmmOf,
   isMeeting,
   overdueTodos,
@@ -195,6 +196,7 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
   const [query, setQuery] = useState('');
   const [stackOpen, setStackOpen] = useState(true);
   const [composer, setComposer] = useState<ComposerState | null>(null);
+  const [stack, setStack] = useState<CalItem | null>(null); // an open reminder group
   const [flashKey, setFlashKey] = useState<string | null>(target?.eventId ? `event:${target.eventId}` : null);
   const [toast, setToast] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -238,7 +240,8 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
   const [from, to] = rangeOf(view, cursor, now);
   const q = query.trim().toLowerCase();
   const all = useMemo(() => collectItems(src, from, to), [src, from, to]);
-  const items = useMemo(() => all.filter((i) => passes(filter, i) && matchesQuery(i, q)), [all, filter, q]);
+  // Search and filters see every reminder; what is drawn groups the ones that fire together.
+  const items = useMemo(() => groupReminders(all.filter((i) => passes(filter, i) && matchesQuery(i, q))), [all, filter, q]);
   const conflicts = useMemo(() => findConflicts(items), [items]);
   const dayBucket = startOfDay(now).getTime();
   const todayItems = useMemo(() => collectItems(src, dayBucket, dayBucket + DAY), [src, dayBucket]);
@@ -314,6 +317,7 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
     setComposer({ mode: 'create', kind: 'event', date, start: toHHMM(startMin), end: toHHMM(endMin) });
   }, []);
   const onOpen = useCallback((item: CalItem) => {
+    if (item.members) return setStack(item);
     setComposer(item.kind === 'event' ? { mode: 'edit', eventId: item.sourceId } : { mode: 'task', item });
   }, []);
   const onToggleTodo = useCallback(
@@ -348,7 +352,7 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
   // Keyboard-first. Capture phase, so DevDeck's page hotkeys stay quiet while open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (composer) return; // the modal handles its own keys
+      if (composer || stack) return; // the modal handles its own keys
       const el = document.activeElement as HTMLElement | null;
       const typing = !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
       if (e.key === 'Escape') {
@@ -638,6 +642,74 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
       <AnimatePresence>
         {composer && <CalendarComposer state={composer} h24={h24} onClose={() => setComposer(null)} onChange={setComposer} onSaved={onSaved} onLeave={onClose} />}
       </AnimatePresence>
+      <AnimatePresence>
+        {stack && (
+          <ReminderStack
+            group={stack}
+            h24={h24}
+            onClose={() => setStack(null)}
+            onPick={(m) => {
+              setStack(null);
+              setComposer({ mode: 'task', item: m });
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// The reminders that fire at one moment, as a list: pick one to see or edit it.
+function ReminderStack({ group, h24, onClose, onPick }: { group: CalItem; h24: boolean; onClose: () => void; onPick: (m: CalItem) => void }) {
+  const members = group.members ?? [];
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={onClose}>
+      <motion.div
+        role="dialog"
+        aria-label={`${members.length} reminders at ${fmtRange(group.start, group.start, h24).split('–')[0].trim()}`}
+        data-testid="cal-reminder-stack"
+        initial={{ y: 8, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 8, opacity: 0 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        onClick={(e) => e.stopPropagation()}
+        className="cc-pop flex max-h-[70vh] w-[min(440px,100%)] flex-col overflow-hidden rounded-2xl border"
+      >
+        <header className="cc-line flex items-center gap-3 border-b px-5 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="cc-fg text-[14px] font-bold">{members.length} reminders</p>
+            <p className="cc-fg3 text-[11.5px]">{new Date(group.start).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: !h24 })}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="cc-iconbtn flex size-8 items-center justify-center rounded-lg">
+            ✕
+          </button>
+        </header>
+        <ul className="cc-scroll min-h-0 flex-1 space-y-1.5 overflow-y-auto p-3">
+          {members.map((m) => (
+            <li key={m.key}>
+              <button
+                type="button"
+                onClick={() => onPick(m)}
+                className="cc-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left"
+                style={{ '--k': m.kind === 'processing' ? '#10b981' : '#f59e0b' } as CSSProperties}
+              >
+                <span className="size-2 shrink-0 rounded-full" style={{ background: 'var(--k)' }} />
+                <span className="cc-item-title min-w-0 flex-1 truncate text-[12.5px] font-semibold">{m.title}</span>
+                <span className="cc-badge shrink-0 rounded px-1.5 py-px font-mono text-[9px] font-bold tracking-wider">{m.kind === 'processing' ? 'PROCESSING' : 'QUEUE'}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </motion.div>
     </motion.div>
   );
 }

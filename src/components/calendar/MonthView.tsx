@@ -17,7 +17,7 @@ interface Props {
 }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const CHIP_H = 21; // one chip row
+const CHIP_H = 29; // one chip row, gap included
 const HEAD_H = 46; // day number row, padding and the “+ more” line
 const LOAD_LABEL = ['Free', 'Optimal', 'Busy', 'Overloaded'];
 

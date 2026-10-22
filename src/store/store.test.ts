@@ -233,7 +233,7 @@ describe('schema v2 migration', () => {
 
   test('v1 data survives untouched and every v2 field gets its default', () => {
     const out = migrate(v1Blob, 1);
-    expect(out.schemaVersion).toBe(2);
+    expect(out.schemaVersion).toBe(SCHEMA_VERSION);
     expect(out.categories).toEqual(v1Blob.categories);
     expect(out.settings.accentColor).toBe('#123456');
     expect(out.settings.greetingName).toBe('Ada');
@@ -426,5 +426,22 @@ describe('restoreSite — back to where it came from', () => {
     st().deleteSite('a');
     st().restoreSite('a', 'c2', null);
     expect(where('a')).toEqual(['c2', null]);
+  });
+});
+
+describe('schema v3 migration', () => {
+  it('lets old single-month reminders keep going', () => {
+    const blob = {
+      categories: [],
+      sites: [],
+      processing: [
+        { id: 'a', url: 'https://a.dev', name: 'A', section: 'Queue', order: 0, schedule: { enabled: true, frequency: 'daily', daysOfWeek: [1], timeOfDay: '09:00', from: '2026-10', to: '2026-10' } },
+        { id: 'b', url: 'https://b.dev', name: 'B', section: 'Queue', order: 1, schedule: { enabled: true, frequency: 'daily', daysOfWeek: [1], timeOfDay: '09:00', from: '2026-10', to: '2027-01' } },
+      ],
+    };
+    const out = migrate(blob, 2);
+    expect(out.processing.find((p) => p.id === 'a')!.schedule.to).toBe('');
+    expect(out.processing.find((p) => p.id === 'b')!.schedule.to).toBe('2027-01'); // a chosen range stays
+    expect(migrate(blob, 3).processing.find((p) => p.id === 'a')!.schedule.to).toBe('2026-10'); // only once
   });
 });

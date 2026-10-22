@@ -17,116 +17,258 @@ import { showUndo } from '../ui/UndoToast';
 
 export const DEFAULT_SECTIONS = [FIRST_SECTION, 'Queue'];
 
-export const ProcessingEditor = memo(function ProcessingEditor() {
+// Starting reminders offered when a site is added (edit any of them afterwards).
+const START_REMINDERS: ReadonlyArray<{ id: string; label: string; schedule: Partial<Schedule> }> = [
+  { id: 'weekdays', label: 'Weekdays 9:00', schedule: { enabled: true, frequency: 'daily', timeOfDay: '09:00', daysOfWeek: [1, 2, 3, 4, 5] } },
+  { id: 'daily', label: 'Every day 9:00', schedule: { enabled: true, frequency: 'daily', timeOfDay: '09:00', daysOfWeek: [0, 1, 2, 3, 4, 5, 6] } },
+  { id: 'weekly', label: 'Mondays 9:00', schedule: { enabled: true, frequency: 'weekly', timeOfDay: '09:00', daysOfWeek: [1] } },
+  { id: 'off', label: 'No reminder', schedule: { enabled: false } },
+];
+
+// The sites panel: add on the left (pick a list, find a site or paste a URL,
+// pick a starting reminder), your lists on the right (filter by list, search,
+// open any site to edit its reminder or move it to another list). Used by the
+// Queue / Currently processing manage buttons and by Settings → Processing.
+export const ProcessingEditor = memo(function ProcessingEditor({ startSection }: { startSection?: string }) {
   const processing = useStore((s) => s.processing);
   const items = useMemo(() => [...processing].sort((a, b) => a.order - b.order), [processing]);
-  const sections = useMemo(() => [...new Set([...DEFAULT_SECTIONS, ...items.map((i) => i.section)])], [items]);
+  const [extraSections, setExtraSections] = useState<string[]>([]);
+  const sections = useMemo(
+    () => [...new Set([...DEFAULT_SECTIONS, ...items.map((i) => i.section), ...extraSections])],
+    [items, extraSections],
+  );
   const [openId, setOpenId] = useState<string | null>(null);
+  const [view, setView] = useState<string>(startSection ?? 'all');
+  const [find, setFind] = useState('');
+
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of items) m.set(i.section, (m.get(i.section) ?? 0) + 1);
+    return m;
+  }, [items]);
+  const f = find.trim().toLowerCase();
+  const shown = items.filter((i) => (view === 'all' || i.section === view) && (!f || i.name.toLowerCase().includes(f) || i.url.toLowerCase().includes(f)));
 
   return (
-    <div className="space-y-3">
-      <AddItem sections={sections} onAdded={setOpenId} />
-      <datalist id="processing-sections">
-        {sections.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-      {items.length === 0 ? (
-        <p className="px-1 py-4 text-center text-xs text-white/40">Nothing in progress yet — add a site you're actively working on.</p>
-      ) : (
-        <ul className="space-y-2">
-          {items.map((item) => (
-            <ItemEditor
-              key={item.id}
-              item={item}
-              open={openId === item.id}
-              onToggle={() => setOpenId(openId === item.id ? null : item.id)}
-            />
+    // two columns once there is room (the panel), one stacked column in narrower places (Settings)
+    <div className="@container h-full min-h-0">
+    <div data-testid="sites-panel" className="grid min-h-0 gap-4 @3xl:h-full @3xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+      <AddItem
+        sections={sections}
+        startSection={startSection}
+        onNewSection={(name) => setExtraSections((s) => [...s, name])}
+        onAdded={(id, section) => {
+          setOpenId(id);
+          setView((v) => (v === 'all' ? v : section));
+        }}
+      />
+
+      <section aria-label="Your lists" className="flex min-h-0 flex-col gap-2.5">
+        <div role="tablist" aria-label="Show list" className="flex flex-wrap gap-1.5">
+          {['all', ...sections].map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={view === s}
+              onClick={() => setView(s)}
+              className={`sites-tab rounded-lg px-2.5 py-1 text-[11.5px] font-semibold ${view === s ? 'is-on' : ''}`}
+            >
+              {s === 'all' ? 'All' : s}
+              <span className="ml-1.5 font-mono text-[10px] opacity-60">{s === 'all' ? items.length : (counts.get(s) ?? 0)}</span>
+            </button>
           ))}
-        </ul>
-      )}
+        </div>
+        <input
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          placeholder={`Find in ${view === 'all' ? 'all lists' : view}…`}
+          aria-label="Find in your lists"
+          className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-white/35 focus:bg-white/10"
+        />
+        {shown.length === 0 ? (
+          <p className="px-1 py-6 text-center text-xs text-white/40">
+            {items.length === 0 ? "Nothing here yet — add a site you're working on or lining up next." : 'No sites match.'}
+          </p>
+        ) : (
+          <ul className="sites-list min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+            {shown.map((item) => (
+              <ItemEditor
+                key={item.id}
+                item={item}
+                sections={sections}
+                open={openId === item.id}
+                onToggle={() => setOpenId(openId === item.id ? null : item.id)}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
     </div>
   );
 });
 
-function AddItem({ sections, onAdded }: { sections: string[]; onAdded: (id: string) => void }) {
+function AddItem({
+  sections,
+  startSection,
+  onNewSection,
+  onAdded,
+}: {
+  sections: string[];
+  startSection?: string;
+  onNewSection: (name: string) => void;
+  onAdded: (id: string, section: string) => void;
+}) {
   const sites = useStore((s) => s.sites);
   const categories = useStore((s) => s.categories);
   const subcategories = useStore((s) => s.subcategories);
   const processing = useStore((s) => s.processing);
   const addProcessingItem = useStore((s) => s.addProcessingItem);
   const [query, setQuery] = useState('');
-  const [section, setSection] = useState(sections[0]);
+  const [section, setSection] = useState(startSection ?? sections[0]);
+  const [reminder, setReminder] = useState(START_REMINDERS[0].id);
+  const [naming, setNaming] = useState(false);
+  const [newName, setNewName] = useState('');
 
   const q = query.trim();
-  const already = new Set(processing.map((p) => p.siteId).filter(Boolean));
-  const matches = q
-    ? searchSites(q, sites, categories, subcategories)
-        .filter((m) => !already.has(m.site.id))
-        .slice(0, 5)
-    : [];
+  // Already in this list: by library site or by address, so nothing is added twice.
+  const inList = useMemo(() => {
+    const ids = new Set<string>();
+    const urls = new Set<string>();
+    for (const p of processing) {
+      if (p.section !== section) continue;
+      if (p.siteId) ids.add(p.siteId);
+      urls.add(normalizeUrl(p.url));
+    }
+    return { ids, urls };
+  }, [processing, section]);
+  const matches = q ? searchSites(q, sites, categories, subcategories).slice(0, 8) : [];
+  const isAdded = (siteId: string | null, url: string) => (siteId !== null && inList.ids.has(siteId)) || inList.urls.has(normalizeUrl(url));
 
   const add = (input: { name: string; url: string; siteId: string | null }) => {
-    const item = addProcessingItem({ ...input, section: section.trim() || FIRST_SECTION, schedule: { enabled: true } });
+    if (isAdded(input.siteId, input.url)) return;
+    const start = START_REMINDERS.find((r) => r.id === reminder)!.schedule;
+    const item = addProcessingItem({ ...input, section, schedule: { enabled: true } });
+    useStore.getState().updateProcessingItem(item.id, { schedule: { ...item.schedule, ...start } });
     setQuery('');
-    onAdded(item.id);
+    onAdded(item.id, section);
   };
 
+  const pasted = looksLikeUrl(q) ? normalizeUrl(q) : null;
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (matches[0]) {
-      const { site } = matches[0];
-      add({ name: site.name, url: site.url, siteId: site.id });
-    } else if (looksLikeUrl(q)) {
-      const url = normalizeUrl(q);
-      add({ name: deriveNameFromUrl(url) || url, url, siteId: null });
-    }
+    const first = matches.find((m) => !isAdded(m.site.id, m.site.url));
+    if (first) add({ name: first.site.name, url: first.site.url, siteId: first.site.id });
+    else if (pasted && !isAdded(null, pasted)) add({ name: deriveNameFromUrl(pasted) || pasted, url: pasted, siteId: null });
+  };
+
+  const createSection = () => {
+    const name = newName.trim();
+    setNaming(false);
+    setNewName('');
+    if (!name) return;
+    if (!sections.includes(name)) onNewSection(name);
+    setSection(name);
   };
 
   return (
-    <form onSubmit={submit} className="glass-inner space-y-2 rounded-xl p-3">
+    <form onSubmit={submit} aria-label="Add a site" className="sites-add glass-inner flex min-h-0 flex-col gap-3 rounded-xl p-3.5">
+      <div>
+        <p className="mb-1.5 text-[10.5px] font-semibold tracking-[0.14em] text-white/50 uppercase">Add to</p>
+        <div role="radiogroup" aria-label="Section" className="flex flex-wrap gap-1.5">
+          {sections.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={section === s}
+              onClick={() => setSection(s)}
+              className={`sites-tab rounded-lg px-2.5 py-1 text-[11.5px] font-semibold ${section === s ? 'is-on' : ''}`}
+            >
+              {s}
+            </button>
+          ))}
+          {naming ? (
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onBlur={createSection}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  createSection();
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setNaming(false);
+                }
+              }}
+              placeholder="List name"
+              aria-label="New section name"
+              className="w-28 rounded-lg bg-white/10 px-2 py-1 text-[11.5px] text-white outline-none"
+            />
+          ) : (
+            <button type="button" onClick={() => setNaming(true)} className="sites-tab rounded-lg px-2.5 py-1 text-[11.5px] font-semibold opacity-70" title="Make another list">
+              + New list
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="flex gap-2">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your sites or paste a URL…"
           aria-label="Add a site to Currently Processing"
-          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-white/35 focus:bg-white/10"
+          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2.5 py-2 text-xs text-white outline-none placeholder:text-white/35 focus:bg-white/10"
         />
-        <input
-          value={section}
-          onChange={(e) => setSection(e.target.value)}
-          list="processing-sections"
-          aria-label="Section"
-          className="w-24 rounded-lg bg-white/5 px-2 py-1.5 text-xs text-white/80 outline-none focus:bg-white/10"
-        />
-        {/* Also what makes Enter submit: a form with two text fields needs a submit button. */}
-        <button
-          type="submit"
-          disabled={!q}
-          className="rounded-lg bg-white/10 px-2.5 text-xs font-semibold text-white/80 hover:bg-white/15 disabled:opacity-40"
-        >
+        <button type="submit" disabled={!q} className="rounded-lg bg-[var(--color-accent)]/80 px-3 text-xs font-semibold text-white hover:bg-[var(--color-accent)] disabled:opacity-40">
           Add
         </button>
       </div>
-      {q && (
-        <ul className="space-y-0.5">
-          {matches.map(({ site, category }) => (
-            <li key={site.id}>
-              <button
-                type="button"
-                onClick={() => add({ name: site.name, url: site.url, siteId: site.id })}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-white/80 hover:bg-white/10"
-              >
-                <Favicon url={site.url} name={site.name} className="size-4" />
-                <span className="truncate">{site.name}</span>
-                <span className="ml-auto truncate text-[10px] text-white/35">{category.name}</span>
-              </button>
-            </li>
+
+      <div>
+        <p className="mb-1.5 text-[10.5px] font-semibold tracking-[0.14em] text-white/50 uppercase">Remind me</p>
+        <div role="radiogroup" aria-label="Starting reminder" className="flex flex-wrap gap-1.5">
+          {START_REMINDERS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              role="radio"
+              aria-checked={reminder === r.id}
+              onClick={() => setReminder(r.id)}
+              className={`sites-tab rounded-lg px-2.5 py-1 text-[11px] ${reminder === r.id ? 'is-on' : ''}`}
+            >
+              {r.label}
+            </button>
           ))}
+        </div>
+      </div>
+
+      {q && (
+        <ul aria-label="Matching sites" className="min-h-0 space-y-0.5 overflow-y-auto">
+          {matches.map(({ site, category }) => {
+            const added = isAdded(site.id, site.url);
+            return (
+              <li key={site.id}>
+                <button
+                  type="button"
+                  disabled={added}
+                  onClick={() => add({ name: site.name, url: site.url, siteId: site.id })}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-white/85 hover:bg-white/10 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <Favicon url={site.url} name={site.name} className="size-4" />
+                  <span className="truncate">{site.name}</span>
+                  <span className="ml-auto truncate text-[10px] text-white/35">{added ? `Added to ${section}` : category.name}</span>
+                </button>
+              </li>
+            );
+          })}
           {matches.length === 0 && (
-            <li className="px-2 py-1 text-[11px] text-white/40">
-              {looksLikeUrl(q) ? 'Press Enter to add this URL' : 'No matching sites — paste a full URL instead'}
+            <li className="px-2 py-1 text-[11px] text-white/45">
+              {pasted ? (isAdded(null, pasted) ? `Already in ${section}` : `Press Enter to add ${pasted}`) : 'No matching sites — paste a full URL instead'}
             </li>
           )}
         </ul>
@@ -149,7 +291,7 @@ const MONTH_DAYS = [
   { value: '-1', label: 'Last day' },
 ];
 
-function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: boolean; onToggle: () => void }) {
+function ItemEditor({ item, sections, open, onToggle }: { item: ProcessingItem; sections: string[]; open: boolean; onToggle: () => void }) {
   const update = useStore((s) => s.updateProcessingItem);
   const remove = useStore((s) => s.deleteProcessingItem);
   const reinsert = useStore((s) => s.reinsertProcessingItem);
@@ -187,14 +329,14 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
 
       {open && (
         <div className="space-y-2.5 border-t border-white/[0.06] px-3 pt-2.5 pb-3 text-xs">
-          <div className="grid grid-cols-[1fr_6rem] gap-2">
+          <div className="grid grid-cols-[1fr_9rem] gap-2">
             <input value={item.name} onChange={(e) => update(item.id, { name: e.target.value })} aria-label="Name" className={field} />
-            <input
+            <Select
               value={item.section}
-              onChange={(e) => update(item.id, { section: e.target.value })}
-              list="processing-sections"
-              aria-label="Section"
-              className={field}
+              onChange={(v) => update(item.id, { section: v })}
+              ariaLabel="Move to list"
+              size="sm"
+              options={sections.map((s) => ({ value: s, label: s }))}
             />
           </div>
           <input
@@ -315,6 +457,13 @@ function ItemEditor({ item, open, onToggle }: { item: ProcessingItem; open: bool
                 aria-label="To month"
                 className={field}
               />
+              {s.to ? (
+                <button type="button" onClick={() => setSchedule({ to: '' })} className="text-[10px] text-white/45 hover:text-white" title="Keep reminding with no end month">
+                  no end
+                </button>
+              ) : (
+                <span className="text-[10px] text-white/40">no end</span>
+              )}
             </div>
           </fieldset>
 

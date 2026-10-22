@@ -10,6 +10,41 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22i — quick-links panel, sites panel redesign, 500-site calendar QA
+
+- **Quick-links panel** (`LinksStrip`):
+  - A six-dot grip (`GripDots`) on the bar's right edge.
+  - The panel unrolls with the pointer: one motion value drives clip-path, y and opacity. Release eases out over 0.32 s (`[0.16, 1, 0.3, 1]`), no spring.
+  - The grip opens it by dragging down or by a click. Only the panel's bottom edge (`links-panel-edge`) folds it, by dragging up; the content doesn't drag.
+  - While the panel is open, the bar shows only the five fixed sites. The panel lists the other and recent sites, deduped, up to 15 (`MORE_MAX`).
+  - The panel surface is the bar's glass, darkened and blurred at 44 px, so it takes the theme's colours and the cards don't show through.
+  - The counts are capped at 15 (`autoQuickLinkCount`, `recentLinkCount`; recent defaults to 15).
+  - The pin on a card's main sites is just the icon (`.tile-pin`, no disc).
+- **Sites panel** (`ProcessingEditor`, `ProcessingManager`), redesigned:
+  - A centred panel (1040 × 760 max), not a left drawer. Two columns when there is room (`@3xl` container query); Settings → Processing stacks them.
+  - **Add (left):**
+    - The lists are buttons (radiogroup "Section"): Currently processing, Queue, any section, and "+ New list". This replaces the datalist input, which only suggested entries matching what was typed, so Queue never showed.
+    - Search your sites or paste a URL.
+    - A starting reminder: Weekdays 9:00, Every day 9:00, Mondays 9:00, or No reminder.
+    - A site or address already in the chosen list shows "Added to …" disabled, so nothing goes in twice.
+  - **Your lists (right):**
+    - Tabs All / each list, with counts, and a find box.
+    - Each site's editor uses a Select "Move to list" (every list always listed) and shows "no end" for an open-ended range.
+  - From the Queue box the panel opens on Queue; from Currently processing, on that.
+  - New reminders have no end month (`to: ''`; before, `from = to = this month`, so they stopped at the month's end). Schema v3 migrates old `from === to` ranges to open-ended, once.
+- **Calendar with heavy schedules** (`lib/calendar.ts` `groupReminders`):
+  - Reminders that fire at the same moment become one item ("5 reminders · Figma, Netlify, Pypi…", `members`). Clicking it opens `ReminderStack`, a list where each site opens its editor.
+  - Search and filters still see every reminder.
+  - Month cells use the real chip height (`CHIP_H` 29), so "+ N more" is always visible.
+  - Agenda cards are `shrink-0`; they were squashed and their titles clipped once a column held many items.
+- **500-site QA** (`e2e/qa/processing-500.spec.ts`, `PROC500=1`, run against a frozen build so code edits can't reload it):
+  - Adds 500 sites one by one through the sites panel, half Currently processing and half Queue (231 daily, 123 weekly, 66 monthly, 80 hourly reminders, different times and days).
+  - Then walks the calendar and checks the month "+ more", readable agenda cards and an opening reminder stack.
+  - Before the fixes, Week held about 270 slivers a day and next week took 4.5 s.
+  - After: about 65 items a day, next week about 1 s, view switches about 0.9 s, no console errors.
+- **Reminder pop-ups no longer block the page** (`AlertCenter`): found by the 500-site run, where reminders started firing while sites were still being added. The blurred backdrop behind the alert stack (`alert-shield`) was `pointer-events-auto` and swallowed clicks across a 980 px strip, the sites panel's list buttons included. It is now visual only; the alert cards stay clickable.
+- `e2e/qa/calendar-500.spec.ts` (`CAL500=1`) loads events, to-dos, queue and processing items through the to-do box and the calendar composer.
+
 ## Round 2026-10-22h — QA of the untested parts, narrow-screen fixes
 
 What was checked, and how:

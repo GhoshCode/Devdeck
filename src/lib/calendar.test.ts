@@ -8,6 +8,7 @@ import {
   atTime,
   briefing,
   collectItems,
+  groupReminders,
   countdown,
   findConflicts,
   focusShieldSlot,
@@ -218,5 +219,20 @@ describe('autoResolve', () => {
     const items = range({ todos: ['a', 'b', 'c', 'd'].map((id) => todo(id, '15:00')) });
     const starts = autoResolve(items, atTime(D, '08:00')).map((m) => m.start);
     expect(new Set(starts).size).toBe(starts.length);
+  });
+});
+
+describe('groupReminders', () => {
+  const r = (id: string, start: number, kind: 'processing' | 'queue' = 'queue'): CalItem => ({ key: `${kind}:${id}:${start}`, kind, sourceId: id, title: id, start, end: start + 900_000, allDay: false, reminder: true });
+  it('merges reminders that fire together, keeps lone ones and everything else', () => {
+    const due: CalItem = { key: 'todo:t', kind: 'todo', sourceId: 't', title: 'Ship', start: 1000, end: 2000, allDay: false, reminder: false };
+    const out = groupReminders([r('a', 1000), r('b', 1000, 'processing'), r('c', 1000, 'processing'), r('d', 5000), due]);
+    expect(out).toHaveLength(3);
+    const g = out.find((i) => i.members)!;
+    expect(g.members!.map((m) => m.sourceId)).toEqual(['a', 'b', 'c']);
+    expect(g.title).toBe('3 reminders · a, b, c');
+    expect(g.kind).toBe('processing'); // the larger share
+    expect(out.find((i) => i.sourceId === 'd')!.members).toBeUndefined();
+    expect(out).toContainEqual(due);
   });
 });

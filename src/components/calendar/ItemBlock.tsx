@@ -133,7 +133,7 @@ export function ItemCard({ item, h24, conflicts, flash, onOpen, onToggleTodo, wh
       tabIndex={0}
       aria-label={`${KIND_LABEL[item.kind]}: ${item.title}`}
       {...activate((at) => onOpen(item, at))}
-      className={`cc-item relative overflow-hidden rounded-xl py-2.5 pr-3 pl-4 ${flash ? 'is-flash' : ''} ${conflicts ? 'is-conflict' : ''}`}
+      className={`cc-item relative shrink-0 overflow-hidden rounded-xl py-2.5 pr-3 pl-4 ${flash ? 'is-flash' : ''} ${conflicts ? 'is-conflict' : ''}`}
       style={{ '--k': itemColor(item) } as CSSProperties}
     >
       <span className="cc-accent absolute inset-y-0 left-0 w-1" aria-hidden />
