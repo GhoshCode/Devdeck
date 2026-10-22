@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
-import { cardsAtRest, freeColumns, sideMax, stepSide, type SnapGeometry } from '../../lib/cardSnap';
+import { cardsAtRest, freeColumns, sideFor, sideMax, stepSide, type SnapGeometry } from '../../lib/cardSnap';
 import { CardSnapHandle, EdgeTab } from './CardSnapHandle';
 import { TopSplitHandle } from './TopSplitHandle';
 
@@ -127,7 +127,7 @@ export function DashboardLayout({
               rowRef={topRowRef}
               onChange={(w) => updateSettings({ topTerminalWidth: w })}
             />
-            <div data-zone="right-top" className="flex shrink-0 items-center" style={{ width: terminal, height: 'var(--links-bar-h)' }}>
+            <div data-zone="right-top" className="ml-3 flex shrink-0 items-center" style={{ width: terminal, height: 'var(--links-bar-h)' }}>
               <div className="w-full">{rightTop}</div>
             </div>
           </div>
@@ -147,8 +147,8 @@ export function DashboardLayout({
         <section ref={snap.centerRef} data-zone="center" className="relative flex min-h-0 min-w-0 flex-col gap-3" style={rightInline ? { gridColumn: 3, gridRow: 2 } : undefined}>
           {!rightInline && <div className="mt-[7px] shrink-0">{linksRow}</div>}
           {center}
-          {rightInline && <EdgeTab side="left" cards={snap.cards} onStep={() => snap.step('left')} />}
-          {rightInline && <EdgeTab side="right" cards={snap.cards} onStep={() => snap.step('right')} />}
+          {rightInline && <EdgeTab side="left" cards={snap.cards} unit={snap.unit} onStep={() => snap.step('left')} onCards={(n) => snap.toCards('left', n)} />}
+          {rightInline && <EdgeTab side="right" cards={snap.cards} unit={snap.unit} onStep={() => snap.step('right')} onCards={(n) => snap.toCards('right', n)} />}
         </section>
         {rightInline && (
           <div style={{ gridColumn: 4, gridRow: 2 }} className="flex min-h-0">
@@ -275,15 +275,17 @@ function useCardSnap(enabled: boolean) {
     },
     onDragging: setDragging,
   });
-  const step = (side: Side) => {
-    if (!geo) return;
-    const w = stepSide(geo, side, left, right);
+  const apply = (side: Side, w: number | null) => {
     const other: Side = side === 'left' ? 'right' : 'left';
     if (w !== null && leftW === null && rightW === null) save(other, other === 'left' ? left : right);
     save(side, w);
   };
+  const step = (side: Side) => geo && apply(side, stepSide(geo, side, left, right));
+  // dragging an edge tab: exactly n cards in the centre
+  const toCards = (side: Side, n: number) => geo && apply(side, sideFor(geo, side, left, right, n));
+  const unit = geo ? geo.card + geo.gap : 420;
   const cards = cols?.cards ?? (geo ? Math.max(1, cardsAtRest(geo)) : 3);
-  return { cockpitRef, centerRef, style, handle, step, cards, rightWidth: right, dragging };
+  return { cockpitRef, centerRef, style, handle, step, toCards, unit, cards, rightWidth: right, dragging };
 }
 
 // Width of the first element matching the selector, kept current (null if none).

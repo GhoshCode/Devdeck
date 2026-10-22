@@ -79,29 +79,78 @@ export function CardSnapHandle({
   );
 }
 
-// A half-cut tab on the inside edge of the cards box (the "Currently
-// processing" notch turned on its side). Each click narrows the centre by one
-// whole card — a part-card view snaps to the whole cards below it — and gives
-// the space to this side; at one card it gives the space back.
-export function EdgeTab({ side, cards, onStep }: { side: 'left' | 'right'; cards: number; onStep: () => void }) {
+// A half-cut tab just inside each edge of the cards box (the "Currently
+// processing" notch turned on its side), with a three-line grip. Click: the
+// centre loses one whole card (a part-card view snaps to the whole cards
+// below) and this side takes the space; at one card it gives it back. Drag:
+// whole cards either way — towards the centre for fewer, out for more.
+export function EdgeTab({
+  side,
+  cards,
+  unit,
+  onStep,
+  onCards,
+}: {
+  side: 'left' | 'right';
+  cards: number; // whole cards in view now
+  unit: number; // one card plus the gap, px
+  onStep: () => void;
+  onCards: (n: number) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
   const what = side === 'left' ? 'Currently processing' : 'Tech news';
   const label = cards <= 1 ? `Give ${what} its space back` : `Widen ${what} by one card`;
-  // the arrow points the way the edge moves
-  const into = (side === 'left') === cards > 1;
+  const inward = side === 'left' ? 1 : -1;
+
+  const onPointerDown = (e: PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const start = cards;
+    let moved = false;
+    let last = start;
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev: globalThis.PointerEvent) => {
+      const dx = (ev.clientX - startX) * inward;
+      if (!moved && Math.abs(dx) < 6) return;
+      if (!moved) setDragging(true);
+      moved = true;
+      // half a card's pull snaps to the next whole card
+      const n = Math.max(1, Math.min(3, start - Math.round(dx / unit)));
+      if (n !== last) onCards((last = n));
+    };
+    const up = () => {
+      setDragging(false);
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      if (!moved) onStep();
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  };
+
   return (
     <button
       type="button"
       data-edge-tab={side}
       aria-label={label}
-      title={label}
-      onClick={onStep}
-      className={`panel-notch absolute top-1/2 z-10 flex h-16 w-4 -translate-y-1/2 items-center justify-center border text-white/50 transition-colors hover:text-white ${
-        side === 'left' ? 'left-0 rounded-r-xl border-l-0' : 'right-0 rounded-l-xl border-r-0'
-      }`}
+      title={`${label} · drag to resize by whole cards`}
+      onPointerDown={onPointerDown}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onStep();
+        }
+      }}
+      className={`edge-tab panel-notch absolute top-1/2 z-10 flex h-16 w-4 -translate-y-1/2 cursor-col-resize touch-none items-center justify-center gap-[2px] border transition-colors ${
+        side === 'left' ? 'left-3 rounded-r-xl border-l-0' : 'right-3 rounded-l-xl border-r-0'
+      } ${dragging ? 'is-dragging' : ''}`}
     >
-      <svg className="size-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d={into ? 'M4 2l4 4-4 4' : 'M8 2L4 6l4 4'} strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <i className="edge-grip" />
+      <i className="edge-grip" />
+      <i className="edge-grip" />
     </button>
   );
 }

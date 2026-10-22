@@ -1,5 +1,4 @@
-import { memo, useLayoutEffect, useMemo, useRef, type WheelEvent } from 'react';
-import { useLayout } from '../layout/DashboardLayout';
+import { memo, useMemo, useRef, type WheelEvent } from 'react';
 import { useStore } from '../../store';
 import { useNow } from '../../hooks/useNow';
 import { buildStrip, relativeAge, type StripLink } from '../../services/search';
@@ -18,59 +17,34 @@ export const LinksStrip = memo(function LinksStrip() {
   const recordVisit = useStore((s) => s.recordVisit);
   const now = useNow(60_000).getTime();
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
-  // 1- or 2-card views: nothing scrolls; chips that don't fully fit are hidden.
-  const fit = useLayout().cards < 3;
-
   const strip = useMemo(
     () => buildStrip(quickLinks, sites, autoCount, recentCount, now),
     [quickLinks, sites, autoCount, recentCount, now],
   );
   const lastVisited = useMemo(() => new Map(sites.map((s) => [s.id, s.lastVisited])), [sites]);
 
-  useLayoutEffect(() => {
-    const bar = barRef.current;
-    if (!bar) return;
-    const apply = () => {
-      const chips = bar.querySelectorAll<HTMLElement>('[data-chip], [data-strip-label]');
-      chips.forEach((c) => (c.style.visibility = ''));
-      if (!fit) return;
-      if (scrollerRef.current) scrollerRef.current.scrollLeft = 0;
-      const edge = bar.getBoundingClientRect().right - 10;
-      chips.forEach((c) => {
-        if (c.getBoundingClientRect().right > edge) c.style.visibility = 'hidden';
-      });
-    };
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(bar);
-    return () => ro.disconnect();
-  }, [fit, strip]);
-
-  // Vertical wheel scrolls the strip sideways (not in the fitted 1–2 card views).
+  // However narrow the bar gets, its chips scroll sideways (drag, trackpad or
+  // the vertical wheel), never hide.
   const onWheel = (e: WheelEvent<HTMLDivElement>) => {
-    const el = scrollerRef.current;
-    if (fit || !el || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    const el = e.currentTarget;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || el.scrollWidth <= el.clientWidth) return;
     el.scrollLeft += e.deltaY;
   };
 
   const open = (link: StripLink) => link.siteId && recordVisit(link.siteId);
 
   return (
-    <div ref={barRef} data-testid="links-strip" data-fit={fit || undefined} className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-3">
-      <div data-strip="fixed" className={`scrollbar-none flex min-w-0 shrink items-center gap-2 ${fit ? 'overflow-hidden' : 'overflow-x-auto'}`}>
+    <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-3">
+      {/* one scroller for every chip, so a narrow bar still reaches them all */}
+      <div ref={scrollerRef} onWheel={onWheel} data-strip-scroller className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-40px),transparent)]">
+      <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />
         ))}
       </div>
 
       {(strip.scrolling.length > 0 || strip.recent.length > 0) && (
-        <div
-          ref={scrollerRef}
-          onWheel={onWheel}
-          data-strip="scroll"
-          className={`scrollbar-none flex min-w-0 flex-1 items-center gap-2 pl-1 ${fit ? 'overflow-hidden' : 'overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-40px),transparent)]'}`}
-        >
+        <div data-strip="scroll" className="flex shrink-0 items-center gap-2 pl-1">
           {strip.scrolling.map((link) => (
             <Chip key={link.id} link={link} variant="auto" onOpen={open} />
           ))}
@@ -95,6 +69,7 @@ export const LinksStrip = memo(function LinksStrip() {
           <span aria-hidden className="w-6 shrink-0" />
         </div>
       )}
+      </div>
     </div>
   );
 });

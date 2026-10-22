@@ -201,3 +201,61 @@ test('edge tabs step the cards down a whole card at a time; the handles resize f
   await page.mouse.up();
   await expect.poll(async () => (await cols())[0]).toBe(start[0] + 100);
 });
+
+test('edge tabs sit inside the cards box, carry a grip and drag by whole cards both ways', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  const cockpit = page.locator('[data-zone="cockpit"]');
+  const left = () => cockpit.evaluate((el) => parseFloat(getComputedStyle(el).gridTemplateColumns));
+  const tab = page.locator('[data-edge-tab="left"]');
+  await expect(tab.locator('.edge-grip')).toHaveCount(3);
+  const box = (await page.locator('[data-cards-track]').locator('..').boundingBox())!;
+  const t = (await tab.boundingBox())!;
+  expect(t.x).toBeGreaterThanOrEqual(box.x - 0.5); // inside the box's left edge
+  expect(t.x + t.width).toBeLessThanOrEqual(box.x + 24);
+
+  const start = await left();
+  const drag = async (dx: number) => {
+    const b = (await tab.boundingBox())!;
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + dx, b.y + b.height / 2, { steps: 10 });
+    await page.mouse.up();
+  };
+  await drag(450); // in: one card fewer
+  await expect.poll(left).toBeGreaterThan(start + 300);
+  const two = await left();
+  await drag(450); // in again: one card
+  await expect.poll(left).toBeGreaterThan(two + 300);
+  await drag(-450); // out: back to two
+  await expect.poll(left).toBe(two);
+  await drag(-900); // all the way out: the side gives its space back
+  await expect.poll(left).toBe(start);
+});
+
+test('the links / terminal handle sits midway, and a shrunk links bar still scrolls to every chip', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  const strip = page.getByTestId('links-strip');
+  const handle = page.getByTestId('top-split-handle');
+  const s = (await strip.boundingBox())!;
+  const h = (await handle.boundingBox())!;
+  const term = (await page.locator('[data-zone="right-top"]').boundingBox())!;
+  expect(Math.abs(h.x - (s.x + s.width) - (term.x - (h.x + h.width)))).toBeLessThanOrEqual(1);
+
+  // shrink the links bar
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x - 700, h.y + h.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const scroller = page.locator('[data-strip-scroller]');
+  await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth + 20)).toBe(true);
+  const sb = (await scroller.boundingBox())!;
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  // the last chip can be brought into view
+  const last = strip.locator('[data-chip]').last();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+});

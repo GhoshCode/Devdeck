@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardsAtRest, centreCards, freeColumns, restColumns, stepSide, type SnapGeometry } from './cardSnap';
+import { cardsAtRest, centreCards, freeColumns, restColumns, sideFor, stepSide, type SnapGeometry } from './cardSnap';
 
 // A wide screen: 1900px cockpit, 250 / 300 side columns, 400px cards.
 const g: SnapGeometry = { width: 1900, handle: 12, leftBase: 250, rightBase: 300, chrome: 60, card: 400, gap: 20 };
@@ -52,5 +52,16 @@ describe('restColumns (nothing resized)', () => {
 
   it('keeps the default columns with three cards', () => {
     expect(restColumns({ ...g, width: 2200 })).toBeNull();
+  });
+});
+
+describe('sideFor (dragging an edge tab)', () => {
+  const g: SnapGeometry = { width: 1900, handle: 12, leftBase: 250, rightBase: 300, chrome: 60, card: 400, gap: 20 };
+  it('sizes the side so the centre holds exactly n cards, either way', () => {
+    expect(sideFor(g, 'left', 250, 300, 2)).toBe(250 + 1326 - 880);
+    expect(sideFor(g, 'left', 696, 300, 1)).toBe(696 + 880 - 460);
+    expect(sideFor(g, 'left', 1116, 300, 2)).toBe(696); // back out again
+    expect(sideFor(g, 'left', 696, 300, 3)).toBeNull(); // three cards: the side gives its space back
+    expect(centreCards(g, 250, sideFor(g, 'right', 250, 300, 2)!)).toBeCloseTo(2);
   });
 });

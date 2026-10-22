@@ -3252,3 +3252,8 @@ html[data-theme='light'] .sys-track { background: rgba(15, 23, 42, 0.1); }
 .top-split:hover .top-split-grip, .top-split:focus-visible .top-split-grip, .top-split.is-dragging .top-split-grip { height: 2.5rem; background: var(--color-accent); box-shadow: 0 0 10px var(--color-accent); }
 .top-split:focus-visible { outline: none; }
 html[data-theme='light'] .top-split-grip { background: rgba(15, 23, 42, 0.18); }
+
+/* Edge tabs inside the cards box: three thin grip lines */
+.edge-grip { display: block; width: 1px; height: 18px; border-radius: 1px; background: rgba(255, 255, 255, 0.4); transition: background 0.15s; }
+.edge-tab:hover .edge-grip, .edge-tab.is-dragging .edge-grip { background: var(--color-accent); }
+html[data-theme='light'] .edge-grip { background: rgba(60, 60, 67, 0.45); }

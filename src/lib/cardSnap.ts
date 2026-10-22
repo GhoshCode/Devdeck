@@ -84,3 +84,12 @@ export function stepSide(g: SnapGeometry, side: 'left' | 'right', left: number, 
   const give = centreOf(g, left, right) - centreFor(g, target);
   return Math.round((side === 'left' ? left : right) + give);
 }
+
+// Dragging an edge tab: that side's width that leaves the centre exactly n
+// cards (the other side as it is), or null when the rest layout already
+// shows that many or the width would be its base or less.
+export function sideFor(g: SnapGeometry, side: 'left' | 'right', left: number, right: number, n: number): number | null {
+  if (n >= cardsAtRest(g)) return null; // as many as at rest: no resize needed
+  const w = Math.round((side === 'left' ? left : right) + centreOf(g, left, right) - centreFor(g, Math.max(1, n)));
+  return w <= (side === 'left' ? g.leftBase : g.rightBase) ? null : w;
+}
