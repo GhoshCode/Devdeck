@@ -273,7 +273,7 @@ test('long search text: the bar keeps one line with "…" and a wider panel belo
   const p = (await panel.boundingBox())!;
   expect(bar.height).toBe(52); // the icons don't move
   expect(Math.abs(p.width - bar.width * 1.5)).toBeLessThanOrEqual(2);
-  expect(Math.abs(p.x + p.width / 2 - (bar.x + bar.width / 2))).toBeLessThanOrEqual(2);
+  expect(Math.abs(p.x - bar.x)).toBeLessThanOrEqual(2); // starts at the bar's left edge, runs on to the right
   await expect.poll(() => panel.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   await expect(page.getByTestId('search-preview')).toHaveCSS('text-overflow', 'ellipsis');
   await page.keyboard.type(' tail');

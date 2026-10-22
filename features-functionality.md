@@ -22,7 +22,7 @@ wide where layout is involved.
 - The tabs inside the cards box have a three-line grip. Click: one card fewer. Drag: whole cards either way (in for fewer, out for more). The thin bars outside still resize freely.
 - The handle between the quick links and the terminal sits in the middle of the gap.
 - However narrow the quick-links bar gets, its icons scroll (trackpad, mouse wheel or drag); none are hidden.
-- Long search text: the bar stays one line and ends with "…"; a darker panel, half as wide again and centred under the bar, holds all of the text to edit and scrolls when it gets long. The search buttons don't move.
+- Long search text: the bar stays one line and ends with "…"; a darker panel, half as wide again and starting at the bar's left edge, holds all of the text to edit and scrolls when it gets long. The search buttons don't move.
 
 **Manual test checklist**
 - [ ] Drag the left edge tab right by about a card: one card fewer. Drag it back: the card returns.

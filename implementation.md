@@ -24,7 +24,7 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
   - `e2e/qa/baseline.spec.ts` now targets the new scroller.
 - **Search** (`SearchBar`) replaces the two-line growth and the caret strip:
   - Text too long for the bar (`overflowing`, measured on the preview) or containing a line break: the bar stays 52 px and shows a one-line preview (`search-preview`, `truncate`, so it ends with "…").
-  - The textarea moves into `search-panel` under the bar. The panel is `w-[150%]`, centred, at most 50vh tall and scrolling. Its colour is `color-mix(accent 12%, #07080c)`, with a light variant. A footer shows the character count and the key hints.
+  - The textarea moves into `search-panel` under the bar. The panel is `w-[150%]`, starting at the bar's left edge (shifted right by 25% of the bar from centred, 2026-10-22e), at most 50vh tall and scrolling. Its colour is `color-mix(accent 12%, #07080c)`, with a light variant. A footer shows the character count and the key hints.
   - Focus and the caret follow the textarea when it moves. Clicking the preview focuses the panel. The icons never move.
 - **Tests:** 265 unit (`sideFor`). The new Chromium end-to-end tests cover:
   - the tab position, grip and drag both ways;

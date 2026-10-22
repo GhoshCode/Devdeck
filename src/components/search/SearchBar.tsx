@@ -23,7 +23,7 @@ import { Favicon } from '../Favicon';
 //
 // Type-to-capture: a printable key (or a paste) anywhere outside a field lands
 // here. Text longer than the bar stays one line there, cut with "…", and a
-// darker panel opens under the bar (half as wide again, centred) with all of
+// darker panel opens under the bar (half as wide again, starting at its left edge) with all of
 // it to edit; the panel grows with the text and scrolls past half the screen.
 // The bar's icons never move.
 
@@ -452,7 +452,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
       {multiline && (
         <div
           data-testid="search-panel"
-          className="search-panel composer-scroll absolute top-full left-1/2 z-40 mt-2 max-h-[50vh] w-[150%] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-y-auto rounded-2xl border px-4 py-3"
+          className="search-panel composer-scroll absolute top-full left-0 z-40 mt-2 max-h-[50vh] w-[150%] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border px-4 py-3"
         >
           {field}
           <p className="search-panel-foot mt-2 font-mono text-[10.5px] tabular-nums">
