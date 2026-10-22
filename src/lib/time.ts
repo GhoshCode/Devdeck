@@ -20,6 +20,19 @@ export function clockParts(d: Date, h24: boolean): ClockParts {
   };
 }
 
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+export const formatDateLine = (d: Date): string => dateFormatter.format(d).toUpperCase();
+
+// Local 'YYYY-MM-DD' (not UTC — toISOString would shift the day near midnight).
+export const localDateKey = (d: Date): string =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
 // §7 Q5: a clean time-of-day greeting, uppercase, optionally with the name.
 export function greetingFor(d: Date, name = ''): string {
   const h = d.getHours();
@@ -34,16 +47,3 @@ export function greetingFor(d: Date, name = ''): string {
   const trimmed = name.trim();
   return trimmed ? `${base}, ${trimmed.toUpperCase()}` : base;
 }
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-});
-
-export const formatDateLine = (d: Date): string => dateFormatter.format(d).toUpperCase();
-
-// Local 'YYYY-MM-DD' (not UTC — toISOString would shift the day near midnight).
-export const localDateKey = (d: Date): string =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

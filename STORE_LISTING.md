@@ -33,7 +33,7 @@ No account and no tracking. Everything stays in your browser.
 ## Assets you still need to make
 
 - 128×128 icon (already at `public/icons/icon-128.png`)
-- At least 1 screenshot, 1280×800 or 640×400 (`screenshots/` has candidates)
+- At least 1 screenshot, 1280×800 or 640×400 (take them from the built extension)
 - Small promo tile, 440×280 (optional)
 
 ## Privacy tab

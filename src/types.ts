@@ -48,6 +48,9 @@ export interface Settings {
   backgroundImage: string | null; // data URL, remote URL, or css gradient
   overlayOpacity: number; // 0–1
   backgroundBlur: number; // px
+  uiScale?: number | null; // interface size, 0.8–1.25; unset/null = Auto (from the screen size)
+  backgroundVideo?: boolean;
+  tabTitleAnimation?: boolean; // the browser tab types shell commands (default on) // a video (kept in IndexedDB, lib/videoStore) plays behind everything
   clock24h: boolean;
   greetingName: string; // used in greetings, may be empty
   // ---- v2 ----
@@ -71,8 +74,9 @@ export interface Settings {
   feedJobsCount?: number; // 0–100 posts shown in Dev jobs (default 4)
   greetStyle?: GreetStyle; // how the greeting words (not the name) are drawn
   nameFont?: NameFont; // typeface of your name in the greeting
-  cockpitLeftCards?: number; // category cards' width the left column has taken from the centre (0–2)
-  cockpitRightCards?: number; // …and the right column
+  cockpitLeftWidth?: number | null; // px of the left column when resized; unset = the rest layout
+  cockpitRightWidth?: number | null; // …and the news column
+  cockpitCards?: number | null; // card mode chosen with the edge tabs (1–3); unset = two cards
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
   gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS
@@ -83,6 +87,41 @@ export interface Settings {
   gradientStudio?: GradientStudio; // last design in Appearance → Gradient Studio
   weatherSource?: string; // "auto" (default), a built-in provider id, or a custom source id
   customWeatherSources?: CustomWeatherSource[];
+  calendar?: CalendarPrefs; // Command Calendar: last view and the second time-zone rail
+  // Notifications (Settings → Processing). "All" on = both kinds on.
+  notifyPopups?: boolean; // DevDeck's alert pop-ups, in-page and on other sites (default true)
+  searchEngine?: SearchEngineId; // Enter / Ctrl+Enter search (default google)
+  topTerminalWidth?: number | null; // px of the terminal beside the links bar; unset = as wide as the news column
+}
+
+export type SearchEngineId = 'google' | 'bing' | 'duckduckgo' | 'brave' | 'startpage' | 'ecosia';
+
+export type CalendarView = 'day' | 'week' | 'month' | 'agenda';
+
+export interface CalendarPrefs {
+  view: CalendarView;
+  showSecondZone: boolean;
+  secondZone: string; // IANA zone for the second time rail, e.g. 'UTC'
+}
+
+export type EventCategory = 'meeting' | 'call' | 'vip' | 'deep-work' | 'deadline' | 'travel';
+export type EventPriority = 'low' | 'normal' | 'high' | 'critical';
+
+// A custom calendar event (meetings, calls, focus blocks, flights…), as
+// opposed to the to-do / Queue / Currently processing items the calendar also shows.
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // 'YYYY-MM-DD'
+  start: string; // 'HH:mm'
+  end: string; // 'HH:mm', later than start on the same day
+  category: EventCategory;
+  priority: EventPriority;
+  attendees: string[]; // people or tags
+  location: string;
+  notes: string;
+  remindMins: number | null; // alert this many minutes before the start; null = no alert
+  createdAt: number; // epoch ms
 }
 
 // A to-do carries at most one due moment: a date, optionally with a time.
@@ -137,6 +176,8 @@ export interface ProcessingItem {
   schedule: Schedule;
   createdAt?: number; // epoch ms; timers count from here
   timer?: Timer | null;
+  dueDate?: string | null; // 'YYYY-MM-DD', set from the calendar
+  dueTime?: string | null; // 'HH:mm' — only meaningful with dueDate
 }
 
 // The top Processing section (formerly "Focus").
@@ -166,7 +207,7 @@ export interface FeedsConfig {
   sources: FeedSource[];
 }
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface PersistedState {
   schemaVersion: number; // starts at 1; bump with every schema change
@@ -185,7 +226,9 @@ export interface PersistedState {
   feeds: FeedsConfig;
   // Deleted sites and removed Focus/Queue items, restorable until purged.
   trash: Trash;
+  events: CalendarEvent[]; // Command Calendar events
 }
+
 
 export interface TrashedSite extends Site {
   deletedAt: number;

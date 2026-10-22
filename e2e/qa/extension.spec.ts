@@ -36,11 +36,13 @@ test('built extension — new tab, service worker, reminders, no console errors'
     // A scheduled processing item is mirrored to chrome.storage and becomes an alarm.
     await page.getByRole('button', { name: 'Manage currently processing' }).click();
     const dialog = page.getByRole('dialog', { name: 'Manage currently processing' });
+    await dialog.getByRole('tab', { name: 'From your sites' }).click();
     await dialog.getByRole('textbox', { name: 'Add a site to Currently Processing' }).fill('github');
     await dialog.getByRole('textbox', { name: 'Add a site to Currently Processing' }).press('Enter');
-    await dialog.getByRole('radio', { name: 'Hourly' }).click();
+    const card = dialog.locator('li[data-processing-id]').first(); // the added site (the add side has the same controls)
+    await card.getByRole('radio', { name: 'Hourly' }).click();
     for (const day of ['Su', 'Sa']) {
-      const btn = dialog.getByRole('button', { name: day, exact: true });
+      const btn = card.getByRole('button', { name: day, exact: true });
       if ((await btn.getAttribute('aria-pressed')) === 'false') await btn.click();
     }
     await expect

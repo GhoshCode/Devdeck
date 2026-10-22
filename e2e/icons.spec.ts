@@ -12,7 +12,7 @@ test.describe('Icons & Favicons Visibility', () => {
   test('Quick links render visible favicons', async ({ page }) => {
     // Quick links row contains 4 seed links
     const quickLinks = page.locator('[data-testid=links-strip] [data-chip=fixed]');
-    await expect(quickLinks).toHaveCount(4);
+    await expect(quickLinks).toHaveCount(5);
 
     // Each quick link must contain either an <img> favicon or fallback initial badge
     for (let i = 0; i < 4; i++) {

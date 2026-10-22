@@ -1,17 +1,18 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
+import { greetingPhrase, segmentOf } from '../../lib/greetings';
 import { useNow } from '../../hooks/useNow';
 import { formatDateLine, greetingFor } from '../../lib/time';
 import { quoteFor, type Quote } from '../../lib/greeting';
-import { cachedQuote, fetchQuote } from '../../services/quotes';
+import { QUOTE_SLOT_MS, cachedQuote, fetchQuote } from '../../services/quotes';
 import { fetchOnThisDay, type DayEvent } from '../../services/onThisDay';
 import { GREET_STYLES, NAME_FONTS, type NameFont } from '../../types';
 
 // The uppercase date line, under the clock.
 export const DateLine = memo(function DateLine() {
   const now = useNow(60_000);
-  return <p className="text-gradient font-display text-[13px] font-semibold tracking-[0.22em]">{formatDateLine(now)}</p>;
+  return <p data-testid="date-line" className="text-gradient ml-[15px] font-display text-[15px] font-semibold tracking-[0.22em]">{formatDateLine(now)}</p>;
 });
 
 // Every 10 minutes a soft spotlight sweeps across your name, left to right
@@ -104,7 +105,7 @@ const OnThisDay = memo(function OnThisDay() {
   const ev = events[at % events.length];
   const label = ev.kind === 'born' ? 'Born: ' : ev.kind === 'died' ? 'Died: ' : '';
   return (
-    <div className="group/otd relative max-w-[calc(100%-1.75rem)]">
+    <div className="group/otd flex max-w-full min-w-0 items-center gap-1">
       <AnimatePresence mode="wait" initial={false}>
         <motion.p
           key={`${ev.year}${ev.text}`}
@@ -114,7 +115,7 @@ const OnThisDay = memo(function OnThisDay() {
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.25 }}
           title={`On this day in ${ev.year}: ${label}${ev.text}`}
-          className="line-clamp-1 text-[13px] leading-snug text-white/80"
+          className="line-clamp-1 min-w-0 text-[13px] leading-snug text-white/80"
         >
           <span className="otd-label mr-1.5 font-mono text-[10.5px] font-semibold tracking-[0.14em] text-white/45 uppercase">On this day</span>
           <span className="font-semibold text-white/90">{ev.year}</span>
@@ -132,15 +133,20 @@ const OnThisDay = memo(function OnThisDay() {
           )}
         </motion.p>
       </AnimatePresence>
-      {events.length > 1 && (
+      {(
         <button
           type="button"
+          disabled={events.length < 2}
           onClick={() => setAt((n) => n + 1)}
           aria-label="Another event from this day"
-          title={`Another event (${(at % events.length) + 1} of ${events.length})`}
-          className="absolute top-0 -right-6 flex size-5 items-center justify-center rounded-md text-[11px] text-white/50 opacity-0 transition-opacity group-hover/otd:opacity-100 hover:bg-white/10 hover:text-white focus-visible:opacity-100"
+          title={events.length < 2 ? 'The only tech event for today' : `Another event (${(at % events.length) + 1} of ${events.length})`}
+          data-testid="on-this-day-next"
+          className="otd-refresh flex size-[18px] shrink-0 items-center justify-center rounded-md text-white/45 transition-colors hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
         >
-          ↻
+          <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+            <path d="M20 4v7h-7" />
+          </svg>
         </button>
       )}
     </div>
@@ -157,21 +163,27 @@ export const DateGreet = memo(function DateGreet() {
   const showQuote = useStore((s) => s.settings.showQuote ?? true);
   const greetStyle = useStore((s) => s.settings.greetStyle ?? 'classic');
   const updateSettings = useStore((s) => s.updateSettings);
-  // Click the greeting for the next style, right-click for the previous one.
+  // Click the greeting for the next style; right-click for another phrase of
+  // this time of day.
   const at = Math.max(0, GREET_STYLES.findIndex((g) => g.id === greetStyle));
+  const segment = segmentOf(now);
+  // The page opens on the plain greeting; the first right-click switches to the
+  // themed phrases, and each one after re-rolls.
+  const [roll, setRoll] = useState<number | null>(null);
+  const phrase = roll === null ? greetingFor(now) : greetingPhrase(segment, roll);
   const step = (d: number) => updateSettings({ greetStyle: GREET_STYLES[(at + d + GREET_STYLES.length) % GREET_STYLES.length].id });
   const showOnThisDay = useStore((s) => s.settings.showOnThisDay ?? true);
   // Quote from the quotes API (kept for the day); the built-in list only
   // fills in until it arrives, or offline.
   const [quote, setQuote] = useState<Quote>(() => cachedQuote(new Date()) ?? quoteFor(new Date()));
-  const qday = `${now.getMonth()}-${now.getDate()}`;
+  const qslot = Math.floor(now.getTime() / QUOTE_SLOT_MS); // a new quote every 30 minutes
   useEffect(() => {
     let alive = true;
     void fetchQuote(new Date()).then((q) => alive && setQuote(q));
     return () => {
       alive = false;
     };
-  }, [qday]);
+  }, [qslot]);
   const nextQuote = () => void fetchQuote(new Date(), true).then(setQuote);
   // Your name: click for the next typeface, right-click for the previous one,
   // double-click to rename it right here.
@@ -194,14 +206,14 @@ export const DateGreet = memo(function DateGreet() {
         onClick={() => step(1)}
         onContextMenu={(e) => {
           e.preventDefault();
-          step(-1);
+          setRoll((r) => (r === null ? Math.floor(Math.random() * 1000) : r + 1 + Math.floor(Math.random() * 3)));
         }}
-        title={`Greeting style: ${GREET_STYLES[at].name} — click: next · right-click: previous`}
+        title={`Style: ${GREET_STYLES[at].name} — click: next style · right-click: ${roll === null ? 'themed greetings' : 'another greeting'}`}
         className="max-w-full font-display text-[2.15rem] leading-[1.2] font-bold tracking-tight text-balance break-words text-white/95 cursor-pointer select-none"
       >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}
         <span data-testid="greet-words" className={`greet-words greet-${greetStyle}`}>
-          {greetingFor(now)}
+          {phrase}
           {name.trim() && ','}
         </span>
         {name.trim() && (
@@ -272,7 +284,7 @@ export const DateGreet = memo(function DateGreet() {
               <p
                 data-testid="greeting-quote"
                 title={`${quote.text} — ${quote.author}`}
-                className="line-clamp-1 text-[12px] leading-snug text-white/75 italic"
+                className="overflow-hidden text-[12px] leading-snug whitespace-nowrap text-white/75 italic [text-overflow:clip]"
               >
                 “{quote.text}” <span className="text-[10.5px] tracking-wide text-white/50 not-italic">— {quote.author}</span>
               </p>

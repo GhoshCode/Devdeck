@@ -18,9 +18,9 @@ test('top bar renders every widget slot', async ({ page }) => {
   await expect(page.getByRole('textbox', { name: 'Command prompt' })).toBeVisible();
 });
 
-test('clock style switches in Settings → Appearance; Cyberpunk has no city row', async ({ page }) => {
+test('clock style switches in Settings → Clock; Cyberpunk has no city row', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: /Appearance/ }).click();
+  await page.getByRole('dialog', { name: 'DevDeck Settings' }).getByRole('button', { name: 'Clock', exact: true }).click();
   await page.getByRole('radio', { name: 'Cyberpunk 2077' }).click();
   await page.keyboard.press('Escape');
 
@@ -35,7 +35,9 @@ test('clock style switches in Settings → Appearance; Cyberpunk has no city row
 test('to-do: add, expand, complete into the archive, restore', async ({ page }) => {
   const widget = page.getByTestId('todo-widget');
   await widget.getByRole('button', { name: 'Add a task' }).click();
-  const panel = page.getByRole('dialog', { name: 'All tasks' });
+  // The work panel opens on its To-do tab.
+  await expect(page.getByRole('dialog', { name: 'Work panel' })).toBeVisible();
+  const panel = page.getByRole('region', { name: 'All tasks' });
   await panel.getByRole('textbox', { name: 'New task' }).fill('Write e2e tests');
   await panel.getByRole('textbox', { name: 'New task' }).press('Enter');
   await expect(panel.getByText('Write e2e tests')).toBeVisible();
@@ -44,11 +46,11 @@ test('to-do: add, expand, complete into the archive, restore', async ({ page }) 
   await expect(panel.getByText('Write e2e tests')).toHaveCount(0);
 
   await panel.getByRole('button', { name: /^Archive/ }).click();
-  const archive = page.getByRole('dialog', { name: 'Archived tasks' });
+  const archive = page.getByRole('region', { name: 'Archived tasks' });
   await expect(archive.getByText('Write e2e tests')).toBeVisible();
   await archive.getByRole('button', { name: 'Restore "Write e2e tests"' }).click();
   await archive.getByRole('button', { name: 'Back to tasks' }).click();
-  await expect(page.getByRole('dialog', { name: 'All tasks' }).getByText('Write e2e tests')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'All tasks' }).getByText('Write e2e tests')).toBeVisible();
 });
 
 test('to-do: overdue tasks pin to the top in the danger zone', async ({ page }) => {

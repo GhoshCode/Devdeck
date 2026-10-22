@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { detectPlatform } from '../../services/commands';
 import { runInTerminal, type TerminalResult } from '../../services/terminal';
 
@@ -61,13 +61,37 @@ export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?
     }
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+  // The box grows downward as a long command wraps (over the news column below).
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fit = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useLayoutEffect(fit, [value]);
+  // …and again when its width changes (the links / terminal handle, the Git box)
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    let w = el.offsetWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.offsetWidth === w) return;
+      w = el.offsetWidth;
+      fit();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void execute();
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       const h = historyRef.current;
-      if (!h.length) return;
+      // history only from an empty box or one showing a history entry (else the arrows move the caret)
+      if (!h.length || (value && value !== h[cursorRef.current])) return;
       e.preventDefault();
       const cur = cursorRef.current + (e.key === 'ArrowUp' ? 1 : -1);
       cursorRef.current = Math.max(-1, Math.min(h.length - 1, cur));
@@ -79,16 +103,31 @@ export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative h-10">
+      <div className="absolute inset-x-0 top-0 z-30">
       <div
-        className={`glass flex h-9 items-center gap-2 rounded-xl pr-1 pl-3 font-mono text-xs transition-colors ${
-          admin ? 'border-amber-400/60 shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_0_18px_rgba(251,191,36,0.15)]' : ''
-        }`}
+        data-admin={admin || undefined}
+        className="term flex min-h-10 items-start gap-2 rounded-xl py-1.5 pr-1 pl-2.5 font-mono text-xs"
       >
-        <span aria-hidden className={`${busy ? 'animate-pulse' : ''} ${admin ? 'font-bold text-amber-300' : 'text-[var(--color-accent)]'}`}>
-          {admin ? '#' : platform === 'windows' ? 'PS>' : '$'}
+        {/* Window chrome that matches the OS: traffic lights on macOS, a terminal mark elsewhere. */}
+        {platform === 'mac' ? (
+          <span aria-hidden className="term-dots mt-[11px] flex shrink-0 gap-1">
+            <i />
+            <i />
+            <i />
+          </span>
+        ) : (
+          <span aria-hidden data-os={platform} className="term-mark mt-1 flex h-5 shrink-0 items-center justify-center rounded-[5px] px-1 text-[10px] font-bold">
+            &gt;_
+          </span>
+        )}
+        <span aria-hidden className={`term-seg mt-0.5 flex h-6 shrink-0 items-center gap-1 pr-3 pl-2 text-[11px] font-bold ${busy ? 'animate-pulse' : ''}`}>
+          {admin ? '#' : platform === 'windows' ? 'PS' : '$'}
+          <span className="term-seg-path font-medium">❯ ~</span>
         </span>
-        <input
+        <textarea
+          ref={inputRef}
+          rows={1}
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
@@ -99,7 +138,7 @@ export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?
           autoComplete="off"
           aria-label="Command prompt"
           placeholder={admin ? `run in ${shell} as administrator…` : `run a command in ${shell}…`}
-          className="min-w-0 flex-1 bg-transparent text-white/90 outline-none placeholder:text-white/30"
+          className="term-input min-w-0 flex-1 resize-none overflow-hidden bg-transparent py-[5px] leading-[17px] break-all outline-none"
         />
         <button
           type="button"
@@ -131,6 +170,7 @@ export const CommandPrompt = memo(function CommandPrompt({ onSetup }: { onSetup?
           )}
         </div>
       )}
+      </div>
     </div>
   );
 });

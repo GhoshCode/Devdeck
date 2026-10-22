@@ -24,16 +24,21 @@ test.describe('G1 browser bookmarks panel', () => {
 });
 
 test.describe('Links strip (E/F)', () => {
-  test('first 4 quick links are fixed and do not scroll', async ({ page }) => {
+  test('the first 5 quick links stay fixed while the rest scroll, and nothing overlaps', async ({ page }) => {
     const strip = page.getByTestId('links-strip');
     const fixed = strip.locator('[data-chip=fixed]');
-    await expect(fixed).toHaveCount(4);
+    await expect(fixed).toHaveCount(5);
     await expect(fixed.first()).toHaveText('Mail');
 
-    const before = await fixed.first().boundingBox();
-    await strip.locator('[data-strip=scroll]').evaluate((el) => (el.scrollLeft = 400));
-    const after = await fixed.first().boundingBox();
-    expect(after!.x).toBe(before!.x);
+    // every chip sits after the one before it (no overlap, no cut-off fixed chips)
+    const xs = await strip.locator('[data-chip]').evaluateAll((els) => els.map((e) => [e.getBoundingClientRect().left, e.getBoundingClientRect().right]));
+    for (let i = 1; i < xs.length; i++) expect(xs[i][0]).toBeGreaterThanOrEqual(xs[i - 1][1]);
+
+    const before = (await fixed.first().boundingBox())!.x;
+    const scroller = strip.locator('[data-strip=scroll]');
+    await scroller.evaluate((el) => (el.scrollLeft = 400));
+    await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+    expect((await fixed.first().boundingBox())!.x).toBe(before); // the fixed five stay put
   });
 
   test('opening a site puts it at the head of the Recent strip', async ({ page }) => {

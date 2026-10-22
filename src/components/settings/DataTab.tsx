@@ -62,40 +62,30 @@ export function DataTab() {
   };
 
   return (
-    <div className="max-w-3xl space-y-8 p-6 text-sm text-white/90">
-      <div>
-        <h3 className="font-display text-base font-semibold text-white tracking-wide">
-          Data Management
-        </h3>
-        <p className="text-xs text-white/50">
-          Backup, restore, or reset your local DevDeck storage.
-        </p>
-      </div>
+    <div className="space-y-5 text-sm text-white/90">
 
       {/* Live State Summary Pills */}
       <div className="grid grid-cols-3 gap-3">
         <div className="glass-inner flex flex-col p-3 rounded-xl border border-white/10">
-          <span className="text-[10px] uppercase font-mono text-white/50">Categories</span>
+          <span className="set-card-hint text-[11.5px]">Categories</span>
           <span className="text-lg font-bold text-white tabular-nums">{categories.length}</span>
         </div>
         <div className="glass-inner flex flex-col p-3 rounded-xl border border-white/10">
-          <span className="text-[10px] uppercase font-mono text-white/50">Subcategories</span>
+          <span className="set-card-hint text-[11.5px]">Subcategories</span>
           <span className="text-lg font-bold text-white tabular-nums">{subcategories.length}</span>
         </div>
         <div className="glass-inner flex flex-col p-3 rounded-xl border border-white/10">
-          <span className="text-[10px] uppercase font-mono text-white/50">Catalog Sites</span>
+          <span className="set-card-hint text-[11.5px]">Sites</span>
           <span className="text-lg font-bold text-white tabular-nums">{sites.length}</span>
         </div>
       </div>
 
       {/* 2. Export Section */}
-      <section className="glass-inner space-y-3 p-5 rounded-2xl border border-white/10">
-        <h4 className="text-xs font-semibold text-white uppercase tracking-wider">
-          Export Configuration
-        </h4>
-        <p className="text-xs text-white/60">
-          Download your entire DevDeck configuration as a portable JSON backup file.
-        </p>
+      <section className="set-card space-y-4 rounded-2xl border p-5">
+        <div>
+          <h4 className="set-card-title text-[13.5px] font-semibold">Back up</h4>
+          <p className="set-card-hint mt-0.5 text-[12px]">Save everything — sites, lists, to-dos, settings — to a file you can restore later or on another computer. Your GitHub token is never included.</p>
+        </div>
         <button
           type="button"
           onClick={handleExport}
@@ -108,18 +98,16 @@ export function DataTab() {
               clipRule="evenodd"
             />
           </svg>
-          Export Backup JSON
+          Download backup
         </button>
       </section>
 
       {/* 3. Import Section */}
-      <section className="glass-inner space-y-3 p-5 rounded-2xl border border-white/10">
-        <h4 className="text-xs font-semibold text-white uppercase tracking-wider">
-          Import Configuration
-        </h4>
-        <p className="text-xs text-white/60">
-          Restore from a previously saved JSON backup file.
-        </p>
+      <section className="set-card space-y-4 rounded-2xl border p-5">
+        <div>
+          <h4 className="set-card-title text-[13.5px] font-semibold">Restore</h4>
+          <p className="set-card-hint mt-0.5 text-[12px]">Load a backup file. It replaces what is here now.</p>
+        </div>
 
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15 transition-colors border border-white/10">
           <svg className="size-4" viewBox="0 0 20 20" fill="currentColor">
@@ -129,7 +117,7 @@ export function DataTab() {
               clipRule="evenodd"
             />
           </svg>
-          Select Backup File (.json)
+          Choose a backup file…
           <input type="file" accept="application/json" onChange={handleFileImport} className="hidden" />
         </label>
 
@@ -155,13 +143,11 @@ export function DataTab() {
       {/* 4. Danger Zone: Factory Seed */}
       <DataCleanup />
 
-      <section className="glass-inner space-y-3 p-5 rounded-2xl border border-red-500/20">
-        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider">
-          Danger Zone
-        </h4>
-        <p className="text-xs text-white/60">
-          Reset DevDeck to the initial 3-category seed data.
-        </p>
+      <section className="set-card is-danger space-y-4 rounded-2xl border p-5">
+        <div>
+          <h4 className="text-[13.5px] font-semibold text-red-400">Start over</h4>
+          <p className="set-card-hint mt-0.5 text-[12px]">Reset DevDeck to its starting categories and sites. Back up first if you might want anything back.</p>
+        </div>
 
         {showResetConfirm ? (
           <div className="space-y-3 rounded-xl border border-red-500/30 bg-red-950/30 p-4">

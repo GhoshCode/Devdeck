@@ -72,7 +72,7 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     // 4. The links strip floats above the centre frame (its own bar, with a gap)
     const frame = page.getByTestId('center-frame');
     const strip = page.getByTestId('links-strip');
-    await expect(strip.locator('[data-chip=fixed]')).toHaveCount(4);
+    await expect(strip.locator('[data-chip=fixed]')).toHaveCount(5);
     const [stripBox, frameBox] = [await strip.boundingBox(), await frame.boundingBox()];
     expect(stripBox!.y + stripBox!.height).toBeLessThan(frameBox!.y);
   });
@@ -126,7 +126,9 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     const settingsModal = page.getByRole('dialog', { name: 'DevDeck Settings' });
     await expect(settingsModal).toBeVisible();
     const modalClass = await settingsModal.getAttribute('class');
-    expect(modalClass).toContain('glass-raised');
+    expect(modalClass).toContain('settings-shell');
+    // the settings window is frosted glass over the page
+    expect(await settingsModal.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain('blur');
 
     // Switch to Appearance tab
     const appearanceTab = settingsModal.getByRole('button', { name: /Appearance/i });
@@ -180,8 +182,8 @@ test.describe('Rigorous UI, Layout & Benchmark Testing', () => {
     await dataTab.click();
 
     // Verify Data Tab shows 10+ categories and 200+ catalog sites
-    await expect(settingsModal.getByText('Data Management')).toBeVisible();
-    await expect(settingsModal.getByText(/Export Configuration/i)).toBeVisible();
+    await expect(settingsModal.getByRole('heading', { name: 'Data & backup' })).toBeVisible();
+    await expect(settingsModal.getByRole('button', { name: /Download backup/ })).toBeVisible();
 
     // Close settings
     await page.keyboard.press('Escape');

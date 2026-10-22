@@ -2,13 +2,16 @@
 // service worker (which shows alerts on other websites even when DevDeck is
 // closed). Decides WHAT is due and WHEN; never touches the DOM or storage.
 
-import { FIRST_SECTION, type ProcessingItem, type Todo } from '../types';
+import { FIRST_SECTION, type CalendarEvent, type EventCategory, type EventPriority, type ProcessingItem, type Todo } from '../types';
+import { EVENT_CATEGORIES, countdown, eventSpan, fmtRange } from './calendar';
 import { describeSchedule, nextFireTime } from './schedule';
 import { describeTimer, timerEnd } from './timer';
 import { dueTimestamp } from './todos';
 import { getHostname } from '../utils';
 
-export type AlertKind = 'processing' | 'queue' | 'todo' | 'overdue';
+// 'calendar' is the capsule alert for custom calendar events; the other four
+// keep their own designs.
+export type AlertKind = 'processing' | 'queue' | 'todo' | 'overdue' | 'calendar';
 
 export interface AlertData {
   key: string;
@@ -22,6 +25,17 @@ export interface AlertData {
   priority?: 0 | 1 | 2 | 3;
   counts?: { todos: number; queue: number; processing: number };
   list?: string[]; // overdue summary: a few names
+  // calendar events
+  eventId?: string;
+  date?: string; // 'YYYY-MM-DD' — "Jump to slot"
+  startsAt?: number;
+  endsAt?: number;
+  category?: EventCategory;
+  eventPriority?: EventPriority;
+  // set by the stack: when it went up, and how many times the same site's
+  // reminder has fired while it was up (one card with "×N" instead of N cards)
+  shownAt?: number;
+  repeat?: number;
 }
 
 export type AlertEvent = { at: number; data: AlertData; reminder?: boolean };
@@ -45,12 +59,56 @@ export function reminderAlert(item: Pick<ProcessingItem, 'id' | 'name' | 'url' |
   };
 }
 
+export const CALENDAR_SNOOZE_MS = 5 * 60_000;
+
+export function calendarAlert(e: CalendarEvent, h24 = true): AlertData {
+  const { start, end } = eventSpan(e);
+  const cat = EVENT_CATEGORIES.find((c) => c.id === e.category)?.label ?? 'Event';
+  const who = e.attendees.length ? `${e.attendees.length} attendee${e.attendees.length === 1 ? '' : 's'}` : '';
+  return {
+    key: `cal:${e.id}:${start}:${e.remindMins ?? 'x'}`,
+    kind: 'calendar',
+    title: e.title,
+    sub: [fmtRange(start, end, h24), e.location, who].filter(Boolean).join(' · '),
+    eyebrow: cat.toUpperCase() + (e.priority === 'high' || e.priority === 'critical' ? ` · ${e.priority.toUpperCase()}` : ''),
+    eventId: e.id,
+    date: e.date,
+    startsAt: start,
+    endsAt: end,
+    category: e.category,
+    eventPriority: e.priority,
+  };
+}
+
 const prioLabel = (p?: number) => (p === 1 ? ' · P1' : p === 2 ? ' · P2' : p === 3 ? ' · P3' : '');
 const subFor = (t: Todo, lead: string) => [lead, ...(t.tags ?? []).slice(0, 3).map((x) => `#${x}`)].join(' · ');
 
-export function upcomingEvents(processing: readonly ProcessingItem[], todos: readonly Todo[], now: number): AlertEvent[] {
+export function upcomingEvents(processing: readonly ProcessingItem[], todos: readonly Todo[], now: number, events: readonly CalendarEvent[] = []): AlertEvent[] {
   const out: AlertEvent[] = [];
+  for (const e of events) {
+    if (e.remindMins === null) continue;
+    const at = eventSpan(e).start - e.remindMins * 60_000;
+    if (at > now) out.push({ at, data: calendarAlert(e) });
+  }
   for (const p of processing) {
+    // A due time set from the calendar uses the item's usual alert design.
+    if (p.dueDate && p.dueTime) {
+      const at = dueTimestamp({ dueDate: p.dueDate, dueTime: p.dueTime })!;
+      const proc = p.section === FIRST_SECTION;
+      if (at > now)
+        out.push({
+          at,
+          data: {
+            key: `pdue:${p.id}:${at}`,
+            kind: proc ? 'processing' : 'queue',
+            eyebrow: `${proc ? 'CURRENTLY PROCESSING' : 'QUEUE'} · DUE`,
+            title: p.name,
+            sub: `Due ${p.dueTime} · ${getHostname(p.url)}`,
+            url: p.url,
+            itemId: p.id,
+          },
+        });
+    }
     if (p.schedule?.enabled) {
       const next = nextFireTime(p.schedule, new Date(now));
       if (next) out.push({ at: next.getTime(), data: reminderAlert(p, next.getTime()), reminder: true });
@@ -114,5 +172,10 @@ export function overdueSummary(processing: readonly ProcessingItem[], todos: rea
 export function notificationText(d: AlertData): { title: string; message: string } {
   if (d.kind === 'todo') return { title: d.title, message: d.sub ?? 'To-do' };
   if (d.kind === 'overdue') return { title: `You have ${d.title} items`, message: (d.list ?? []).join(' · ') };
+  if (d.kind === 'calendar') {
+    const when = d.startsAt && d.endsAt ? countdown(d.startsAt, d.endsAt, Date.now()) : '';
+    return { title: d.title, message: [when, d.sub].filter(Boolean).join(' · ') };
+  }
+
   return { title: `Time to work on ${d.title}`, message: d.sub ?? '' };
 }

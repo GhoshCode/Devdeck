@@ -118,9 +118,11 @@ test.describe('Page Load & Header', () => {
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toBeVisible();
 
-    const text = await heading.textContent();
-    // At least one of these should match the current time
-    expect(text).toMatch(/morning|afternoon|evening|night/i);
+    // The page opens on the plain greeting; a right-click switches to the
+    // themed phrases (lib/greetings.ts).
+    await expect(heading).toHaveText(/^GOOD (MORNING|AFTERNOON|EVENING|NIGHT)/);
+    await heading.click({ button: 'right' });
+    await expect(heading).not.toHaveText(/^GOOD (MORNING|AFTERNOON|EVENING|NIGHT)/);
   });
 
   test('shows the current date', async ({ page }) => {
@@ -132,7 +134,7 @@ test.describe('Page Load & Header', () => {
     ];
     const currentMonth = months[new Date().getMonth()];
 
-    await expect(page.getByText(currentMonth)).toBeVisible();
+    await expect(page.getByTestId('date-line')).toContainText(currentMonth); // (a news headline may mention the month too)
   });
 
   test('date, greeting and a shuffleable daily quote on the right', async ({ page }) => {
@@ -141,7 +143,10 @@ test.describe('Page Load & Header', () => {
     // │  heading and a motivational quote (↻ for another).      │
     // └─────────────────────────────────────────────────────────┘
     const dateGreet = page.locator('[data-widget="date-greet"]');
-    await expect(dateGreet.getByRole('heading', { level: 1 })).toContainText('GOOD');
+    const heading = dateGreet.getByRole('heading', { level: 1 });
+    const phrase = await heading.textContent();
+    await heading.click({ button: 'right' }); // right-click changes the phrase (click changes the style)
+    await expect(heading).not.toHaveText(phrase ?? '');
     const quote = dateGreet.getByTestId('greeting-quote');
     const first = await quote.textContent();
     await quote.hover();
@@ -345,8 +350,8 @@ test.describe('Settings Modal', () => {
     const modal = page.locator('[aria-label="DevDeck Settings"]');
 
     await expect(modal.getByRole('button', { name: /Library/ })).toBeVisible();
-    await expect(modal.getByRole('button', { name: /Sitemap/ })).toBeVisible();
-    await expect(modal.getByRole('button', { name: /Quick Links/ })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Site map/ })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Quick links/ })).toBeVisible();
     await expect(modal.getByRole('button', { name: /Appearance/ })).toBeVisible();
     await expect(modal.getByRole('button', { name: /Data/ })).toBeVisible();
   });

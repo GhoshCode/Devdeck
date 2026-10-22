@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import type { ProcessingItem } from '../../types';
 import { useNow } from '../../hooks/useNow';
-import { isExtension } from '../../lib/env';
 import { describeSchedule, nextFireTime } from '../../lib/schedule';
 import { relativeAge } from '../../services/search';
 import { Favicon } from '../Favicon';
@@ -14,6 +13,7 @@ import { Countdown } from '../ui/Countdown';
 import { TimerPanel } from '../ui/TimerPanel';
 import { AnchoredPopover } from '../ui/AnchoredPopover';
 import { SlidersIcon } from '../ui/icons';
+import { openBoard } from '../../lib/workBoard';
 
 // D — Currently Processing (left column). Two stacked cards: the top card is
 // the first section ("Currently processing" by default). The lower card scrolls sideways
@@ -22,7 +22,7 @@ import { SlidersIcon } from '../ui/icons';
 
 export const ProcessingPanel = memo(function ProcessingPanel() {
   const processing = useStore((s) => s.processing);
-  const [managerOpen, setManagerOpen] = useState(false);
+  const [managerOpen, setManagerOpen] = useState<false | 'processing' | 'queue'>(false);
   const now = useNow(60_000);
 
   const groups = useMemo(() => {
@@ -37,7 +37,16 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
       <SplitPanes setting="leftSplit" label="Resize Currently processing and Queue" fitHint="fit Currently processing to its sites">
       <section aria-label={`Processing: ${top.name}`} className="glass relative flex h-full min-h-0 flex-col gap-2 p-3 pt-9">
         <PanelNotch title={top.name} count={top.items.length} />
-        <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen(true)} />} />
+        <button
+          type="button"
+          onClick={() => openBoard({ tab: 'processing' })}
+          aria-label="Expand currently processing"
+          title="Expand currently processing"
+          className="manage-btn absolute right-2 bottom-2 z-10 flex size-7 items-center justify-center rounded-lg"
+        >
+          <ExpandGlyph />
+        </button>
+        <ItemList items={top.items} now={now} empty={<EmptyState onAdd={() => setManagerOpen('processing')} />} />
       </section>
 
       <QueueAndTodo queueTitle={rest.length === 1 ? rest[0].name : 'Queue'} queueCount={rest.reduce((n, g) => n + g.items.length, 0)}>
@@ -52,15 +61,23 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
             ),
           )}
         </div>
-        <NotificationPrompt items={processing} />
         <div data-card-footer className="mt-auto flex h-9 shrink-0 items-center border-t border-white/[0.06] pl-1">
         <span className="font-mono text-[11px] text-white/45">{rest.reduce((n, g) => n + g.items.length, 0)} queued</span>
         <button
           type="button"
-          onClick={() => setManagerOpen(true)}
+          onClick={() => openBoard({ tab: 'queue' })}
+          aria-label="Expand queue"
+          title="Expand queue"
+          className="manage-btn ml-auto flex size-8 items-center justify-center rounded-lg"
+        >
+          <ExpandGlyph />
+        </button>
+        <button
+          type="button"
+          onClick={() => setManagerOpen('queue')}
           aria-label="Manage currently processing"
-          title="Add/remove sites and set reminders"
-          className="manage-btn group ml-auto flex size-8 items-center justify-center rounded-lg"
+          title="Add/remove sites in the queue and set reminders"
+          className="manage-btn group flex size-8 items-center justify-center rounded-lg"
         >
           <SlidersIcon className="size-6" />
         </button>
@@ -69,7 +86,7 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
       </QueueAndTodo>
       </SplitPanes>
 
-      <AnimatePresence>{managerOpen && <ProcessingManager onClose={() => setManagerOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{managerOpen && <ProcessingManager from={managerOpen} onClose={() => setManagerOpen(false)} />}</AnimatePresence>
     </>
   );
 });
@@ -201,25 +218,16 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-// Web mode only: browser notifications need an explicit grant.
-function NotificationPrompt({ items }: { items: ProcessingItem[] }) {
-  const [permission, setPermission] = useState(() =>
-    typeof Notification === 'undefined' ? 'denied' : Notification.permission,
-  );
-  const wantsReminders = items.some((i) => i.schedule.enabled);
-  if (isExtension() || permission !== 'default' || !wantsReminders) return null;
+
+function ExpandGlyph() {
   return (
-    <button
-      type="button"
-      onClick={() => void Notification.requestPermission().then(setPermission)}
-      className="absolute bottom-2 left-3 text-[10px] font-semibold text-[var(--color-accent)] hover:underline"
-    >
-      Enable reminder notifications
-    </button>
+    <svg className="size-[15px]" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M7.5 1.5h3v3M4.5 10.5h-3v-3M10.5 1.5 7 5M1.5 10.5 5 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
-function ProcessingManager({ onClose }: { onClose: () => void }) {
+export function ProcessingManager({ onClose, from = 'processing' }: { onClose: () => void; from?: 'processing' | 'queue' }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -228,29 +236,32 @@ function ProcessingManager({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" />
+      {/* A centred panel: add on the left, your lists on the right. */}
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div
         role="dialog"
         aria-label="Manage currently processing"
-        initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -16 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-        className="glass-raised fixed top-4 bottom-4 left-4 z-50 flex w-[min(400px,calc(100vw-2rem))] flex-col rounded-[var(--radius-card)] bg-[var(--color-base-elevated)]/95"
+        initial={{ opacity: 0, y: 10, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 6, scale: 0.99 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        className="sites-modal pointer-events-auto border shadow-2xl flex h-[min(760px,calc(calc(100vh/var(--ui-zoom,1))-2rem))] w-[min(1040px,100%)] flex-col rounded-[var(--radius-card)]"
       >
         <header className="flex items-center gap-3 border-b border-white/[0.07] px-5 pt-4 pb-3">
           <div className="flex-1">
-            <h2 className="font-display text-sm font-semibold tracking-[0.18em] text-white">CURRENTLY PROCESSING</h2>
-            <p className="text-[11px] text-white/40">Sites you're actively working on, with reminders.</p>
+            <h2 className="font-display text-sm font-semibold tracking-[0.18em] text-white">YOUR SITES</h2>
+            <p className="text-[11px] text-white/45">What you're working on now and what's lined up next, with reminders.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="flex size-8 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white">
             ✕
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <ProcessingEditor />
+          <ProcessingEditor startSection={from === 'queue' ? 'Queue' : undefined} />
         </div>
       </motion.div>
+      </div>
     </>
   );
 }

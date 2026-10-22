@@ -1,7 +1,7 @@
 // Search row (Zone 3) and links strip (Zone 4) logic — plan Phase 2, §7 Q7/Q8/Q12.
 
 import { netFetch } from '../lib/netFetch';
-import type { QuickLink, Site } from '../types';
+import type { QuickLink, SearchEngineId, Site } from '../types';
 import { getHostname, normalizeUrl } from '../utils';
 import { isExtension } from '../lib/env';
 
@@ -25,15 +25,26 @@ const FILE_EXTENSIONS = new Set(['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'md', 'cs
 export const googleSearchUrl = (q: string) =>
   `https://www.google.com/search?q=${encodeURIComponent(q.trim())}`;
 
-export function destinationFor(raw: string): string {
+export const SEARCH_ENGINES: ReadonlyArray<{ id: SearchEngineId; name: string; url: string }> = [
+  { id: 'google', name: 'Google', url: 'https://www.google.com/search?q={q}' },
+  { id: 'bing', name: 'Bing', url: 'https://www.bing.com/search?q={q}' },
+  { id: 'duckduckgo', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={q}' },
+  { id: 'brave', name: 'Brave Search', url: 'https://search.brave.com/search?q={q}' },
+  { id: 'startpage', name: 'Startpage', url: 'https://www.startpage.com/do/search?q={q}' },
+  { id: 'ecosia', name: 'Ecosia', url: 'https://www.ecosia.org/search?q={q}' },
+];
+export const searchEngine = (id?: SearchEngineId) => SEARCH_ENGINES.find((e) => e.id === id) ?? SEARCH_ENGINES[0];
+export const searchUrl = (q: string, id?: SearchEngineId) => searchEngine(id).url.replace('{q}', encodeURIComponent(q.trim()));
+
+export function destinationFor(raw: string, engine?: SearchEngineId): string {
   const q = raw.trim();
-  if (!looksLikeUrl(q)) return googleSearchUrl(q);
+  if (!looksLikeUrl(q)) return searchUrl(q, engine);
   return /^localhost|^\d/.test(q) ? `http://${q}` : normalizeUrl(q);
 }
 
 // ---- Links strip (E + F) ----------------------------------------------------
 
-export const FIXED_QUICK_LINKS = 4;
+export const FIXED_QUICK_LINKS = 5;
 
 export interface StripLink {
   id: string;
@@ -52,12 +63,13 @@ export function linkScore(site: Pick<Site, 'visits' | 'lastVisited'>, now: numbe
 }
 
 export interface StripModel {
-  fixed: StripLink[]; // first 4 configured quick links — never scroll
+  fixed: StripLink[]; // first 5 configured quick links — never scroll
   scrolling: StripLink[]; // remaining quick links, then auto-picked sites
   recent: StripLink[]; // F: most recently opened sites
 }
 
-// E: the first 4 quick links are fixed; configured links beyond 4 come next,
+// E: the first 5 quick links are fixed (topped up from the auto-picks when
+// fewer are configured); configured links beyond 5 come next,
 // then `autoCount` sites ranked by linkScore, skipping anything already shown
 // (matched by hostname). A fresh deck has no visits yet, so it falls back to
 // the categories' primary sites in deck order to keep the strip useful.
@@ -95,6 +107,9 @@ export function buildStrip(
     .sort((a, b) => b.lastVisited! - a.lastVisited!)
     .slice(0, recentCount)
     .map(siteLink);
+
+  // Fewer than five configured: the top auto-picked sites fill the fixed slots.
+  if (fixed.length < FIXED_QUICK_LINKS) fixed.push(...auto.splice(0, FIXED_QUICK_LINKS - fixed.length));
 
   return { fixed, scrolling: [...extra, ...auto], recent };
 }

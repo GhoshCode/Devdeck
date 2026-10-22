@@ -17,7 +17,239 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22k — video, sizes, tab
+
+- **Video wallpaper:** Settings → Appearance → Custom wallpaper → Video (MP4 or WebM, up to 20 MB). It plays silently behind everything, with the same blur and darkness sliders, and pauses when you switch tabs.
+- **Default themes:** choose which preset Dark mode and Light mode use.
+- **Interface size:** Auto fits DevDeck to your screen; or set 80–125 % yourself.
+- **The browser tab** shows a >_ icon in your accent colour, and its title types little shell commands (turn this off under Appearance → Browser tab).
+- **Calendar:** larger numbers at the top and a taller search.
+- **Live preview** in Appearance now looks like the real dashboard.
+- **Alerts are DevDeck's own pop-ups only;** Chrome's built-in notifications are no longer used.
+
+## Round 2026-10-22j — new Settings
+
+- **Settings is reorganised** by what you're doing:
+  - General (You & greeting, Clock, Weather & location)
+  - Look (Appearance)
+  - Workspace (Library, Site map, Quick links, Queue & processing)
+  - Search & AI
+  - Stay informed (Notifications, News & jobs)
+  - Connections (GitHub, Terminal)
+  - Data & backup
+
+  Each page says what it is for. "Find a setting" at the top of the list jumps to the right page. Options appear only when they apply, for example the GitHub token once you've entered a username.
+- Every panel, dialog and the calendar now takes on your theme and accent colour.
+- **Reminder floods stay calm.** A site that keeps firing shows one card with "×N". Several at once become one "N reminders now" card. While a panel is open they wait behind a small bell. Clear all is always at the top.
+- Chrome's built-in notifications are off by default. DevDeck's own pop-ups stay on; turn Chrome's on in Settings → Notifications.
+
+**Manual test checklist**
+- [ ] Open Settings: it starts on You & greeting; type "token" in Find a setting, and GitHub is offered.
+- [ ] Switch theme: Settings, the sites panel and the calendar all follow it.
+- [ ] With several reminders due at once: one grouped card; open the sites panel and they wait behind the bell.
+
+## Round 2026-10-22i — sites panel, quick-links panel, busy calendars
+
+- **Your sites panel** (the sliders button in the Queue box, or Manage in Currently processing): a centred panel.
+  - On the left, choose the list (Currently processing, Queue, or make a new one), search your sites or paste a link, pick a starting reminder, and add.
+  - A site can't be added to the same list twice.
+  - On the right, see each list with counts, find a site, and open it to change its reminder or move it to another list.
+  - New reminders keep going with no end date. Old ones that would have stopped at the end of this month now keep going too.
+- **Quick links:** drag the six-dot grip down, or click it, to open every other and recent site, up to 15. Drag the panel's bottom edge up to close it. The panel matches your theme.
+- **Busy calendars:** reminders at the same time show as one item ("5 reminders · …"); click it for the list. Month days always show "+ N more", agenda cards stay readable, and moving between weeks is about four times faster.
+- The pin on a card's main sites is just the pin icon.
+
+**Manual test checklist**
+- [ ] Open the sites panel from the Queue box: Queue is selected; Currently processing and "+ New list" are there too.
+- [ ] Add the same site twice to one list: the second time it shows "Added to …".
+- [ ] With many reminders, open Week and Day views: grouped reminders open as a list.
+
+## Round 2026-10-22h — QA pass
+
+- On smaller screens (1440–1700 px) the terminal narrows first, so the quick links keep their room. If the pinned links still don't fit, they scroll instead of being cut.
+- The resize tabs inside the cards box only appear when there is more than one card mode to switch to.
+- Checked automatically:
+  - light theme;
+  - 1440, 1600 and 1920 px widths;
+  - the CPU temperature (shown when Chrome provides one);
+  - Alt+Enter with a 45-line prompt to Gemini, ChatGPT and Claude, on test pages, not the real sites.
+
+## Round 2026-10-22g — quick links
+
+- Five quick links are always pinned at the start of the bar. If you've set fewer, your most-visited sites fill the spare slots. The other links and the recent ones scroll sideways beside them.
+- The quick-links bar starts under the search bar and stretches up to the terminal, so making the terminal narrower gives the links more room, with no gap.
+
+## Round 2026-10-22f — card modes
+
+- The page opens with two category cards, with the To-do / Processing and news columns balanced on either side.
+- The tabs on the inside edges of the cards box both switch modes: 2 → 1 → 3 → 2 cards, and each mode is balanced. Drag a tab to go by whole cards. The thin bars outside still resize freely; double-click one to go back to the card mode.
+- The quick-links bar sits right under the search bar and stays there whatever the cards do. All its chips scroll sideways together, with no overlap.
+- The handle between the quick links and the terminal stays just left of the terminal.
+- Greeting: click for the next style, right-click for another phrase.
+
+**Manual test checklist**
+- [ ] A fresh page shows two cards with matching side columns.
+- [ ] Click either edge tab three times: 1 card, 3 cards, back to 2.
+- [ ] Resize the terminal: the handle stays beside it.
+- [ ] Right-click the greeting: a themed phrase; left-click: the style changes.
+
+## Round 2026-10-22e — balanced layout
+
+- With only one or two categories (or a 1–2-card view), the cards area is exactly as wide as its cards, and the To-do / Processing column and the news column share the rest equally, for a symmetric page.
+- The search suggestions and the long-text panel now show over the terminal box.
+- The long-search panel lines up with the bar's left edge.
+- The first four quick links stay fixed while the rest scroll, even on a narrow bar.
+
+**Manual test checklist**
+- [ ] With two categories, the left and right columns are the same width and the two cards fill the centre.
+- [ ] Type a URL into search: the suggestions cover the terminal box.
+
+## Round 2026-10-22d — resize tab grip, scrolling links, long-search panel
+
+- The tabs inside the cards box have a three-line grip. Click: one card fewer. Drag: whole cards either way (in for fewer, out for more). The thin bars outside still resize freely.
+- The handle between the quick links and the terminal sits in the middle of the gap.
+- However narrow the quick-links bar gets, its icons scroll (trackpad, mouse wheel or drag); none are hidden.
+- Long search text: the bar stays one line and ends with "…"; a darker panel, half as wide again and starting at the bar's left edge, holds all of the text to edit and scrolls when it gets long. The search buttons don't move.
+
+**Manual test checklist**
+- [ ] Drag the left edge tab right by about a card: one card fewer. Drag it back: the card returns.
+- [ ] Drag the links / terminal handle far left: the quick links scroll with the mouse wheel.
+- [ ] Paste a long paragraph into search: "…" in the bar and a wide panel below; Enter still searches.
+
+## Round 2026-10-22c — polish
+
+- The background dot-and-line animation is a little more visible; in the light theme it is charcoal grey.
+- The full-screen calendar shows the date as its title (no "AXIOM / Pro workspace" label) beside a new matte calendar mark.
+- Clicking the greeting changes the style instantly (double-click still changes the phrase).
+- Voice typing adds to the text already in the search bar instead of replacing it.
+- Search bar: long text wraps and the bar grows to two lines. Click the caret in the thin strip under it to see all of the text, and again to fold it.
+
+**Manual test checklist**
+- [ ] Light theme: the background dots are grey and visible.
+- [ ] Type "hello", click the mic and speak: the result is "hello <your words>".
+- [ ] Paste a long paragraph into the search bar: two lines show, and the caret shows all of it.
+
+## Round 2026-10-22b — resize tabs, plain greeting, CPU temperature
+
+- **Resize the cards area two ways:**
+  - Drag the thin bars between the cards and the side columns to resize freely.
+  - Or click the small tabs on the inside left and right edges of the cards box. Each click shrinks the cards to one whole card fewer (3 → 2 → 1; a part-cut card snaps to the whole cards) and widens that side. At one card, a click gives the side its space back.
+  - Double-click a bar to reset it.
+- **Greeting:** opens as GOOD MORNING / AFTERNOON / EVENING / NIGHT. Double-click it for the themed phrases (and again for another one). Click and right-click still change the style.
+- **CPU temperature** shows next to the CPU meter where Chrome provides it (ChromeOS only; Chrome on Windows and Mac doesn't expose it).
+- **Terminal** is as wide as the Git box by default; long commands wrap and the box grows downward.
+- **Removed:** the "type straight into DevDeck on a new tab" option.
+
+**Manual test checklist**
+- [ ] Refresh: the greeting is the plain one; double-click gives a themed phrase.
+- [ ] Click the left edge tab twice: 3 → 2 → 1 cards; a third click restores the left column. Same for the right tab and the news column.
+- [ ] Drag a bar halfway into a card, then click that side's tab: it snaps to the whole cards below.
+- [ ] Type a long command: the terminal box grows down; Enter runs it.
+
+## Round 2026-10-22 — quick links + terminal row
+
+- The quick-links bar and the terminal sit in their own row. By default the bar is exactly as wide as the cards below it and the terminal as wide as the news column, with 1, 2 or 3 cards. Drag the small handle between them to size them yourself; double-click it to line them up again.
+- CPU / RAM box is half as wide, right next to the Settings button.
+- Greeting: click for the next style, right-click for the previous one, double-click for a different greeting.
+
+**Manual test checklist**
+- [ ] With 1, 2 and 3 cards (drag the card handles), the quick-links bar matches the cards and the terminal matches the news column.
+- [ ] Drag the handle between the bar and the terminal: only that row changes; double-click restores it.
+- [ ] Greeting: click / right-click change the style; double-click changes the phrase only.
+
+## Round 2026-10-21 — notifications, search keys, stats, greetings
+
+- **Settings → Processing → Notifications:** All notifications / Chrome built-in notifications / Alert pop-up notifications. With All ticked the other two are ticked and locked.
+- **New tab** (removed in 2026-10-22b): start typing right away and it goes into DevDeck's search, not Chrome's address bar. The address bar shows the extension address; this is off by default — turn it on in Settings → Profile → Search (the address bar then shows the extension address).
+- **Search keys:** Enter searches in a new tab · Ctrl+Enter in a new window · Alt+Enter asks your AI. Choose the search engine in Settings → Profile → Search. Scroll on the AI icon to switch AIs.
+- **Alerts:** To-do and Queue alerts stay 10 s; Currently processing 5 s. Clear all is bigger.
+- **Quick links:** in 1- and 2-card views the bar fits without scrolling; the fixed sites have a neon accent border. Main sites in a card show a pin; click it to unpin.
+- **Layout:** in 1- and 2-card views the links row is as wide as the cards; extra width goes to Tech news first, then the left column.
+- **Work panel:** the Currently processing expand button is in its bottom-right corner; switching tabs by scrolling is smooth (one tab per gesture).
+- **Feeds** show 20 items per section. **Quotes** change every 30 minutes online (bundled ones offline) and are cut to fit with no "…".
+- **CPU and RAM** meters beside the Settings button (extension).
+- **Greeting:** a themed phrase for the time of day (office, afternoon, geek, night crawler); click for another, right-click for the next style.
+- **Mini calendar** button shows today's date under the icon. **CLI clock** cycles 48 commands. The date line is larger and the UV badge a little lower.
+
+**Manual test checklist**
+- [ ] Notifications: All ticked locks the two below; untick it and turn pop-ups off, then a due to-do arrives as a Chrome notification only.
+- [ ] Press Ctrl+T and type: the text appears in DevDeck's search.
+- [ ] Enter / Ctrl+Enter / Alt+Enter do search in a new tab / search in a new window / ask the AI; the engine setting changes the search site; scrolling on the AI icon switches the AI.
+- [ ] A Processing alert disappears after 5 s, a To-do or Queue alert after 10 s.
+- [ ] Resize to a 2-card view: the links bar doesn't scroll, chips never overflow, and the news column is wider.
+- [ ] Click a main site's pin badge: it leaves the main row and stays in its list.
+- [ ] CPU / RAM meters update about every 2 s.
+- [ ] Click the greeting a few times: the phrases change and fit the time of day.
+
+## Round 2026-10-20m — tidy-ups
+
+- The quick-links bar no longer spills into the terminal; extra chips stay inside the bar.
+- No outer frame around the category cards.
+- Work panel tabs slide smoothly (one animation); a sideways swipe moves one tab.
+- The terminal looks like a small console: a coloured prompt (PS ❯ ~ on Windows, $ ❯ ~ on Mac and Linux), scanlines and a glow while typing. Its window mark matches your system: three traffic-light dots on a Mac, a >_ mark on Windows and Linux.
+- Administrator mode turns the terminal amber: border, prompt (#) and the text cursor.
+- The quick-links bar and the buttons beside it sit a little lower, with all three columns level; the Git tiles sit lower inside their box.
+- Extension version 3.0.0.
+
+**Manual test checklist**
+- [ ] Narrow the window: the quick-links chips never cover the terminal; extra chips scroll inside the bar.
+- [ ] No outer box around the category cards; the cards sit just under the links bar.
+- [ ] The links bar, Calendar bar and terminal row are level, and the cards, Calendar bar and Tech news start at the same height.
+- [ ] Work panel: clicking Currently processing → To-do slides straight across with no flicker, and the highlight slides with it; a sideways swipe moves one tab; the first tab shows "Currently processing" in full on wide screens.
+- [ ] Terminal on Windows shows >_ and PS; on Linux >_ and $; on a Mac the three dots and $.
+- [ ] Turn on Administrator mode: the border, the prompt (#) and the blinking cursor are amber; turn it off and they return to the accent.
+
+
+## Round 2026-10-20l — work panel, AI shortcut, alert polish
+
+- **Work panel:** the expand buttons on the Currently processing card and on the Queue / To-do card open one big panel with three tabs: Currently processing, Queue and To-do. It opens on the tab you came from. Switch with the tabs, the dots, a sideways swipe or ←/→. **Review** on the overdue alert opens it on To-do with overdue tasks first.
+- **Ctrl+Enter** in the search bar asks your AI (Alt+Enter works too).
+- The clock is a bit bigger; the UV index sits under the temperature; On this day has a small refresh icon at the end.
+- Settings → Appearance → Greeting: checkboxes to show or hide the On this day and quote lines.
+- Alerts show a thin line that shrinks as their time runs out. While alerts are up, the area behind them is blurred and can't be clicked by mistake.
+- Mini calendar: double-click the month or year for side-by-side Month and Year wheels.
+
+**Manual test checklist**
+- [ ] The Currently processing expand button opens the panel on Currently processing; the Queue expand opens Queue; the To-do expand opens To-do. Tabs, dots, swipe and ←/→ all switch; Esc closes.
+- [ ] Processing / Queue cards: Open, Set timer, Move, Remove (Undo) work; Manage opens the editor.
+- [ ] Overdue alert → Review → To-do tab, overdue first.
+- [ ] Type a query and press Ctrl+Enter → your AI opens with the text.
+- [ ] Clock is larger; UV under the temperature; the refresh icon is at the end of the On this day line.
+- [ ] The two Greeting checkboxes hide and show their lines.
+- [ ] An alert's line shrinks right → left and pauses on hover; clicks behind the stack do nothing.
+- [ ] Mini calendar: double-click the month or year → two wheels; picking changes the month; Esc closes the wheels, then the calendar.
+
+## Round 2026-10-20k — type to search, Clear all, Command Calendar
+
+
+- **Type anywhere to search:** with nothing selected, just start typing (or paste) and the text lands in the search bar. Long or multi-line text shows a small expand button at the bottom-right of the bar. Expanded, it becomes a roomy composer: Shift+Enter for a new line, Enter to search or ask the AI, Esc to collapse. Your text is kept.
+- **Clear all:** when two or more reminders are on screen, a "Clear all (N)" pill appears under them and sweeps them away.
+- **Command Calendar:** click the **Calendar** bar above Currently processing. It opens full screen:
+  - Day, Week, Month and Agenda views, with your to-dos, Currently processing and Queue items that have a due date, plus your own events: meetings, calls, VIP, deep work, deadlines and travel;
+  - click or drag on the grid to schedule; **New item** creates an event, to-do, Queue or Processing item, or schedules an existing one;
+  - today's briefing pills (click one to show only that kind), the conflict radar with **Auto-resolve**, **Focus Shield** (blocks your next free 2 hours), a second time-zone rail, and the alert stack on the right;
+  - keys: D/W/M/A, ←/→, T, N, F, /, B, Esc.
+- The calendar takes your theme: its colours follow your accent and its glass shows your backdrop through it, in light and dark.
+- **Mini calendar:** the small calendar button next to the Calendar bar opens a simple glass month calendar, just dates. Use the arrows to move, PgUp/PgDn to change month, T for today and Esc to close.
+- **Calendar alerts:** events alert as a rounded capsule with a live countdown and Acknowledge / Snooze 5m / Jump to slot; it stays until you act. To-do, Queue and Processing alerts keep their usual look.
+
+**Manual test checklist**
+- [ ] Click an empty spot, type "react": the search bar fills, the caret is at the end, and suggestions show. Ctrl+V on an empty spot pastes into it. Typing inside other fields or dialogs is unaffected; `/` and `,` still work.
+- [ ] Paste 4 lines: the expand button appears; expand → full-width drawer with the line count; Shift+Enter adds a line; Esc collapses with the text kept.
+- [ ] Two or more alerts → "Clear all (N)" under the stack; click it → cards slide out; with one left the pill disappears.
+- [ ] The Calendar bar shows the next item and the meeting count; it opens full screen; Esc closes it and focus returns to the bar.
+- [ ] Day: Now line and time pill; overlaps side by side; conflict badges; drag 10:00–11:30 → modal prefilled; save → the block flashes.
+- [ ] To-do checkbox on a card completes it (Undo works); Queue cards are dashed amber; Processing cards pulse.
+- [ ] Week: per-day item count and load bar; Month: green/amber/red top edges and "+ N more"; Agenda: three lanes.
+- [ ] Conflict radar → Auto-resolve moves the colliding to-do/Queue/Processing due dates; Focus Shield adds a 2 h deep-work block.
+- [ ] An event with "5 min before": the capsule alert appears on time; Snooze 5m brings it back; Jump to slot opens the calendar on it. On another website (extension) the same capsule shows.
+- [ ] Light theme: every calendar surface is readable.
+- [ ] Change the accent colour in Appearance: the calendar's buttons, today marker, Now line badges and launcher follow it.
+- [ ] Mini calendar: opens beside the bar, today glows in the accent, week numbers are right, PgDn/PgUp change month, Esc and clicking outside close it.
+
+
 ## Round 2026-10-20j — On this day and quotes
+
 
 - Under the greeting, above the quote: **On this day**, one tech or computing event from today's date in history. Hover and press ↻ for another event from the same day; click it to open the Wikipedia article. You can turn it off in Appearance.
 - The daily quote comes from an online library of more than 1,400 quotes. It's the same all day; ↻ gives a random one.

@@ -166,7 +166,7 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
               : 'Weather'
           }
           data-testid="weather-uv"
-          className={`${row} -my-0.5 cursor-pointer transition-colors select-none hover:bg-white/[0.05] ${
+          className={`flex shrink-0 flex-col items-start gap-1.5 rounded-lg px-1.5 py-0.5 text-left -my-0.5 cursor-pointer transition-colors select-none hover:bg-white/[0.05] ${
             state.status === 'loading' ? (data ? 'opacity-70' : 'animate-pulse') : ''
           }`}
         >
@@ -180,9 +180,9 @@ export const WeatherUV = memo(function WeatherUV({ onSetup, lead }: { onSetup?: 
               <span className="text-[0.7rem] text-white/55">C</span>
             </span>
           </span>
-          {/* B — UV index */}
+          {/* B — UV index, under the temperature */}
           <span
-            className={`rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
+            className={`mt-0.5 rounded-full border px-2 py-px text-[9.5px] font-medium tracking-wide ${
               data ? UV_BADGE[data.uvRisk] : 'border-white/15 text-white/40'
             }`}
           >

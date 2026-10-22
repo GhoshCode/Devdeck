@@ -7,6 +7,8 @@ import { AlertCenter } from './components/ui/AlertCenter';
 import { skinFor } from './lib/skin';
 import { switchModePatch } from './lib/appearance';
 import { withThemeTransition } from './lib/themeTransition';
+import { autoScale } from './lib/uiScale';
+import { useTabIdentity } from './hooks/useTabIdentity';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { CategoryMenuIcon, CategoryOverview } from './components/CategoryOverview';
@@ -14,6 +16,7 @@ import { UndoToast } from './components/ui/UndoToast';
 import { LinkPeek } from './components/ui/LinkPeek';
 import { OfflineBanner } from './components/ui/OfflineBanner';
 import { CogIcon } from './components/ui/icons';
+import { SystemStats } from './components/ui/SystemStats';
 import { TopBar } from './components/topbar/TopBar';
 import { WeatherUV } from './components/topbar/WeatherUV';
 import { DateLine } from './components/topbar/DateGreet';
@@ -23,6 +26,9 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { FeedColumn } from './components/feeds/FeedColumn';
 import { SearchBar } from './components/search/SearchBar';
 import { BookmarkButton } from './components/search/BookmarkDrawer';
+import { CalendarButton } from './components/calendar/CommandCalendar';
+import { MiniCalendarButton } from './components/calendar/MiniCalendar';
+import { WorkBoardHost } from './components/processing/WorkBoard';
 import { SiteMapButton } from './components/search/SiteMapModal';
 import { LinksStrip } from './components/links/LinksStrip';
 import SettingsModal, { type SettingsTabId } from './components/settings/SettingsModal';
@@ -32,13 +38,13 @@ export default function App() {
   useDragOutToWindow();
   const accentColor = useStore((s) => s.settings.accentColor);
 
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLTextAreaElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [overview, setOverview] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('library');
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('you');
   const [settingsPrefill, setSettingsPrefill] = useState('');
 
-  const openSettings = (tab: SettingsTabId = 'library', prefill = '') => {
+  const openSettings = (tab: SettingsTabId = 'you', prefill = '') => {
     setSettingsPrefill(prefill);
     setSettingsTab(tab);
     setIsSettingsOpen(true);
@@ -78,6 +84,24 @@ export default function App() {
       html.classList.remove('theme-switching');
     };
   }, [accentColor, themeMode, skin]);
+
+  // The browser tab: accent-coloured >_ icon and a title that types commands.
+  useTabIdentity(accentColor, useStore((s) => s.settings.tabTitleAnimation ?? true));
+
+  // Interface size: a manual size, or Auto from the window width (kept current).
+  const uiScale = useStore((s) => s.settings.uiScale ?? null);
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const apply = () => {
+      const z = uiScale ?? autoScale(window.innerWidth);
+      html.style.setProperty('--ui-zoom', String(z));
+      html.style.zoom = z === 1 ? '' : String(z);
+    };
+    apply();
+    if (uiScale !== null) return;
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [uiScale]);
 
   // Appearance → Auto: follow the OS light/dark setting, live.
   const followSystem = useStore((s) => !!s.settings.followSystem);
@@ -150,7 +174,7 @@ export default function App() {
   const settingsButton = (
     <button
       type="button"
-      onClick={() => openSettings('library')}
+      onClick={() => openSettings()}
       title="Open Settings (,)"
       aria-label="Settings"
       className="settings-orb group relative flex size-10 shrink-0 items-center justify-center rounded-xl"
@@ -166,26 +190,37 @@ export default function App() {
       <DashboardLayout
         topBar={
           <TopBar
-            weather={<WeatherUV onSetup={() => openSettings('profile')} lead={<DateLine />} />}
+            weather={<WeatherUV onSetup={() => openSettings('weather')} lead={<DateLine />} />}
             search={
-              <div className="relative mx-auto flex w-full max-w-[940px] items-center gap-2 lg:right-6">
+              <div data-search-row className="relative mx-auto flex w-full max-w-[940px] items-center gap-2 lg:right-6">
                 <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
                 <SiteMapButton />
                 <BookmarkButton />
               </div>
             }
             git={<GitWidget />}
-            command={<CommandPrompt onSetup={() => openSettings('profile')} />}
+            command={<CommandPrompt onSetup={() => openSettings('terminal')} />}
           />
         }
-        left={<ProcessingPanel />}
-        leftFooter={settingsButton}
-        rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
-        center={
-          <div className="flex h-full min-h-0 flex-col gap-3">
-            {/* All categories stands on its own, left of the quick links + recent
-                bar; it moves with the bar as the centre column resizes. */}
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
+        left={
+          <>
+            <div className="mt-[7px] flex shrink-0 gap-2">
+              <CalendarButton />
+              <MiniCalendarButton />
+            </div>
+            <ProcessingPanel />
+          </>
+        }
+        leftFooter={
+          <div className="flex min-w-0 items-center gap-2">
+            {settingsButton}
+            <SystemStats />
+          </div>
+        }
+        rightTop={<CommandPrompt onSetup={() => openSettings('terminal')} />}
+        linksRow={
+            // All categories stands on its own, left of the quick links + recent bar.
+            <div className="mx-3 flex min-w-0 shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setOverview((v) => !v)}
@@ -202,8 +237,10 @@ export default function App() {
                 <LinksStrip />
               </div>
             </div>
-          <div data-testid="center-frame" className="glass flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div data-center-body className="relative flex min-h-0 flex-1 p-3">
+        }
+        center={
+          <div data-testid="center-frame" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div data-center-body className="relative flex min-h-0 flex-1 px-3 pb-3">
               {/* The overview replaces the cards (one view at a time keeps it light). */}
               {overview ? (
                 <CategoryOverview onClose={() => setOverview(false)} />
@@ -213,13 +250,13 @@ export default function App() {
               <OfflineBanner />
             </div>
           </div>
-          </div>
         }
-        right={<FeedColumn onManage={() => openSettings('scraping')} />}
+        right={<FeedColumn onManage={() => openSettings('feeds')} />}
       />
 
       <UndoToast />
       <AlertCenter />
+      <WorkBoardHost />
       <LinkPeek />
 
       {/* Settings Overlay */}

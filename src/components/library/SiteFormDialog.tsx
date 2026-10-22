@@ -83,7 +83,7 @@ export function SiteFormDialog({
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-        className="site-form ultra-thin-scrollbar max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border p-6 shadow-2xl"
+        className="site-form ultra-thin-scrollbar max-h-[calc(90vh/var(--ui-zoom,1))] w-full max-w-md overflow-y-auto rounded-2xl border p-6 shadow-2xl"
       >
         <form onSubmit={save} className="space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
