@@ -175,7 +175,7 @@ export function LibraryTab({
       {/* Delete Category Confirm Modal */}
       {deletingCatId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="glass w-full max-w-sm space-y-4 rounded-2xl border-red-500/20 bg-[#150e24] p-5 shadow-2xl">
+          <div className="glass w-full max-w-sm space-y-4 rounded-2xl border-red-500/20 bg-[var(--color-base-elevated)] p-5 shadow-2xl">
             <h4 className="font-semibold text-sm text-red-400">Delete Category?</h4>
             <p className="text-xs text-white/70">
               This deletes the category and its subcategories. Its sites move to the recycle bin — restore them from “+ Add Site”.

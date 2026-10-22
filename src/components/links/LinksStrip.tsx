@@ -41,6 +41,8 @@ export const LinksStrip = memo(function LinksStrip() {
   // The panel follows the pointer: progress runs 0 (folded) → 1 (open) while
   // the grip is dragged down or the panel's bottom edge is dragged up, and a
   // short ease-out carries it the rest of the way on release (or on a click).
+// Scrolling works too: on the bar (anywhere but a link) or down on the grip
+// opens it; up on the grip, or any scroll inside the panel, folds it.
   const progress = useMotionValue(0);
   const [expanded, setExpanded] = useState(false); // mounted (open, opening or closing)
   const rootRef = useRef<HTMLDivElement>(null);
@@ -96,7 +98,14 @@ export const LinksStrip = memo(function LinksStrip() {
 
   return (
     <div ref={rootRef} className="relative min-w-0">
-    <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 pr-1 pl-3">
+    <div
+      data-testid="links-strip"
+      // scrolling on the bar (not on a link): down opens the panel below, up folds it
+      onWheel={(e) => {
+        if ((e.target as Element).closest('[data-chip]') || Math.abs(e.deltaY) <= 2) return;
+        settle(e.deltaY > 0 ? 1 : 0); // down opens, up folds
+      }}
+      className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 pr-1 pl-3">
       {/* The first five quick links stay put while the rest and the recent
           links scroll sideways beside them. On a bar too narrow for all five,
           they scroll too rather than being cut. */}
@@ -141,6 +150,11 @@ export const LinksStrip = memo(function LinksStrip() {
       <button
         type="button"
         onPointerDown={gripDrag}
+        // scroll on the grip: down opens the panel, up folds it
+        onWheel={(e) => {
+          e.stopPropagation(); // the bar below would open it again
+          if (Math.abs(e.deltaY) > 2) settle(e.deltaY > 0 ? 1 : 0);
+        }}
         // keyboard (Enter / Space): pointer presses are handled by the drag
         onClick={(e) => e.detail === 0 && settle(isOpen ? 0 : 1)}
         aria-expanded={expanded}
@@ -155,7 +169,7 @@ export const LinksStrip = memo(function LinksStrip() {
     </div>
 
       {expanded && (
-        <PanelShell progress={progress} panelRef={panelRef}>
+        <PanelShell progress={progress} panelRef={panelRef} onWheel={() => settle(0)}>
           {more.length > 0 ? (
             <>
               <div data-panel-row="more" className="flex flex-wrap gap-2">
@@ -207,7 +221,7 @@ function GripDots({ className }: { className: string }) {
 // The panel unrolls from the bar: its bottom is clipped by (1 − progress), it
 // slides down a few px and fades in over the first part of the travel. All of
 // it rides on one motion value, so it tracks the pointer frame by frame.
-function PanelShell({ progress, panelRef, children }: { progress: MotionValue<number>; panelRef: React.RefObject<HTMLDivElement | null>; children: React.ReactNode }) {
+function PanelShell({ progress, panelRef, onWheel, children }: { progress: MotionValue<number>; panelRef: React.RefObject<HTMLDivElement | null>; onWheel: () => void; children: React.ReactNode }) {
   const clipPath = useTransform(progress, (p) => `inset(0 0 ${(1 - p) * 100}% 0 round 16px)`);
   const y = useTransform(progress, [0, 1], [-10, 0]);
   const opacity = useTransform(progress, [0, 0.2, 1], [0, 1, 1]);
@@ -216,6 +230,8 @@ function PanelShell({ progress, panelRef, children }: { progress: MotionValue<nu
       ref={panelRef}
       id="links-panel"
       data-testid="links-panel"
+      // scrolling anywhere in the panel folds it back
+      onWheel={onWheel}
       style={{ clipPath, y, opacity }}
       className="links-panel absolute top-full right-0 left-0 z-40 mt-2 rounded-2xl border px-3 pt-3 will-change-[clip-path,transform]"
     >

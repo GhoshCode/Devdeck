@@ -24,7 +24,7 @@ import { UNCATEGORIZED_COLOR, UNCATEGORIZED_NAME } from '../../lib/categories';
 
 function RootNodeView({ data }: NodeProps) {
   return (
-    <div className="glass-inner flex items-center gap-2.5 rounded-full border border-white/20 bg-[#1e1533] px-4 py-2 shadow-xl">
+    <div className="glass-inner flex items-center gap-2.5 rounded-full border border-white/20 bg-[var(--color-base-elevated)] px-4 py-2 shadow-xl">
       <span className="size-2.5 rounded-full bg-[var(--color-accent)] shadow-[0_0_10px_var(--color-accent)]" />
       <span className="font-display text-xs font-bold uppercase tracking-wider text-white">
         {data.label as string}
@@ -46,7 +46,7 @@ function CategoryNodeView({ id, data }: NodeProps) {
       className="glass-inner group relative flex items-center gap-2.5 rounded-full border px-4 py-2 shadow-lg transition-transform hover:scale-102"
       style={{
         borderColor: `${color}60`,
-        backgroundColor: '#18102a',
+        backgroundColor: 'var(--color-base-elevated)',
         boxShadow: `0 0 15px ${color}20`,
       }}
     >
@@ -96,7 +96,7 @@ function SubcategoryNodeView({ id, data }: NodeProps) {
 
   return (
     <div
-      className="glass-inner flex items-center gap-2 rounded-full border bg-[#1a122e] px-3.5 py-1.5 shadow-md hover:border-white/30"
+      className="glass-inner flex items-center gap-2 rounded-full border bg-[var(--color-base-elevated)] px-3.5 py-1.5 shadow-md hover:border-white/30"
       style={{ borderColor: `${color}40` }}
     >
       <Handle type="target" position={Position.Left} className="!bg-white/40 !size-2" />
@@ -134,7 +134,7 @@ function SubcategoryNodeView({ id, data }: NodeProps) {
 
 function SiteLeafNodeView({ data }: NodeProps) {
   return (
-    <div className="glass-inner group flex items-center gap-2 rounded-xl border border-white/10 bg-[#160e27]/90 px-3 py-1.5 shadow-sm transition-all hover:scale-105 hover:border-white/30 hover:bg-[#201438]">
+    <div className="glass-inner group flex items-center gap-2 rounded-xl border border-white/10 bg-[var(--color-base-elevated)]/90 px-3 py-1.5 shadow-sm transition-all hover:scale-105 hover:border-white/30 hover:bg-[color-mix(in_srgb,var(--color-accent)_14%,var(--color-base-elevated))]">
       <Handle type="target" position={Position.Left} className="!bg-white/40 !size-1.5" />
       <Favicon
         url={data.url as string}
@@ -467,23 +467,23 @@ function SitemapFlow() {
         onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
-        className="bg-[#0e0819]"
+        className="bg-[var(--color-base)]"
       >
         <Background color="rgba(255,255,255,0.06)" gap={24} />
-        <Controls className="!bg-[#150e24] !border-white/10 !fill-white" />
+        <Controls className="!bg-[var(--color-base-elevated)] !border-white/10 !fill-white" />
         <MiniMap
           nodeColor={(node) => {
             if (node.type === 'root') return '#ff2e9a';
             if (node.type === 'category') return (node.data?.color as string) || '#a78bfa';
             return 'rgba(255,255,255,0.2)';
           }}
-          className="!bg-[#150e24]/90 !border-white/10"
+          className="!bg-[var(--color-base-elevated)]/90 !border-white/10"
         />
       </ReactFlow>
 
       {/* Floating Instructions / Controls Bar */}
       <div className="pointer-events-none absolute top-4 left-4 z-10 flex items-center gap-2">
-        <div className="glass-inner pointer-events-auto rounded-xl border border-white/10 bg-[#120b20]/90 px-3.5 py-2 text-xs text-white/70 shadow-lg">
+        <div className="glass-inner pointer-events-auto rounded-xl border border-white/10 bg-[var(--color-base)]/90 px-3.5 py-2 text-xs text-white/70 shadow-lg">
           Drag site leaves onto any category or subcategory pill to reparent.
         </div>
         <button
@@ -497,7 +497,7 @@ function SitemapFlow() {
 
       {/* Toast Notification with Undo */}
       {toast && (
-        <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-white/20 bg-[#150e24] px-4 py-3 shadow-2xl backdrop-blur-xl">
+        <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-white/20 bg-[var(--color-base-elevated)] px-4 py-3 shadow-2xl backdrop-blur-xl">
           <span className="text-xs text-white">{toast.message}</span>
           <button
             type="button"

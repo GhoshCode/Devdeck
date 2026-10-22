@@ -1,4 +1,5 @@
-// Settings → Notifications. "All notifications" on means both kinds are on
+// Settings → Notifications. "All notifications" on means both kinds are on.
+// Out of the box only DevDeck's pop-ups are on; Chrome's built-in ones are off
 // (the two below it are shown ticked and locked); off lets each be chosen.
 // Shared by the page and the extension's service worker.
 
@@ -10,6 +11,7 @@ export interface AlertPrefs {
 export const ALERT_PREFS_KEY = 'devdeck:alert-prefs';
 
 export function alertPrefs(s: { notifyAll?: boolean; notifyChrome?: boolean; notifyPopups?: boolean }): AlertPrefs {
-  const all = s.notifyAll ?? true;
-  return { popups: all || (s.notifyPopups ?? true), chrome: all || (s.notifyChrome ?? true) };
+  // Defaults: DevDeck's own pop-ups on, Chrome's built-in notifications off.
+  const all = s.notifyAll ?? false;
+  return { popups: all || (s.notifyPopups ?? true), chrome: all || (s.notifyChrome ?? false) };
 }

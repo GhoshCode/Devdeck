@@ -145,6 +145,10 @@ async function shownOnCurrentSite(alert: AlertData): Promise<boolean> {
     if (!win?.focused || win.id === undefined) return false; // Chrome isn't in front
     const [tab] = await chrome.tabs.query({ active: true, windowId: win.id });
     if (tab?.id === undefined) return false;
+    // A DevDeck tab has its own alert stack (and its own reminder timer): never
+    // draw the other-websites overlay on top of it — that made two stacks.
+    const url = tab.url ?? '';
+    if (url.startsWith(chrome.runtime.getURL('')) || url.startsWith('chrome://newtab')) return true;
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: renderAlertOverlay as (...a: never[]) => unknown, args: [alert, await theme()] });
     return true;
   } catch {
@@ -160,7 +164,7 @@ function notify(alert: AlertData) {
 async function prefs(): Promise<AlertPrefs> {
   const got = await chrome.storage.local.get(ALERT_PREFS_KEY);
   const p = got[ALERT_PREFS_KEY] as AlertPrefs | undefined;
-  return { popups: p?.popups ?? true, chrome: p?.chrome ?? true };
+  return { popups: p?.popups ?? true, chrome: p?.chrome ?? false }; // Chrome built-in notifications are off unless turned on
 }
 
 // Settings → Notifications decides which of the three routes are allowed.

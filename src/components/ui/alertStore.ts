@@ -47,14 +47,53 @@ function markSeen(key: string) {
   write(SEEN_KEY, seen);
 }
 
+// A site's reminder that fires again while its card is still up (every-minute
+// and hourly reminders do) updates that card — "×N", timer restarted — rather
+// than stacking another one.
+const repeatOf = (a: AlertData) =>
+  (a.kind === 'processing' || a.kind === 'queue') && a.itemId ? alerts.find((x) => x.kind === a.kind && x.itemId === a.itemId) : undefined;
+
 // Shows an alert unless it's already up, or (without `force`) was shown before.
 export function pushAlert(a: AlertData, force = false): boolean {
   if (alerts.some((x) => x.key === a.key)) return false;
   if (!force && wasSeen(a.key)) return false;
   markSeen(a.key);
-  alerts = [a, ...alerts];
+  const same = repeatOf(a);
+  if (same) {
+    alerts = alerts.map((x) => (x === same ? { ...x, sub: a.sub ?? x.sub, repeat: (x.repeat ?? 1) + 1, shownAt: Date.now() } : x));
+  } else {
+    alerts = [{ ...a, shownAt: Date.now() }, ...alerts];
+  }
   emit();
   return true;
+}
+
+// Several reminders up at once read as one card ("5 reminders now") that
+// opens into the list; everything else stays its own card. The group sits
+// where its newest member is.
+export const GROUP_MIN = 3;
+export type StackItem = { type: 'one'; a: AlertData } | { type: 'group'; key: string; members: AlertData[] };
+export function stackItems(list: readonly AlertData[]): StackItem[] {
+  const isReminder = (a: AlertData) => a.kind === 'processing' || a.kind === 'queue';
+  const reminders = list.filter(isReminder);
+  if (reminders.length < GROUP_MIN) return list.map((a) => ({ type: 'one', a }));
+  const out: StackItem[] = [];
+  let placed = false;
+  for (const a of list) {
+    if (!isReminder(a)) out.push({ type: 'one', a });
+    else if (!placed) {
+      out.push({ type: 'group', key: 'reminder-group', members: reminders });
+      placed = true;
+    }
+  }
+  return out;
+}
+
+export function dismissAlerts(keys: readonly string[]) {
+  const drop = new Set(keys);
+  if (!alerts.some((a) => drop.has(a.key))) return;
+  alerts = alerts.filter((a) => !drop.has(a.key));
+  emit();
 }
 
 export function dismissAlert(key: string) {

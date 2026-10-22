@@ -58,13 +58,15 @@ test('add ~500 sites to Currently processing and Queue one by one, then walk the
 
   await page.getByRole('button', { name: 'Manage currently processing' }).click();
   const dialog = page.getByRole('dialog', { name: 'Manage currently processing' });
+  await dialog.getByRole('tab', { name: 'From your sites' }).click();
   const add = dialog.getByRole('textbox', { name: 'Add a site to Currently Processing' });
 
   const freqs: Record<string, number> = {};
   const addTimes: number[] = [];
   const TOTAL = 500;
   for (let i = 0; i < TOTAL; i++) {
-    await dialog.getByRole('radiogroup', { name: 'Section' }).getByRole('radio', { name: i % 2 ? 'Queue' : 'Currently processing', exact: true }).click();
+    await dialog.getByRole('combobox', { name: 'Add to list' }).click();
+    await page.getByRole('option', { name: i % 2 ? 'Queue' : 'Currently processing', exact: true }).click();
     const t0 = Date.now();
     if (i < libraryNames.length) {
       await add.fill(libraryNames[i]);

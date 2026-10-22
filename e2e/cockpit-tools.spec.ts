@@ -34,6 +34,7 @@ test('a to-do timer counts down: days left, then a ticking clock', async ({ page
 
 test('a Focus site timer shows months left', async ({ page }) => {
   await page.getByRole('button', { name: '+ Add a site' }).click();
+  await page.getByRole('tab', { name: 'From your sites' }).click();
   await page.getByRole('textbox', { name: 'Add a site to Currently Processing' }).fill('https://react.dev');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
@@ -136,6 +137,7 @@ test('deleting a to-do shows an undo bar that brings it back', async ({ page }) 
 
 test('removing a Focus site can be undone; the bar times out on its own', async ({ page }) => {
   await page.getByRole('button', { name: '+ Add a site' }).click();
+  await page.getByRole('tab', { name: 'From your sites' }).click();
   await page.getByRole('textbox', { name: 'Add a site to Currently Processing' }).fill('https://react.dev');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /^Remove (?!.* top row$)/ }).first().click();
@@ -151,17 +153,19 @@ test('removing a Focus site can be undone; the bar times out on its own', async 
 
 test('Focus reminders can repeat weekly or monthly', async ({ page }) => {
   await page.getByRole('button', { name: '+ Add a site' }).click();
+  await page.getByRole('tab', { name: 'From your sites' }).click();
   await page.getByRole('textbox', { name: 'Add a site to Currently Processing' }).fill('https://react.dev');
   await page.keyboard.press('Enter');
-  await page.getByRole('radio', { name: 'Weekly' }).click();
-  await page.getByRole('combobox', { name: 'Repeat every' }).click();
+  const card = page.locator('li[data-processing-id]').first(); // the added site's card (the add side has the same controls)
+  await card.getByRole('radio', { name: 'Weekly' }).click();
+  await card.getByRole('combobox', { name: 'Repeat every' }).click();
   await page.getByRole('option', { name: 'Every 2 weeks' }).click();
   await expect(page.getByText(/Every 2 weeks at/).first()).toBeVisible();
-  await page.getByRole('radio', { name: 'Monthly' }).click();
-  await page.getByRole('combobox', { name: 'Day of the month' }).click();
+  await card.getByRole('radio', { name: 'Monthly' }).click();
+  await card.getByRole('combobox', { name: 'Day of the month' }).click();
   await page.getByRole('option', { name: 'Last day' }).click();
   await expect(page.getByText(/Monthly on the last day at/).first()).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Days of the week' })).toHaveCount(0); // not used monthly
+  await expect(card.getByRole('group', { name: 'Days of the week' })).toHaveCount(0); // not used monthly
 });
 
 test('sites reorder in the Site Map by dropping onto another site', async ({ page }) => {
@@ -398,4 +402,83 @@ test('quick-links panel: drag the grip down to pull it open, drag its edge up to
   // a click on the grip opens it too
   await grip.click();
   await expect.poll(shown).toBeGreaterThan(0.99);
+});
+
+test('quick-links panel: scroll down on the grip opens it, scrolling inside it folds it', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await settle(page);
+  const g = (await page.getByTestId('links-expand').boundingBox())!;
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.wheel(0, 120);
+  const panel = page.getByTestId('links-panel');
+  await expect(panel).toBeVisible();
+  await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).clipPath)).toMatch(/inset\(0px 0px 0%|inset\(0px\)|none/);
+  const p = (await panel.boundingBox())!;
+  await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2);
+  await page.mouse.wheel(0, 80);
+  await expect(panel).toHaveCount(0);
+});
+
+test('quick-links panel: scrolling on the bar (but not on a link) opens it', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await settle(page);
+  const bar = (await page.getByTestId('links-strip').boundingBox())!;
+  // over a link: nothing opens
+  const chip = (await page.getByTestId('links-strip').locator('[data-chip]').first().boundingBox())!;
+  await page.mouse.move(chip.x + chip.width / 2, chip.y + chip.height / 2);
+  await page.mouse.wheel(0, 120);
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId('links-panel')).toHaveCount(0);
+  // the bar's own padding: opens
+  await page.mouse.move(bar.x + 5, bar.y + bar.height / 2);
+  await page.mouse.wheel(0, 120);
+  await expect(page.getByTestId('links-panel')).toBeVisible();
+  // any scroll inside the panel folds it
+  const p = (await page.getByTestId('links-panel').boundingBox())!;
+  await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2);
+  await page.mouse.wheel(0, -60);
+  await expect(page.getByTestId('links-panel')).toHaveCount(0);
+});
+
+test('alert floods stay calm: ×N repeats, one group card, held while a panel is open, Clear all on top', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await settle(page);
+  const push = (alerts: Array<{ key: string; kind: string; title: string; itemId?: string }>) =>
+    page.evaluate(async (list) => {
+      // the very module instance the page uses (the dev server may version its URL)
+      const url = performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/alertStore.ts')) ?? '/src/components/ui/alertStore.ts';
+      const m = await import(/* @vite-ignore */ url);
+      for (const a of list) m.pushAlert(a as never, true);
+    }, alerts);
+
+  // the same site three times: one card, ×3
+  await push([1, 2, 3].map((n) => ({ key: `processing:kotlin:${n}`, kind: 'processing', title: 'Kotlin', itemId: 'kotlin' })));
+  await expect(page.getByRole('alert')).toHaveCount(1);
+  await expect(page.getByTestId('alert-repeat')).toHaveText('×3');
+
+  // two more sites: three reminders up → one group card that opens into the list
+  await push([
+    { key: 'queue:grafana:1', kind: 'queue', title: 'Grafana', itemId: 'grafana' },
+    { key: 'queue:bitbucket:1', kind: 'queue', title: 'Bitbucket', itemId: 'bitbucket' },
+  ]);
+  const group = page.getByTestId('alert-group');
+  await expect(group).toContainText('3 reminders now');
+  await group.getByRole('button', { name: 'Show' }).click();
+  await expect(group.getByRole('list', { name: 'Reminders' }).getByRole('listitem')).toHaveCount(3);
+
+  // Clear all sits above the cards
+  const clear = page.getByTestId('alerts-clear-all');
+  expect((await clear.boundingBox())!.y).toBeLessThan((await group.boundingBox())!.y);
+
+  // a panel opens: the stack waits behind the bell; the bell shows it again
+  await page.getByTitle(/Add\/remove sites in the queue/).click();
+  await expect(page.getByTestId('alerts-waiting')).toContainText('3 reminders waiting');
+  await expect(page.getByTestId('alert-group')).toHaveCount(0);
+  await page.getByTestId('alerts-waiting').click();
+  await expect(page.getByTestId('alert-group')).toBeVisible();
+  await page.getByTestId('alerts-clear-all').click();
+  await expect(page.getByTestId('alert-group')).toHaveCount(0);
 });

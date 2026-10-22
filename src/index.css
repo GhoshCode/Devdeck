@@ -160,6 +160,14 @@
 /* ---------------------------------------------------------------------------
    Light Mode Theme Overrides — High-Contrast Frosted Glassmorphism
    --------------------------------------------------------------------------- */
+/* Dark surfaces take the user's accent: every solid panel, dialog, menu and the
+   calendar is a deep, near-neutral shade of the chosen colour, so nothing stays
+   violet on a teal (or any other) theme. */
+html:not([data-theme='light']) {
+  --color-base: color-mix(in srgb, var(--color-accent) 6%, #07080b);
+  --color-base-elevated: color-mix(in srgb, var(--color-accent) 11%, #0c0d12);
+}
+
 html[data-theme='light'] {
   --color-base: #e8ecf4;
   --color-base-elevated: rgba(255, 255, 255, 0.82);
@@ -1288,13 +1296,13 @@ html[data-reduce-transparency] .glass-inner {
   -webkit-backdrop-filter: none !important;
 }
 html[data-reduce-transparency][data-theme='dark'] .glass-raised {
-  background: #120c1f !important;
+  background: color-mix(in srgb, var(--color-accent) 9%, #0c0d12) !important;
 }
 html[data-reduce-transparency][data-theme='dark'] .glass {
-  background: #1b1329 !important;
+  background: color-mix(in srgb, var(--color-accent) 12%, #12131a) !important;
 }
 html[data-reduce-transparency][data-theme='dark'] .glass-inner {
-  background: #221a33 !important;
+  background: color-mix(in srgb, var(--color-accent) 15%, #171821) !important;
 }
 html[data-reduce-transparency][data-theme='light'] .glass-raised {
   background: #ececf1 !important;
@@ -1338,13 +1346,13 @@ html[data-glass-custom]:not([data-reduce-transparency]) .glass-inner {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4) !important;
 }
 html[data-glass-custom]:not([data-reduce-transparency])[data-theme='dark'] .glass {
-  background: color-mix(in srgb, rgba(255, 255, 255, 0.05), #1b1329 var(--glass-solid)) !important;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.05), color-mix(in srgb, var(--color-accent) 12%, #12131a) var(--glass-solid)) !important;
 }
 html[data-glass-custom]:not([data-reduce-transparency])[data-theme='dark'] .glass-raised {
-  background: color-mix(in srgb, rgba(255, 255, 255, 0.08), #120c1f var(--glass-solid)) !important;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.08), color-mix(in srgb, var(--color-accent) 9%, #0c0d12) var(--glass-solid)) !important;
 }
 html[data-glass-custom]:not([data-reduce-transparency])[data-theme='dark'] .glass-inner {
-  background: color-mix(in srgb, rgba(255, 255, 255, 0.05), #221a33 var(--glass-solid)) !important;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.05), color-mix(in srgb, var(--color-accent) 15%, #171821) var(--glass-solid)) !important;
 }
 html[data-glass-custom]:not([data-reduce-transparency])[data-theme='light'] .glass {
   background: color-mix(in srgb, var(--sk-panel, rgba(255, 255, 255, 0.76)), #ffffff var(--glass-solid)) !important;
@@ -1686,7 +1694,7 @@ html[data-theme='light'] .greet-spotlight {
   border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
 }
 .sitemap-input option {
-  background: #1c1c22;
+  background: var(--color-base-elevated);
 }
 .sitemap-addform {
   background: rgba(255, 255, 255, 0.03);
@@ -2587,9 +2595,9 @@ html[data-theme='light'] .bm-tree-btn { color: #1c1c1e; }
    near-white on a deep accent-tinted slate in dark, near-black on an
    accent-tinted paper in light. A thin accent border keeps the theme. */
 .alert-glass {
-  --alert-bg: color-mix(in srgb, var(--color-accent) 16%, #14131b);
+  --alert-bg: color-mix(in srgb, var(--color-accent) 16%, #121318);
   background: var(--alert-bg);
-  border-color: color-mix(in srgb, var(--color-accent) 55%, #2a2836);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, #2a2b33);
   border-width: 1px;
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.35);
   color: #f8fafc;
@@ -2599,17 +2607,17 @@ html[data-theme='light'] .bm-tree-btn { color: #1c1c1e; }
 .alert-eyebrow { color: color-mix(in srgb, var(--color-accent) 60%, #fff); }
 .alert-btn {
   color: #f1f5f9;
-  background: #2a2836;
-  border: 1px solid #3b3948;
+  background: color-mix(in srgb, var(--color-accent) 14%, #22232b);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, #34353f);
   transition: background-color 0.15s, transform 0.1s;
 }
-.alert-btn:hover { background: #353344; color: #fff; }
+.alert-btn:hover { background: color-mix(in srgb, var(--color-accent) 24%, #2a2b34); color: #fff; }
 .alert-btn:active { transform: scale(0.97); }
 .alert-btn.is-primary { color: #fff; background: var(--color-accent); border-color: var(--color-accent); }
 .alert-btn.is-primary:hover { filter: brightness(1.08); }
 .alert-x { color: #cbd5e1; }
 .alert-x:hover { color: #fff; background: #2a2836; }
-.alert-ring { background: #1f1d29; box-shadow: 0 0 0 2px var(--color-accent); }
+.alert-ring { background: color-mix(in srgb, var(--color-accent) 12%, #1b1c23); box-shadow: 0 0 0 2px var(--color-accent); }
 .alert-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color-accent); }
 .alert-todo.is-p1::before { background: #ef4444; }
 .alert-todo.is-p2::before { background: #f59e0b; }
@@ -2620,7 +2628,7 @@ html[data-theme='light'] .bm-tree-btn { color: #1c1c1e; }
 .alert-check { border-color: #94a3b8; color: transparent; transition: all 0.15s; }
 .alert-check:hover { border-color: var(--color-accent); color: #fff; background: var(--color-accent); }
 .alert-badge { color: #fbbf24; background: #3a2e12; }
-.alert-count { background: #1f1d29; border: 1px solid #2f2d3b; }
+.alert-count { background: color-mix(in srgb, var(--color-accent) 12%, #1b1c23); border: 1px solid color-mix(in srgb, var(--color-accent) 22%, #2c2d36); }
 .alert-count.is-zero .alert-title { color: #94a3b8; }
 .alert-more { color: #f1f5f9; }
 .todo-flash { animation: todo-flash 1.5s ease-out; }
@@ -2701,7 +2709,7 @@ html[data-theme='light'] .alert-clear-btn:hover { background: rgba(244, 63, 94, 
 }
 .cal-alert.is-live { animation-duration: 2.2s; box-shadow: 0 0 34px -4px var(--cat), 0 18px 40px -18px rgba(0, 0, 0, 0.75); }
 @keyframes cal-spin { to { --cal-spin: 360deg; } }
-.cal-alert-inner { background: rgba(12, 11, 18, 0.88); }
+.cal-alert-inner { background: color-mix(in srgb, var(--color-base) 88%, transparent); }
 .cal-alert-icon { color: var(--cat); background: color-mix(in srgb, var(--cat) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat) 55%, transparent); }
 .cal-alert-bell { animation: cal-bell 2.4s ease-in-out infinite; transform-origin: 50% 10%; }
 @keyframes cal-bell {
@@ -3290,11 +3298,52 @@ html[data-theme='light'] .links-grip:hover { color: rgba(60, 60, 67, 0.8); }
 html[data-theme='light'] .links-panel { background: rgba(255, 255, 255, 0.62); border-color: rgba(15, 23, 42, 0.12); box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.3); }
 html[data-theme='light'] .links-panel-handle { color: rgba(15, 23, 42, 0.35); }
 
-/* Sites panel (Queue / Currently processing): list pickers and the panel surface */
-.sites-modal { background: color-mix(in srgb, var(--color-base-elevated) 88%, transparent); }
-.sites-tab { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: background 0.15s, color 0.15s; }
-.sites-tab:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-.sites-tab.is-on { background: color-mix(in srgb, var(--color-accent) 24%, transparent); color: #fff; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent); }
-html[data-theme='light'] .sites-tab { background: rgba(15, 23, 42, 0.04); color: rgba(15, 23, 42, 0.7); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1); }
-html[data-theme='light'] .sites-tab.is-on { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: rgba(15, 23, 42, 0.95); }
-html[data-theme='light'] .sites-modal { background: rgba(255, 255, 255, 0.9); }
+/* Sites panel (Queue / Currently processing). Surfaces follow the theme (accent-
+   tinted glass, like the quick-links panel); the two kinds of list keep their
+   own colours everywhere: green = Currently processing, amber = Queue and other lists. */
+.sites-modal {
+  --proc: #10b981;
+  --queue: #f59e0b;
+  background: linear-gradient(color-mix(in srgb, var(--color-accent) 7%, transparent), color-mix(in srgb, var(--color-accent) 7%, transparent)), color-mix(in srgb, var(--color-base) 78%, transparent);
+  border-color: var(--color-glass-border-raised, rgba(255, 255, 255, 0.16));
+  backdrop-filter: blur(40px) saturate(1.5);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+}
+.sites-add { background: rgba(255, 255, 255, 0.035); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07); }
+.sites-field { background: rgba(255, 255, 255, 0.06); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.sites-field::placeholder { color: rgba(255, 255, 255, 0.35); }
+.sites-field:focus { background: rgba(255, 255, 255, 0.09); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent); }
+.sites-seg { background: rgba(0, 0, 0, 0.25); }
+.sites-seg button { color: rgba(255, 255, 255, 0.55); }
+.sites-seg button.is-on { background: color-mix(in srgb, var(--color-accent) 22%, rgba(255, 255, 255, 0.06)); color: #fff; }
+.sites-reminder { background: rgba(0, 0, 0, 0.18); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.sites-add-btn { background: color-mix(in srgb, var(--color-accent) 75%, transparent); color: #fff; }
+.sites-add-btn:not(:disabled):hover { background: var(--color-accent); }
+.sites-tab { --k: var(--color-accent); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
+.sites-tab.is-processing { --k: var(--proc); color: color-mix(in srgb, var(--proc) 55%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--proc) 35%, transparent); }
+.sites-tab.is-queue { --k: var(--queue); color: color-mix(in srgb, var(--queue) 55%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--queue) 35%, transparent); }
+.sites-tab:hover { background: color-mix(in srgb, var(--k) 12%, rgba(255, 255, 255, 0.04)); color: #fff; }
+.sites-tab.is-on { background: color-mix(in srgb, var(--k) 26%, transparent); color: #fff; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 70%, transparent); }
+.sites-row { border-left: 3px solid var(--k, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 28%, transparent); }
+.sites-row.is-processing { --k: var(--proc); }
+.sites-row.is-queue { --k: var(--queue); }
+.sites-add.is-processing { --k: var(--proc); }
+.sites-add.is-queue { --k: var(--queue); }
+.sites-add { border-left: 3px solid var(--k, transparent); transition: border-color 0.2s; }
+html[data-theme='light'] .sites-modal { background: rgba(255, 255, 255, 0.86); border-color: rgba(15, 23, 42, 0.12); }
+html[data-theme='light'] .sites-add, html[data-theme='light'] .sites-reminder { background: rgba(15, 23, 42, 0.03); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08); }
+html[data-theme='light'] .sites-field { background: #fff; color: #0f172a; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14); }
+html[data-theme='light'] .sites-field::placeholder { color: rgba(15, 23, 42, 0.4); }
+html[data-theme='light'] .sites-seg { background: rgba(15, 23, 42, 0.06); }
+html[data-theme='light'] .sites-seg button { color: rgba(15, 23, 42, 0.6); }
+html[data-theme='light'] .sites-seg button.is-on { color: #0f172a; background: #fff; }
+html[data-theme='light'] .sites-tab { background: rgba(15, 23, 42, 0.04); color: rgba(15, 23, 42, 0.7); }
+html[data-theme='light'] .sites-tab.is-processing { color: #047857; }
+html[data-theme='light'] .sites-tab.is-queue { color: #b45309; }
+html[data-theme='light'] .sites-tab.is-on { color: #0f172a; }
+
+/* Alert floods: ×N on a repeating site, and the grouped reminders card */
+.alert-repeat { color: #fff; background: color-mix(in srgb, var(--color-accent) 55%, transparent); }
+.alert-group-row { background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.alert-group-kind { color: color-mix(in srgb, var(--color-accent) 60%, #fff); background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
+html[data-theme='light'] .alert-group-row { background: rgba(15, 23, 42, 0.04); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08); }

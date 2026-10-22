@@ -65,6 +65,12 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
     .cnt b { display: block; font: 700 21px/1.2 ui-monospace, monospace; }
     .more { pointer-events: auto; all: unset; cursor: pointer; pointer-events: auto; font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 6px;
       background: ${bg}; color: ${L ? '#0f172a' : '#f1f5f9'}; border: 1px solid color-mix(in srgb, ${A} 50%, transparent); }
+    .clear { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 5px 5px 5px 14px; border-radius: 999px;
+      background: ${bg}; border: 1px solid color-mix(in srgb, ${A} 50%, transparent); box-shadow: 0 10px 24px -12px rgba(0,0,0,.6);
+      font: 600 12px/1 ui-monospace, "JetBrains Mono", monospace; letter-spacing: .1em; color: ${L ? '#334155' : '#cbd5e1'}; }
+    .clear button { all: unset; cursor: pointer; font: 600 13.5px/1 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: 0;
+      padding: 8px 16px; border-radius: 999px; color: #fff; background: ${A}; }
+    .clear button:hover { filter: brightness(1.1); }
     .brand { font: 600 10.5px/1 ui-monospace, monospace; letter-spacing: .14em; opacity: .55; margin-left: auto; }
     .cal { border-radius: 999px; padding: 1.5px; border: 0; background: conic-gradient(from var(--a, 0deg), var(--cat), transparent 35%, var(--cat) 70%, transparent);
       box-shadow: 0 0 22px -4px var(--cat), 0 14px 34px -14px rgba(0,0,0,${L ? 0.35 : 0.7}); }
@@ -197,7 +203,7 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
       const text = el('div', 'trunc');
       text.style.minWidth = '0';
       const lead = el('b', '', 'Up next: ');
-      text.append(lead, document.createTextNode(a.title));
+      text.append(lead, document.createTextNode(a.title + (a.repeat && a.repeat > 1 ? `  ×${a.repeat}` : '')));
       if (a.sub) text.append(el('span', 'sub', ` · ${a.sub}`));
       c.append(favicon(a.url), text, btn('Open', 'open', true), btn('Snooze 10m', 'snooze'), x);
     } else if (a.kind === 'todo') {
@@ -239,7 +245,7 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
       ico.append(favicon(a.url));
       const t = el('div');
       t.style.cssText = 'flex:1;min-width:0';
-      t.append(el('p', 'eye', a.eyebrow ?? 'CURRENTLY PROCESSING · NOW'), el('p', 'title trunc', `Time to work on ${a.title}`), ...(a.sub ? [el('p', 'sub trunc', a.sub)] : []));
+      t.append(el('p', 'eye', a.eyebrow ?? 'CURRENTLY PROCESSING · NOW'), el('p', 'title trunc', `Time to work on ${a.title}${a.repeat && a.repeat > 1 ? `  ×${a.repeat}` : ''}`), ...(a.sub ? [el('p', 'sub trunc', a.sub)] : []));
       c.append(ico, t, btn('Open', 'open', true), btn('Snooze 10m', 'snooze'), x);
     }
     x.onclick = () => remove(a, c);
@@ -273,13 +279,81 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
   };
 
   const cards = new Map<string, HTMLElement>();
+  // Three or more reminders up at once read as one card ("5 reminders now")
+  // until Show lays them out one by one.
+  let groupOpen = false;
+  const isReminder = (a: AlertData) => a.kind === 'processing' || a.kind === 'queue';
+  const groupCard = (members: AlertData[]) => {
+    const c = el('div', 'card spot row');
+    c.setAttribute('role', 'alert');
+    const ico = el('span', 'ico');
+    ico.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+    const t = el('div');
+    t.style.cssText = 'flex:1;min-width:0';
+    const names = members.map((m) => m.title + (m.repeat && m.repeat > 1 ? ` ×${m.repeat}` : '')).join(' · ');
+    t.append(el('p', 'eye', 'REMINDERS · NOW'), el('p', 'title trunc', `${members.length} reminders now`), el('p', 'sub trunc', names));
+    const show = el('button', 'btn pri', 'Show') as HTMLButtonElement;
+    show.onclick = () => {
+      groupOpen = true;
+      expanded = true;
+      render();
+    };
+    const x = xIcon();
+    x.onclick = () => {
+      for (const m of members) {
+        const i = list.findIndex((y) => y.key === m.key);
+        if (i >= 0) list.splice(i, 1);
+      }
+      c.classList.add('out');
+      setTimeout(render, 190);
+      if (!list.length)
+        setTimeout(() => {
+          if (list.length) return;
+          host.remove();
+          w.__devdeckAlerts = undefined;
+        }, 260);
+    };
+    c.append(ico, t, show, x);
+    return c;
+  };
+
   function render() {
-    const shown = expanded ? list : list.slice(0, 3);
-    for (const [k, n] of cards) if (!shown.some((a) => a.key === k)) {
+    const reminders = list.filter(isReminder);
+    if (reminders.length < 3) groupOpen = false;
+    const grouped = reminders.length >= 3 && !groupOpen;
+    const view: AlertData[] = grouped ? list.filter((a) => !isReminder(a)) : list;
+    const shown = expanded ? view : view.slice(0, grouped ? 2 : 3);
+    for (const [k, n] of cards) if (k !== '__group' && !shown.some((a) => a.key === k)) {
       n.remove();
       cards.delete(k);
     }
     stack.textContent = '';
+    // Clear all sits at the top, so new cards can never cover it
+    if (list.length > 1) {
+      const bar = el('div', 'clear');
+      bar.append(document.createTextNode(`${list.length} ACTIVE`));
+      const all = el('button', '', `Clear all (${list.length})`) as HTMLButtonElement;
+      all.onclick = () => {
+        for (const n of cards.values()) n.classList.add('out');
+        list.splice(0, list.length);
+        setTimeout(() => {
+          render();
+          host.remove();
+          w.__devdeckAlerts = undefined;
+        }, 200);
+      };
+      bar.append(all);
+      stack.append(bar);
+    }
+    if (grouped) {
+      let g = cards.get('__group');
+      if (!g || g.dataset.n !== String(reminders.length) + reminders.map((r) => r.repeat ?? 1).join(',')) {
+        g = groupCard(reminders);
+        g.dataset.n = String(reminders.length) + reminders.map((r) => r.repeat ?? 1).join(',');
+        cards.set('__group', g);
+      }
+      stack.append(g);
+    } else cards.delete('__group');
     for (const a of shown) {
       let n = cards.get(a.key);
       if (!n) {
@@ -288,7 +362,7 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
       }
       stack.append(n);
     }
-    const hidden = list.length - shown.length;
+    const hidden = view.length - shown.length;
     if (hidden > 0) {
       const more = el('button', 'more', `+${hidden} more reminder${hidden === 1 ? '' : 's'}`) as HTMLButtonElement;
       more.onclick = () => {
@@ -302,7 +376,14 @@ export function renderAlertOverlay(alert: AlertData, theme: OverlayTheme): void 
   w.__devdeckAlerts = {
     add(a: AlertData) {
       if (list.some((x) => x.key === a.key)) return;
-      list.unshift(a);
+      // the same site firing again while its card is up: that card counts it (×N)
+      const same = (a.kind === 'processing' || a.kind === 'queue') && a.itemId ? list.findIndex((x) => x.kind === a.kind && x.itemId === a.itemId) : -1;
+      if (same >= 0) {
+        const old = list[same];
+        list[same] = { ...old, sub: a.sub ?? old.sub, repeat: (old.repeat ?? 1) + 1 };
+        cards.get(old.key)?.remove();
+        cards.delete(old.key);
+      } else list.unshift(a);
       render();
     },
   };

@@ -997,7 +997,7 @@ function ModeThumb({ mode, accent, selected }: { mode: 'light' | 'dark' | 'auto'
   const pane = (light: boolean) => (
     <div
       className="absolute inset-0 p-2"
-      style={{ background: light ? 'linear-gradient(160deg, #dfe7f8, #f6eef3)' : 'linear-gradient(160deg, #1d1033, #0b0713)' }}
+      style={{ background: light ? 'linear-gradient(160deg, #dfe7f8, #f6eef3)' : `linear-gradient(160deg, color-mix(in srgb, ${accent} 18%, #101118), #07080b)` }}
     >
       <div className="mb-1.5 flex gap-1">
         {['#ff5f57', '#febc2e', '#28c840'].map((c) => (

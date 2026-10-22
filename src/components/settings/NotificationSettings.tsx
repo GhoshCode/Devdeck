@@ -5,13 +5,13 @@ import { useStore } from '../../store';
 export function NotificationSettings() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
-  const all = settings.notifyAll ?? true;
+  const all = settings.notifyAll ?? false;
   const rows = [
     {
       key: 'notifyChrome' as const,
       label: 'Chrome built-in notifications',
       hint: 'System notifications from Chrome when DevDeck can’t show its own pop-up (another app in front, chrome:// pages).',
-      on: all || (settings.notifyChrome ?? true),
+      on: all || (settings.notifyChrome ?? false),
     },
     {
       key: 'notifyPopups' as const,
@@ -34,7 +34,7 @@ export function NotificationSettings() {
             updateSettings(
               e.target.checked
                 ? { notifyAll: true }
-                : { notifyAll: false, notifyChrome: settings.notifyChrome ?? true, notifyPopups: settings.notifyPopups ?? true },
+                : { notifyAll: false, notifyChrome: settings.notifyChrome ?? false, notifyPopups: settings.notifyPopups ?? true },
             )
           }
           className="mt-0.5 size-4 cursor-pointer accent-[var(--color-accent)]"

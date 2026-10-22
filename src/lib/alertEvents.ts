@@ -32,6 +32,10 @@ export interface AlertData {
   endsAt?: number;
   category?: EventCategory;
   eventPriority?: EventPriority;
+  // set by the stack: when it went up, and how many times the same site's
+  // reminder has fired while it was up (one card with "×N" instead of N cards)
+  shownAt?: number;
+  repeat?: number;
 }
 
 export type AlertEvent = { at: number; data: AlertData; reminder?: boolean };

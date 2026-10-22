@@ -8,7 +8,7 @@ import { useNow } from '../../hooks/useNow';
 import { openBoard } from '../../lib/workBoard';
 import { CALENDAR_SNOOZE_MS } from '../../lib/alertEvents';
 import { CATEGORY_COLOR, countdown } from '../../lib/calendar';
-import { clearAllAlerts, dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, type AlertData } from './alertStore';
+import { clearAllAlerts, dismissAlert, dismissAlerts, getAlerts, snoozeAlert, stackItems, subscribeAlerts, type AlertData } from './alertStore';
 
 // The alert stack: solid, matte banners tinted with the theme accent that drop
 // from the top edge of the window — opaque so the text reads at a glance. Each source has its own shape:
@@ -19,6 +19,11 @@ import { clearAllAlerts, dismissAlert, getAlerts, snoozeAlert, subscribeAlerts, 
 //   Calendar event       → glass capsule with a live countdown; stays until
 //                          acknowledged, snoozed or jumped to
 // Up to three show at once (newest on top); the rest wait behind "+N more".
+// Floods stay calm: a site whose reminder fires again while its card is up
+// updates that card ("×N"); three or more reminders up at once become one
+// "N reminders" card that opens into the list; and while a panel is open
+// (sites, settings, calendar, any dialog) alerts wait behind a small
+// "N waiting" bell instead of covering it.
 // With two or more up, a Clear all pill sits under the stack. A thin line
 // along each card's bottom shrinks right → left as its time on screen runs
 // out (paused on hover). While any alert is up, a frosted shield sits behind
@@ -42,8 +47,32 @@ export function AlertCenter() {
     setClearing(true);
     requestAnimationFrame(() => clearAllAlerts());
   };
-  const shown = showAll ? list : list.slice(0, VISIBLE);
-  const hidden = list.length - shown.length;
+  const items = stackItems(list);
+  const shown = showAll ? items : items.slice(0, VISIBLE);
+  const hidden = items.length - shown.length;
+  // Hold the stack while a panel is open; the bell shows it on request.
+  const busy = usePanelOpen(list.length > 0);
+  const [peek, setPeek] = useState(false);
+  useEffect(() => {
+    if (!busy || !list.length) setPeek(false);
+  }, [busy, list.length]);
+  if (busy && !peek && list.length) {
+    return createPortal(
+      <div role="region" aria-label="Reminders" className="pointer-events-none fixed inset-x-0 top-0 z-[110] flex justify-center pt-3">
+        <button
+          type="button"
+          onClick={() => setPeek(true)}
+          data-testid="alerts-waiting"
+          title="Reminders wait while a panel is open — click to see them"
+          className="alert-clear pointer-events-auto flex items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-3 text-[13px] font-semibold backdrop-blur-md"
+        >
+          <BellGlyph />
+          {list.length} reminder{list.length === 1 ? '' : 's'} waiting
+        </button>
+      </div>,
+      document.body,
+    );
+  }
   return createPortal(
     <div
       role="region"
@@ -64,38 +93,10 @@ export function AlertCenter() {
           />
         )}
       </AnimatePresence>
-      <AnimatePresence initial={false} mode="popLayout">
-        {shown.map((a, i) => (
-          <motion.div
-            key={a.key}
-            layout
-            initial={{ y: -140, opacity: 0, scale: 0.96 }}
-            animate={{ y: 0, opacity: 1, scale: 1 - Math.min(i, 2) * 0.012 }}
-            exit={
-              clearing
-                ? { x: 90, opacity: 0, transition: { duration: 0.2, delay: i * CLEAR_STAGGER_S, ease: 'easeIn' } }
-                : { y: -60, opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
-            }
-            transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.9 }}
-            className="pointer-events-auto max-w-full"
-          >
-            <AlertCard a={a} />
-          </motion.div>
-        ))}
-        {hidden > 0 && (
-          <motion.button
-            key="more"
-            layout
-            type="button"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowAll(true)}
-            className="alert-glass alert-more pointer-events-auto rounded-md border px-4 py-1.5 text-[13px] font-semibold"
-          >
-            +{hidden} more reminder{hidden === 1 ? '' : 's'}
-          </motion.button>
-        )}
+      {/* Clear all sits at the top of the stack, so arriving cards can never cover
+          it; leaving cards keep their place until they are gone (no popLayout),
+          so the stack never overlaps itself when reminders arrive back to back. */}
+      <AnimatePresence initial={false}>
         {list.length > 1 && !clearing && (
           <motion.div
             key="clear-all"
@@ -118,6 +119,39 @@ export function AlertCenter() {
           </motion.div>
         )}
       </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {shown.map((item, i) => (
+          <motion.div
+            key={item.type === 'one' ? item.a.key : item.key}
+            layout
+            initial={{ y: -140, opacity: 0, scale: 0.96 }}
+            animate={{ y: 0, opacity: 1, scale: 1 - Math.min(i, 2) * 0.012 }}
+            exit={
+              clearing
+                ? { x: 90, opacity: 0, transition: { duration: 0.2, delay: i * CLEAR_STAGGER_S, ease: 'easeIn' } }
+                : { y: -60, opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
+            }
+            transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.9 }}
+            className="pointer-events-auto max-w-full"
+          >
+            {item.type === 'one' ? <AlertCard a={item.a} /> : <GroupCard members={item.members} />}
+          </motion.div>
+        ))}
+        {hidden > 0 && (
+          <motion.button
+            key="more"
+            layout
+            type="button"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowAll(true)}
+            className="alert-glass alert-more pointer-events-auto rounded-md border px-4 py-1.5 text-[13px] font-semibold"
+          >
+            +{hidden} more reminder{hidden === 1 ? '' : 's'}
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>,
     document.body,
   );
@@ -128,6 +162,12 @@ function AlertCard({ a }: { a: AlertData }) {
   const [hover, setHover] = useState(false);
   const life = LIFE_MS[a.kind];
   const left = useRef<number>(life ?? 0);
+  // the same site firing again restarts the card's time on screen
+  const seenRepeat = useRef(a.repeat ?? 1);
+  if ((a.repeat ?? 1) !== seenRepeat.current) {
+    seenRepeat.current = a.repeat ?? 1;
+    left.current = life ?? 0;
+  }
   useEffect(() => {
     if (hover || life === null) return;
     const started = Date.now();
@@ -136,7 +176,7 @@ function AlertCard({ a }: { a: AlertData }) {
       clearTimeout(t);
       left.current -= Date.now() - started;
     };
-  }, [hover, a.key, life]);
+  }, [hover, a.key, life, a.repeat]);
 
   const open = () => {
     dismissAlert(a.key);
@@ -170,6 +210,7 @@ function AlertCard({ a }: { a: AlertData }) {
         {a.url ? <Favicon url={a.url} name={a.title} className="size-6 shrink-0 rounded-md" /> : <QueueGlyph />}
         <span className="alert-title min-w-0 truncate text-[15px]">
           <span className="font-bold">Up next:</span> <span className="font-semibold">{a.title}</span>
+          <RepeatBadge n={a.repeat} />
           {a.sub && <span className="alert-sub font-medium"> · {a.sub}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-1">
@@ -243,7 +284,10 @@ function AlertCard({ a }: { a: AlertData }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="alert-eyebrow font-mono text-[11.5px] font-bold tracking-[0.12em]">{a.eyebrow ?? 'CURRENTLY PROCESSING · NOW'}</p>
-        <p className="alert-title mt-1 truncate text-[17px] font-semibold">Time to work on {a.title}</p>
+        <p className="alert-title mt-1 truncate text-[17px] font-semibold">
+          Time to work on {a.title}
+          <RepeatBadge n={a.repeat} />
+        </p>
         {a.sub && <p className="alert-sub truncate text-[13.5px] font-medium">{a.sub}</p>}
       </div>
       <span className="flex shrink-0 items-center gap-1.5">
@@ -253,6 +297,121 @@ function AlertCard({ a }: { a: AlertData }) {
       </span>
     </div>
   );
+}
+
+function RepeatBadge({ n }: { n?: number }) {
+  if (!n || n < 2) return null;
+  return (
+    <span data-testid="alert-repeat" title={`Fired ${n} times while this was up`} className="alert-repeat ml-2 rounded-md px-1.5 py-px align-middle font-mono text-[11px] font-bold tabular-nums">
+      ×{n}
+    </span>
+  );
+}
+
+// Three or more reminders at once: one card, "N reminders now", that opens
+// into the list (each row can be opened or dismissed). Snooze all / dismiss
+// all act on every member. It stays 10 s after the newest one arrived,
+// paused while the pointer is on it or the list is open.
+const GROUP_LIFE_MS = 10_000;
+function GroupCard({ members }: { members: AlertData[] }) {
+  const [hover, setHover] = useState(false);
+  const [open, setOpen] = useState(false);
+  const keys = members.map((m) => m.key);
+  const newest = Math.max(...members.map((m) => m.shownAt ?? 0));
+  const left = useRef(GROUP_LIFE_MS);
+  const seen = useRef(newest);
+  if (newest !== seen.current) {
+    seen.current = newest;
+    left.current = GROUP_LIFE_MS;
+  }
+  useEffect(() => {
+    if (hover || open) return;
+    const started = Date.now();
+    const t = setTimeout(() => dismissAlerts(keys), left.current);
+    return () => {
+      clearTimeout(t);
+      left.current -= Date.now() - started;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hover, open, newest, keys.join('|')]);
+  const names = members.map((m) => (m.repeat && m.repeat > 1 ? `${m.title} ×${m.repeat}` : m.title));
+  return (
+    <div
+      role="alert"
+      data-alert-kind="group"
+      data-testid="alert-group"
+      data-life=""
+      data-paused={hover || open ? 'true' : undefined}
+      style={{ '--life': `${GROUP_LIFE_MS}ms` } as CSSProperties}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className="alert-glass alert-spot w-[min(680px,94vw)] rounded-[10px] border px-4 py-3.5"
+    >
+      <div className="flex items-center gap-4">
+        <span className="alert-ring flex size-12 shrink-0 items-center justify-center rounded-lg">
+          <BellGlyph />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="alert-eyebrow font-mono text-[11.5px] font-bold tracking-[0.12em]">REMINDERS · NOW</p>
+          <p className="alert-title mt-1 truncate text-[17px] font-semibold">{members.length} reminders now</p>
+          <p className="alert-sub truncate text-[13.5px] font-medium">{names.join(' · ')}</p>
+        </div>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <Btn primary onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'Show'}</Btn>
+          <Btn onClick={() => members.forEach((m) => snoozeAlert(m))}>Snooze all</Btn>
+          <CloseBtn onClick={() => dismissAlerts(keys)} />
+        </span>
+      </div>
+      {open && (
+        <ul aria-label="Reminders" className="alert-group-list mt-3 max-h-[50vh] space-y-1.5 overflow-y-auto pr-1">
+          {members.map((m) => (
+            <li key={m.key} className="alert-group-row flex items-center gap-2.5 rounded-lg px-2.5 py-1.5">
+              {m.url ? <Favicon url={m.url} name={m.title} className="size-5 shrink-0 rounded" /> : <QueueGlyph />}
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
+                {m.title}
+                <RepeatBadge n={m.repeat} />
+                {m.sub && <span className="alert-sub font-medium"> · {m.sub}</span>}
+              </span>
+              <span className="alert-group-kind shrink-0 rounded px-1.5 py-px font-mono text-[10px] font-bold tracking-wider">{m.kind === 'processing' ? 'PROCESSING' : 'QUEUE'}</span>
+              <Btn
+                onClick={() => {
+                  dismissAlert(m.key);
+                  if (m.url) openInNewTab(m.url);
+                }}
+              >
+                Open
+              </Btn>
+              <CloseBtn onClick={() => dismissAlert(m.key)} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function BellGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+// True while a panel covers the page: any dialog (sites, settings, site map,
+// composer…) or the full-screen calendar. Checked a few times a second, only
+// while there are alerts to hold.
+function usePanelOpen(active: boolean): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!active) return setOpen(false);
+    const check = () => setOpen(!!document.querySelector('[role="dialog"]:not([data-alert-ui]), .cmdcal'));
+    check();
+    const t = setInterval(check, 400);
+    return () => clearInterval(t);
+  }, [active]);
+  return open;
 }
 
 // Custom calendar events: a full capsule with a category-coloured glowing
