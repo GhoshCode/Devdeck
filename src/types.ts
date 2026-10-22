@@ -48,6 +48,9 @@ export interface Settings {
   backgroundImage: string | null; // data URL, remote URL, or css gradient
   overlayOpacity: number; // 0–1
   backgroundBlur: number; // px
+  uiScale?: number | null; // interface size, 0.8–1.25; unset/null = Auto (from the screen size)
+  backgroundVideo?: boolean;
+  tabTitleAnimation?: boolean; // the browser tab types shell commands (default on) // a video (kept in IndexedDB, lib/videoStore) plays behind everything
   clock24h: boolean;
   greetingName: string; // used in greetings, may be empty
   // ---- v2 ----
@@ -86,8 +89,6 @@ export interface Settings {
   customWeatherSources?: CustomWeatherSource[];
   calendar?: CalendarPrefs; // Command Calendar: last view and the second time-zone rail
   // Notifications (Settings → Processing). "All" on = both kinds on.
-  notifyAll?: boolean; // default false
-  notifyChrome?: boolean; // Chrome / system notifications (default false)
   notifyPopups?: boolean; // DevDeck's alert pop-ups, in-page and on other sites (default true)
   searchEngine?: SearchEngineId; // Enter / Ctrl+Enter search (default google)
   topTerminalWidth?: number | null; // px of the terminal beside the links bar; unset = as wide as the news column

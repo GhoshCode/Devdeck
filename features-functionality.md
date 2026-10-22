@@ -17,6 +17,16 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22k — video, sizes, tab
+
+- **Video wallpaper:** Settings → Appearance → Custom wallpaper → Video (MP4 or WebM, up to 20 MB). It plays silently behind everything, with the same blur and darkness sliders, and pauses when you switch tabs.
+- **Default themes:** choose which preset Dark mode and Light mode use.
+- **Interface size:** Auto fits DevDeck to your screen; or set 80–125 % yourself.
+- **The browser tab** shows a >_ icon in your accent colour, and its title types little shell commands (turn this off under Appearance → Browser tab).
+- **Calendar:** larger numbers at the top and a taller search.
+- **Live preview** in Appearance now looks like the real dashboard.
+- **Alerts are DevDeck's own pop-ups only;** Chrome's built-in notifications are no longer used.
+
 ## Round 2026-10-22j — new Settings
 
 - **Settings is reorganised** by what you're doing:

@@ -89,7 +89,7 @@ export function AlertCenter() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
             // only a backdrop for legibility: clicks pass through to the page (a dialog under it stays usable)
-            className="alert-shield pointer-events-none absolute top-0 left-1/2 -z-10 h-full w-[min(980px,100vw)] -translate-x-1/2"
+            className="alert-shield pointer-events-none absolute top-0 left-1/2 -z-10 h-full w-[min(980px,calc(100vw/var(--ui-zoom,1)))] -translate-x-1/2"
           />
         )}
       </AnimatePresence>

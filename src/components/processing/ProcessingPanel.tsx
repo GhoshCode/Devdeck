@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useStore } from '../../store';
 import type { ProcessingItem } from '../../types';
 import { useNow } from '../../hooks/useNow';
-import { isExtension } from '../../lib/env';
 import { describeSchedule, nextFireTime } from '../../lib/schedule';
 import { relativeAge } from '../../services/search';
 import { Favicon } from '../Favicon';
@@ -62,7 +61,6 @@ export const ProcessingPanel = memo(function ProcessingPanel() {
             ),
           )}
         </div>
-        <NotificationPrompt items={processing} />
         <div data-card-footer className="mt-auto flex h-9 shrink-0 items-center border-t border-white/[0.06] pl-1">
         <span className="font-mono text-[11px] text-white/45">{rest.reduce((n, g) => n + g.items.length, 0)} queued</span>
         <button
@@ -220,23 +218,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-// Web mode only: browser notifications need an explicit grant.
-function NotificationPrompt({ items }: { items: ProcessingItem[] }) {
-  const [permission, setPermission] = useState(() =>
-    typeof Notification === 'undefined' ? 'denied' : Notification.permission,
-  );
-  const wantsReminders = items.some((i) => i.schedule.enabled);
-  if (isExtension() || permission !== 'default' || !wantsReminders) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => void Notification.requestPermission().then(setPermission)}
-      className="absolute bottom-2 left-3 text-[10px] font-semibold text-[var(--color-accent)] hover:underline"
-    >
-      Enable reminder notifications
-    </button>
-  );
-}
 
 function ExpandGlyph() {
   return (
@@ -265,7 +246,7 @@ export function ProcessingManager({ onClose, from = 'processing' }: { onClose: (
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 6, scale: 0.99 }}
         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="sites-modal pointer-events-auto border shadow-2xl flex h-[min(760px,calc(100vh-2rem))] w-[min(1040px,100%)] flex-col rounded-[var(--radius-card)]"
+        className="sites-modal pointer-events-auto border shadow-2xl flex h-[min(760px,calc(calc(100vh/var(--ui-zoom,1))-2rem))] w-[min(1040px,100%)] flex-col rounded-[var(--radius-card)]"
       >
         <header className="flex items-center gap-3 border-b border-white/[0.07] px-5 pt-4 pb-3">
           <div className="flex-1">

@@ -134,7 +134,7 @@ test.describe('Page Load & Header', () => {
     ];
     const currentMonth = months[new Date().getMonth()];
 
-    await expect(page.getByText(currentMonth)).toBeVisible();
+    await expect(page.getByTestId('date-line')).toContainText(currentMonth); // (a news headline may mention the month too)
   });
 
   test('date, greeting and a shuffleable daily quote on the right', async ({ page }) => {

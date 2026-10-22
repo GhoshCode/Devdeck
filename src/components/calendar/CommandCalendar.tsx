@@ -418,14 +418,14 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
             <MatteCalendarIcon className="size-7" day={new Date(now).getDate()} />
           </span>
           <div className="min-w-0">
-            <p className="cc-fg truncate text-[13.5px] font-bold tracking-tight">
+            <p className="cc-fg truncate text-[16.5px] font-bold tracking-tight">
               {new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
-            <p className="cc-fg3 hidden truncate text-[11px] sm:block">Events · To-do · Processing · Queue on one timeline</p>
+            <p className="cc-fg3 hidden truncate text-[12.5px] sm:block">Events · To-do · Processing · Queue on one timeline</p>
           </div>
         </div>
 
-        <label className="cc-search relative mx-auto flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border px-3 py-2 lg:max-w-[560px]">
+        <label className="cc-search relative mx-auto flex min-w-[220px] flex-1 items-center gap-2.5 rounded-xl border px-4 py-3 lg:max-w-[600px] lg:translate-x-10">
           <SearchIcon />
           <input
             ref={queryRef}
@@ -433,7 +433,7 @@ function CommandCalendar({ target, onClose }: { target: Target | null; onClose: 
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter by title, attendee, tag or place…"
             aria-label="Filter calendar"
-            className="cc-fg min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--cc-fg3)]"
+            className="cc-fg min-w-0 flex-1 bg-transparent text-[14.5px] outline-none placeholder:text-[var(--cc-fg3)]"
           />
           {query ? (
             <button type="button" onClick={() => setQuery('')} aria-label="Clear filter" className="cc-iconbtn flex size-5 items-center justify-center rounded-md">
@@ -717,12 +717,12 @@ function ReminderStack({ group, h24, onClose, onPick }: { group: CalItem; h24: b
 function Kpi({ label, value, color, tone, pulse, active, onClick }: { label: string; value: ReactNode; color: string; tone?: 'good' | 'warn' | 'bad'; pulse?: boolean; active?: boolean; onClick?: () => void }) {
   const inner = (
     <>
-      <span className={`size-2 shrink-0 rounded-full ${pulse ? 'animate-pulse' : ''}`} style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-      <span className="cc-kpi-label text-[11.5px]">{label}</span>
-      <span className={`cc-kpi-value text-[13px] font-bold tabular-nums ${tone ? `is-${tone}` : ''}`}>{value}</span>
+      <span className={`size-2.5 shrink-0 rounded-full ${pulse ? 'animate-pulse' : ''}`} style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+      <span className="cc-kpi-label text-[13px]">{label}</span>
+      <span className={`cc-kpi-value text-[17px] font-bold tabular-nums ${tone ? `is-${tone}` : ''}`}>{value}</span>
     </>
   );
-  const cls = `cc-kpi flex items-center gap-2 rounded-lg border px-3 py-1.5 ${active ? 'is-active' : ''}`;
+  const cls = `cc-kpi flex items-center gap-2.5 rounded-xl border px-3.5 py-2 ${active ? 'is-active' : ''}`;
   return onClick ? (
     <button type="button" onClick={onClick} aria-pressed={!!active} title={`Show only: ${label}`} className={`${cls} transition-colors`} style={{ '--k': color } as CSSProperties}>
       {inner}

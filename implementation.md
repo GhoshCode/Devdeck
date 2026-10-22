@@ -10,6 +10,24 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22k — video background, mode defaults, interface size, tab identity; Chrome notifications removed
+
+- **Video background** (`lib/videoStore.ts`, `Backdrop`):
+  - MP4 or WebM up to 20 MB, kept in IndexedDB (`devdeck-media`). `settings.backgroundVideo` only flags that one is set.
+  - Plays muted and looped behind everything with the wallpaper blur and tint. Pauses while the tab is hidden; held on its first frame with reduced motion.
+  - Picking a preset or another look replaces it; "Remove video" deletes it.
+- **Default theme per mode:** Appearance → "Dark mode uses" / "Light mode uses" set `modeLooks[mode]` from the presets. The choice applies at once if that mode is showing, otherwise the next time it is (Auto included).
+- **Interface size** (`lib/uiScale.ts`):
+  - Auto keeps 100 % at 1440–2200 px, goes down to 80 % below 1440 and up to 125 % above 2200; phones and tablets stay at 100 %. A manual 80–125 % slider overrides it.
+  - Applied as `zoom` on `<html>` plus `--ui-zoom`. Every viewport-sized length (dashboard, dialogs, alert stack, search panel) is divided by `--ui-zoom` so it still fills the window.
+- **Browser tab** (`hooks/useTabIdentity.ts`): a `>_` icon drawn in the accent colour, and a title that types short shell commands ("❯ npm run dev▌"). Static with reduced motion or when Appearance → Browser tab is off.
+- **Calendar header:** summary numbers 17 px (labels 13 px), a 16.5 px date title, and a taller search field nudged right.
+- **Live preview** (Appearance) redrawn to match today's dashboard: clock, greeting and search, the Git heat-map, five pinned quick links and the terminal, the work column, two category cards and the news column. Its surfaces follow the accent.
+- **Chrome's built-in notifications removed:**
+  - The worker's `chrome.notifications` path and click handler, the `notifications` permission, the page's Web Notification fallback (`notifyWeb`, `useWebReminders`) and the "Enable reminder notifications" prompt are gone.
+  - Settings → Notifications is one switch, Alert pop-ups. `notifyAll` and `notifyChrome` are dropped by the v3 migration. PRIVACY.md updated.
+- **Tests:** 275 unit and 108 Chromium end-to-end. New `e2e/look.spec.ts` covers: a refused oversize video; a real WebM recorded in the page that plays, survives a reload and is removed; mode defaults; the zoom while the dashboard still fills the window; the tab icon and typing title; and the calendar header sizes.
+
 ## Round 2026-10-22j — settings redesign, theme-following surfaces, alert floods, release clean-up
 
 - **Settings redesigned** (`settings/SettingsModal.tsx`, new `settings/pages.tsx`):

@@ -16,7 +16,7 @@
 
 import { nextFireTime } from './lib/schedule';
 import { REMINDERS_STORAGE_KEY, type ReminderItem } from './lib/reminders-shared';
-import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, CALENDAR_SNOOZE_MS, PENDING_ACTIONS_KEY, notificationText, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
+import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, CALENDAR_SNOOZE_MS, PENDING_ACTIONS_KEY, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
 import { renderAlertOverlay, type OverlayTheme } from './lib/alertOverlay';
 import { ALERT_PREFS_KEY, type AlertPrefs } from './lib/alertPrefs';
 import type { ProcessingItem } from './types';
@@ -68,7 +68,6 @@ const EVENT_PREFIX = 'devdeck-ev:'; // to-do / timer events (alert key)
 const SNOOZE_PREFIX = 'devdeck-snz:'; // snoozes (alert key)
 const SNOOZES_KEY = 'devdeck:bg-snoozes';
 const SNOOZE_MS = 10 * 60_000;
-const NOTE_PREFIX = 'devdeck-note:';
 
 // ---- scheduling -----------------------------------------------------------
 
@@ -156,28 +155,19 @@ async function shownOnCurrentSite(alert: AlertData): Promise<boolean> {
   }
 }
 
-function notify(alert: AlertData) {
-  const { title, message } = notificationText(alert);
-  chrome.notifications.create(NOTE_PREFIX + alert.key, { type: 'basic', iconUrl: 'icons/icon-128.png', title, message });
-}
-
 async function prefs(): Promise<AlertPrefs> {
   const got = await chrome.storage.local.get(ALERT_PREFS_KEY);
   const p = got[ALERT_PREFS_KEY] as AlertPrefs | undefined;
-  return { popups: p?.popups ?? true, chrome: p?.chrome ?? false }; // Chrome built-in notifications are off unless turned on
+  return { popups: p?.popups ?? true };
 }
 
-// Settings → Notifications decides which of the three routes are allowed.
-const lastNote = new Map<string, AlertData>();
+// Alerts are DevDeck's own pop-ups: in an open DevDeck tab, or drawn on the
+// site you're on. (Chrome's built-in notifications are not used.)
 async function deliver(alert: AlertData, reminder?: { id: string; at: number }) {
   const p = await prefs();
-  if (p.popups) {
-    if (await shownInDevDeckTab(alert, reminder)) return;
-    if (await shownOnCurrentSite(alert)) return;
-  }
-  if (!p.chrome) return;
-  lastNote.set(NOTE_PREFIX + alert.key, alert);
-  notify(alert);
+  if (!p.popups) return;
+  if (await shownInDevDeckTab(alert, reminder)) return;
+  await shownOnCurrentSite(alert);
 }
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -282,12 +272,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   return false;
 });
 
-chrome.notifications.onClicked.addListener(async (notificationId) => {
-  const alert = lastNote.get(notificationId);
-  if (alert) void act('open', alert);
-  else if (notificationId.startsWith(ALARM_PREFIX)) {
-    const item = (await loadItems()).find((i) => ALARM_PREFIX + i.id === notificationId);
-    if (item) chrome.tabs.create({ url: item.url });
-  }
-  chrome.notifications.clear(notificationId);
-});
+

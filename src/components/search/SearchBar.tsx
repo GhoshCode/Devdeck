@@ -452,7 +452,7 @@ export const SearchBar = memo(function SearchBar({ inputRef, onAddSite }: Search
       {multiline && (
         <div
           data-testid="search-panel"
-          className="search-panel composer-scroll absolute top-full left-0 z-40 mt-2 max-h-[50vh] w-[150%] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border px-4 py-3"
+          className="search-panel composer-scroll absolute top-full left-0 z-40 mt-2 max-h-[50vh] w-[150%] max-w-[calc(calc(100vw/var(--ui-zoom,1))-2rem)] overflow-y-auto rounded-2xl border px-4 py-3"
         >
           {field}
           <p className="search-panel-foot mt-2 font-mono text-[10.5px] tabular-nums">

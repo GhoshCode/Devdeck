@@ -26,9 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   githubToken: '',
   autoQuickLinkCount: 6,
   recentLinkCount: 15,
-  notifyAll: false, // DevDeck pop-ups on, Chrome built-in notifications off
-  notifyChrome: false,
-  notifyPopups: true,
+  notifyPopups: true, // DevDeck's alert pop-ups
   weatherEnabled: true,
   useGeolocation: true,
   manualCity: '',

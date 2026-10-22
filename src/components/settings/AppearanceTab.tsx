@@ -4,7 +4,10 @@ import { useStore } from '../../store';
 import { PRESET_THEMES, THEME_CATEGORIES, type PresetTheme, type ThemeCategory } from '../../store/themes';
 import { DEFAULT_SETTINGS } from '../../store/seed';
 import { withThemeTransition } from '../../lib/themeTransition';
-import { contrastWithWhite, switchModePatch, systemMode } from '../../lib/appearance';
+import { contrastWithWhite, lookFor, switchModePatch, systemMode } from '../../lib/appearance';
+import { Select } from '../ui/Select';
+import { deleteBackgroundVideo, saveBackgroundVideo, videoProblem } from '../../lib/videoStore';
+import { clampScale } from '../../lib/uiScale';
 import { DEFAULT_STUDIO, STUDIO_PALETTES, accentFromGradient, gradientCss, modeForGradient } from '../../lib/gradient';
 import { useNow } from '../../hooks/useNow';
 import { CLOCK_STYLE_INFO } from '../../lib/clockStyles';
@@ -56,6 +59,30 @@ const backdropFor = (s: Pick<Settings, 'backgroundImage' | 'presetTheme' | 'them
 
 type Filter = 'all' | ThemeCategory;
 
+// The theme each mode switches to (Light / Dark / Auto all use these).
+function ModeDefaults({ onPick }: { onPick: (mode: ThemeMode, preset: PresetTheme) => void }) {
+  const settings = useStore((s) => s.settings);
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {(['dark', 'light'] as const).map((m) => {
+        const current = (settings.themeMode ?? 'dark') === m ? settings.presetTheme : lookFor(settings, m).presetTheme;
+        const options = PRESET_THEMES.filter((p) => p.mode === m).map((p) => ({ value: p.id, label: p.name }));
+        return (
+          <Field key={m} label={m === 'dark' ? 'Dark mode uses' : 'Light mode uses'}>
+            <Select
+              value={options.some((o) => o.value === current) ? (current as string) : ''}
+              placeholder="Your own look"
+              onChange={(id) => onPick(m, PRESET_THEMES.find((p) => p.id === id)!)}
+              ariaLabel={m === 'dark' ? 'Default dark theme' : 'Default light theme'}
+              options={options}
+            />
+          </Field>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AppearanceTab() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
@@ -79,11 +106,42 @@ export function AppearanceTab() {
         presetTheme: look.presetTheme,
         accentColor: look.accentColor ?? s.accentColor,
         backgroundImage: look.backgroundImage,
+        backgroundVideo: false,
       });
     });
 
   const pickPreset = (preset: PresetTheme) =>
     applyLook(preset.mode, { presetTheme: preset.id, accentColor: preset.accentColor, backgroundImage: preset.gradient });
+
+  // A preset picked for a mode: applied now when that mode is showing,
+  // otherwise remembered for the next time it is.
+  const setModeDefault = (m: ThemeMode, preset: PresetTheme) => {
+    const s = useStore.getState().settings;
+    const look = { presetTheme: preset.id, accentColor: preset.accentColor, backgroundImage: preset.gradient };
+    if ((s.themeMode ?? 'dark') === m) withThemeTransition(() => updateSettings({ ...look, backgroundVideo: false }));
+    else updateSettings({ modeLooks: { ...s.modeLooks, [m]: look } });
+  };
+
+  const [videoNote, setVideoNote] = useState<string | null>(null);
+  const onVideo = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const problem = videoProblem(file);
+    if (problem) return setVideoNote(problem);
+    try {
+      await saveBackgroundVideo(file);
+      updateSettings({ backgroundVideo: true });
+      window.dispatchEvent(new Event('devdeck:background-video'));
+      setVideoNote(null);
+    } catch {
+      setVideoNote("Couldn't store that video in this browser.");
+    }
+  };
+  const removeVideo = async () => {
+    updateSettings({ backgroundVideo: false });
+    await deleteBackgroundVideo().catch(() => undefined);
+  };
 
   const onUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,6 +202,7 @@ export function AppearanceTab() {
             );
           })}
         </div>
+        <ModeDefaults onPick={setModeDefault} />
       </Section>
 
       <Section
@@ -216,7 +275,7 @@ export function AppearanceTab() {
 
       <ThemeGallery selected={settings.presetTheme ?? null} onPick={pickPreset} />
 
-      <Section title="Custom wallpaper" hint="Any image URL, a CSS gradient, or a picture from your computer.">
+      <Section title="Custom wallpaper" hint="An image URL, a CSS gradient, a picture from your computer — or a short video (MP4 or WebM, up to 20 MB).">
         <div className="flex gap-2">
           <input
             type="text"
@@ -236,6 +295,10 @@ export function AppearanceTab() {
             Upload
             <input type="file" accept="image/*" onChange={onUpload} className="hidden" aria-label="Upload a backdrop image" />
           </label>
+          <label className="btn-secondary cursor-pointer rounded-xl border px-3.5 py-2 text-xs font-medium text-white transition-colors">
+            Video
+            <input type="file" accept="video/mp4,video/webm" onChange={onVideo} className="hidden" aria-label="Upload a background video" />
+          </label>
           {settings.backgroundImage && (
             <button
               type="button"
@@ -246,6 +309,19 @@ export function AppearanceTab() {
             </button>
           )}
         </div>
+        {settings.backgroundVideo && (
+          <div className="mt-3 flex items-center gap-3 text-[12px] text-white/70">
+            <span data-testid="video-on">A video is playing as your background (paused while the tab is hidden).</span>
+            <button type="button" onClick={removeVideo} className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-300 hover:bg-red-500/20">
+              Remove video
+            </button>
+          </div>
+        )}
+        {videoNote && (
+          <p role="alert" className="mt-2 text-[12px] text-amber-300">
+            {videoNote}
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Slider
             label="Wallpaper tint & darkness"
@@ -265,6 +341,36 @@ export function AppearanceTab() {
             step={1}
             onChange={(v) => updateSettings({ backgroundBlur: v })}
           />
+        </div>
+      </Section>
+
+      <Section title="Browser tab" hint="The tab shows a >_ icon in your accent colour.">
+        <Toggle
+          label="Terminal-style tab title"
+          hint="The tab title types short shell commands, like a terminal. Off: a plain DevDeck title."
+          checked={settings.tabTitleAnimation ?? true}
+          onChange={(v) => updateSettings({ tabTitleAnimation: v })}
+        />
+      </Section>
+
+      <Section title="Interface size" hint="Chrome already follows your display scaling. Auto also fits DevDeck to your screen: a little smaller on small laptops, larger on very wide screens.">
+        <div className="flex flex-wrap items-center gap-4">
+          <Toggle inline label="Auto" checked={settings.uiScale == null} onChange={(v) => updateSettings({ uiScale: v ? null : 1 })} />
+          {settings.uiScale != null && (
+            <div className="min-w-[240px] flex-1">
+              <Slider
+                label="Size"
+                value={Math.round(settings.uiScale * 100)}
+                unit="%"
+                min={80}
+                max={125}
+                step={5}
+                hintLeft="Smaller"
+                hintRight="Larger"
+                onChange={(v) => updateSettings({ uiScale: clampScale(v / 100) })}
+              />
+            </div>
+          )}
         </div>
       </Section>
 
@@ -918,7 +1024,8 @@ function LivePreview({ settings }: { settings: Settings }) {
   const solid = !!settings.reduceTransparency;
   const solidity = solid ? 100 : (settings.panelSolidity ?? 0);
   const glassBase = light ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.07)';
-  const solidBase = light ? '#ffffff' : '#1b1329';
+  const accent = settings.accentColor;
+  const solidBase = light ? '#ffffff' : `color-mix(in srgb, ${accent} 12%, #12131a)`;
   const panel: CSSProperties = {
     background: `color-mix(in srgb, ${glassBase}, ${solidBase} ${solidity}%)`,
     border: `1px solid ${light ? 'rgba(60,60,67,0.12)' : 'rgba(255,255,255,0.12)'}`,
@@ -944,7 +1051,7 @@ function LivePreview({ settings }: { settings: Settings }) {
         aria-label="Live preview"
         role="img"
         className="relative overflow-hidden"
-        style={{ background: backdropFor(settings), height: 172 }}
+        style={{ background: backdropFor(settings), height: 210 }}
       >
         <div
           className="absolute inset-0"
@@ -953,38 +1060,83 @@ function LivePreview({ settings }: { settings: Settings }) {
             backdropFilter: settings.backgroundBlur ? `blur(${Math.round(settings.backgroundBlur / 4)}px)` : undefined,
           }}
         />
-        <div className="relative grid h-full grid-rows-[46px_22px_1fr] gap-2 p-3">
-          <div className="grid grid-cols-[1.1fr_1fr_1fr_0.9fr] gap-2">
+        {/* A miniature of today's dashboard: clock · greeting + search · Git;
+            quick links + terminal; work column · two category cards · news. */}
+        <div className="relative grid h-full grid-rows-[52px_18px_1fr] gap-2 p-3">
+          <div className="grid grid-cols-[1fr_2.2fr_1.2fr] gap-2">
             <div className="overflow-hidden rounded-lg" style={panel}>
               <ClockFace style={settings.clockStyle} parts={clockParts(now, settings.clock24h)} showSeconds={false} now={now} />
             </div>
-            {[0, 1].map((i) => (
-              <div key={i} className="space-y-1.5 rounded-lg p-2" style={panel}>
-                <div className="h-1.5 w-1/2 rounded-full" style={{ background: muted }} />
-                <div className="h-1.5 w-4/5 rounded-full" style={{ background: muted }} />
+            <div className="flex flex-col items-center justify-between py-0.5">
+              <div className="h-2 w-2/5 rounded-full" style={{ background: ink, opacity: 0.75 }} />
+              <div className="h-1 w-3/5 rounded-full" style={{ background: muted }} />
+              <div className="flex w-full items-center gap-1.5">
+                <div className="flex h-[15px] flex-1 items-center rounded-md px-1.5" style={panel}>
+                  <div className="h-1 w-1/3 rounded-full" style={{ background: muted }} />
+                </div>
+                <div className="h-[15px] w-9 rounded-md" style={{ background: accent }} />
               </div>
-            ))}
-            <div className="flex flex-col items-end justify-center pr-1">
-              <div className="h-1.5 w-3/4 rounded-full" style={{ background: settings.accentColor, opacity: 0.85 }} />
-              <div className="mt-1.5 h-2.5 w-full rounded-full" style={{ background: ink, opacity: 0.6 }} />
+            </div>
+            <div className="rounded-lg p-1.5" style={panel}>
+              <div className="grid h-full grid-cols-[repeat(14,1fr)] grid-rows-4 gap-[2px]">
+                {Array.from({ length: 56 }, (_, i) => (
+                  <span key={i} className="rounded-[1px]" style={{ background: (i * 7) % 11 < 2 ? accent : muted, opacity: (i * 7) % 11 < 2 ? 0.9 : 1 }} />
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <div className="flex flex-1 items-center rounded-lg px-2" style={panel}>
-              <div className="h-1.5 w-1/3 rounded-full" style={{ background: muted }} />
-            </div>
-            <div className="w-14 rounded-lg" style={{ background: settings.accentColor }} />
-          </div>
-          <div className="grid grid-cols-[0.8fr_2.2fr_1fr] gap-2">
-            <div className="rounded-lg" style={panel} />
-            <div className="grid grid-cols-2 gap-2 rounded-lg p-2" style={panel}>
+          <div className="grid grid-cols-[1fr_2.2fr_1.2fr] gap-2">
+            <div />
+            <div className="flex items-center gap-1 rounded-md px-1" style={panel}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span key={i} className="h-2 w-6 rounded-sm" style={{ boxShadow: `inset 0 0 0 1px ${accent}`, background: muted }} />
+              ))}
               {[0, 1].map((i) => (
-                <div key={i} className="rounded-md p-1.5" style={panel}>
-                  <div className="h-1.5 w-1/3 rounded-full" style={{ background: settings.accentColor }} />
+                <span key={`r${i}`} className="h-2 w-5 rounded-sm" style={{ background: muted }} />
+              ))}
+            </div>
+            <div className="flex items-center gap-1 rounded-md px-1" style={{ background: 'rgba(0,0,0,0.55)' }}>
+              <span className="h-2 w-4 rounded-sm" style={{ background: accent }} />
+              <span className="h-1 w-1/2 rounded-full" style={{ background: 'rgba(255,255,255,0.25)' }} />
+            </div>
+          </div>
+          <div className="grid grid-cols-[1fr_2.2fr_1.2fr] gap-2">
+            <div className="grid grid-rows-[14px_1fr_1fr] gap-1.5">
+              <div className="rounded-md" style={panel} />
+              <div className="rounded-md" style={panel} />
+              <div className="rounded-md" style={panel} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 rounded-lg p-1.5" style={panel}>
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-1 rounded-md p-1.5" style={panel}>
+                  <div className="h-1.5 w-1/3 rounded-full" style={{ background: accent }} />
+                  <div className="flex gap-1">
+                    {[0, 1, 2, 3].map((j) => (
+                      <span key={j} className="h-3 flex-1 rounded-sm" style={{ background: muted }} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[0, 1].map((j) => (
+                      <div key={j} className="space-y-0.5 rounded-sm p-1" style={panel}>
+                        {[0, 1, 2].map((k) => (
+                          <div key={k} className="h-0.5 rounded-full" style={{ background: muted }} />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="rounded-lg" style={panel} />
+            <div className="grid grid-rows-[1fr_1fr_12px] gap-1.5">
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-1 rounded-md p-1.5" style={panel}>
+                  {[0, 1, 2].map((k) => (
+                    <div key={k} className="h-0.5 rounded-full" style={{ background: muted, width: `${90 - k * 15}%` }} />
+                  ))}
+                </div>
+              ))}
+              <div className="rounded-md" style={panel} />
+            </div>
           </div>
         </div>
       </div>

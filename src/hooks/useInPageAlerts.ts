@@ -6,13 +6,12 @@ import {
   ALERT_THEME_KEY,
   OVERDUE_EVERY,
   PENDING_ACTIONS_KEY,
-  notificationText,
   overdueSummary,
   reminderAlert,
   upcomingEvents,
   type AlertData,
 } from '../lib/alertEvents';
-import { pushAlert, takeDueSnoozes, wasSeen } from '../components/ui/alertStore';
+import { pushAlert, takeDueSnoozes } from '../components/ui/alertStore';
 import { ALERT_PREFS_KEY, alertPrefs } from '../lib/alertPrefs';
 
 export { overdueSummary, upcomingEvents, reminderAlert } from '../lib/alertEvents';
@@ -44,20 +43,12 @@ interface ChromeLike {
 type OnMsg = (msg: { type?: string; id?: string; at?: number; alert?: AlertData }, sender: unknown, reply: (r: unknown) => void) => boolean | void;
 const chromeApi = () => (globalThis as { chrome?: ChromeLike }).chrome;
 
-// Website build only: a system notification while the tab is hidden.
-function notifyWeb(d: AlertData) {
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  const { title, message } = notificationText(d);
-  new Notification(title, { body: message, tag: `devdeck:${d.key}`, icon: 'icons/icon-128.png' });
-}
-
 export function useInPageAlerts() {
   const processing = useStore((s) => s.processing);
   const todos = useStore((s) => s.todos);
   const events = useStore((s) => s.events);
-  // Settings → Notifications: pop-ups (in-page and on other sites) and Chrome notifications.
+  // Settings → Notifications: DevDeck's pop-ups, in-page and on other sites.
   const popups = useStore((s) => alertPrefs(s.settings).popups);
-  const chromeOn = useStore((s) => alertPrefs(s.settings).chrome);
   const lastCheck = useRef(Date.now());
   const ext = isExtension();
 
@@ -71,16 +62,13 @@ export function useInPageAlerts() {
       for (const e of fired) {
         if (visible()) {
           if (popups) pushAlert(e.data);
-          else if (chromeOn && !wasSeen(e.data.key)) notifyWeb(e.data);
         } else if (!ext) {
-          if (chromeOn && !wasSeen(e.data.key)) notifyWeb(e.data);
           if (popups) pushAlert(e.data); // remembered; still in the stack if you come back soon
         }
         // extension + not in view: the service worker shows it on the site you're on
       }
       for (const d of takeDueSnoozes(now).due) {
         if (visible() && popups) pushAlert(d, true);
-        else if (chromeOn && (visible() || !ext)) notifyWeb(d);
       }
       const next = upcomingEvents(processing, todos, now, events)[0]?.at ?? null;
       const snoozeNext = takeDueSnoozes(now).next;
@@ -98,7 +86,7 @@ export function useInPageAlerts() {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [processing, todos, events, ext, popups, chromeOn]);
+  }, [processing, todos, events, ext, popups]);
 
   // Extension: give the service worker the upcoming to-do / timer alerts (it
   // already has the scheduled reminders) and the theme colours for the overlay.
@@ -112,8 +100,8 @@ export function useInPageAlerts() {
   useEffect(() => {
     const storage = chromeApi()?.storage?.local;
     if (!ext || !storage) return;
-    void storage.set({ [ALERT_PREFS_KEY]: { popups, chrome: chromeOn } });
-  }, [ext, popups, chromeOn]);
+    void storage.set({ [ALERT_PREFS_KEY]: { popups } });
+  }, [ext, popups]);
   useEffect(() => {
     const storage = chromeApi()?.storage?.local;
     if (!ext || !storage) return;
@@ -190,9 +178,7 @@ export function useInPageAlerts() {
       } catch {
         // ignore
       }
-      const prefs = alertPrefs(s.settings);
-      if (prefs.popups) pushAlert(summary);
-      else if (prefs.chrome) notifyWeb(summary);
+      if (alertPrefs(s.settings).popups) pushAlert(summary);
     }, 1500);
     return () => clearTimeout(t);
   }, []);

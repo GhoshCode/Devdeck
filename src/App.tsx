@@ -7,6 +7,8 @@ import { AlertCenter } from './components/ui/AlertCenter';
 import { skinFor } from './lib/skin';
 import { switchModePatch } from './lib/appearance';
 import { withThemeTransition } from './lib/themeTransition';
+import { autoScale } from './lib/uiScale';
+import { useTabIdentity } from './hooks/useTabIdentity';
 import { Backdrop } from './components/Backdrop';
 import { CategoryGrid } from './components/CategoryGrid';
 import { CategoryMenuIcon, CategoryOverview } from './components/CategoryOverview';
@@ -82,6 +84,24 @@ export default function App() {
       html.classList.remove('theme-switching');
     };
   }, [accentColor, themeMode, skin]);
+
+  // The browser tab: accent-coloured >_ icon and a title that types commands.
+  useTabIdentity(accentColor, useStore((s) => s.settings.tabTitleAnimation ?? true));
+
+  // Interface size: a manual size, or Auto from the window width (kept current).
+  const uiScale = useStore((s) => s.settings.uiScale ?? null);
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const apply = () => {
+      const z = uiScale ?? autoScale(window.innerWidth);
+      html.style.setProperty('--ui-zoom', String(z));
+      html.style.zoom = z === 1 ? '' : String(z);
+    };
+    apply();
+    if (uiScale !== null) return;
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [uiScale]);
 
   // Appearance → Auto: follow the OS light/dark setting, live.
   const followSystem = useStore((s) => !!s.settings.followSystem);

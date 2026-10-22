@@ -145,7 +145,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'library',
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.99, y: 6 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="settings-shell relative z-10 flex h-[min(880px,94vh)] w-[min(1200px,100%)] overflow-hidden rounded-[22px] border max-md:flex-col"
+            className="settings-shell relative z-10 flex h-[min(880px,calc(94vh/var(--ui-zoom,1)))] w-[min(1200px,100%)] overflow-hidden rounded-[22px] border max-md:flex-col"
             role="dialog"
             aria-modal="true"
             aria-label="DevDeck Settings"
@@ -217,7 +217,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'library',
                   {active === 'library' && <LibraryTab initialPrefillUrl={prefillUrl} onClearPrefill={onClearPrefill} />}
                   {active === 'sitemap' && (
                     // the map sizes itself to its box: give it the page's full height
-                    <div className="h-[calc(min(880px,94vh)-170px)] min-h-[460px]">
+                    <div className="h-[calc(min(880px,calc(94vh/var(--ui-zoom,1)))-170px)] min-h-[460px]">
                       <SitemapTab />
                     </div>
                   )}

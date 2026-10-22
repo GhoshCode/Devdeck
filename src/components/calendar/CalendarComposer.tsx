@@ -138,7 +138,7 @@ function Modal({ label, onClose, children }: { label: string; onClose: () => voi
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.97, y: 4 }}
           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-          className="cc-pop cc-scroll pointer-events-auto max-h-[calc(100vh-32px)] w-full max-w-[560px] overflow-y-auto rounded-2xl border p-5"
+          className="cc-pop cc-scroll pointer-events-auto max-h-[calc(calc(100vh/var(--ui-zoom,1))-32px)] w-full max-w-[560px] overflow-y-auto rounded-2xl border p-5"
         >
           {children}
         </motion.div>

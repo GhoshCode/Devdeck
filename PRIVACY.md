@@ -33,7 +33,7 @@ DevDeck sends requests only to fetch the content you see:
 |---|---|
 | `storage` | Keeps your deck and settings. |
 | `bookmarks` | Shows and edits your browser bookmarks in the Bookmarks panel. |
-| `alarms`, `notifications` | Fires to-do and site reminders on time, even when DevDeck isn't open. |
+| `alarms` | Fires to-do and site reminders on time, even when DevDeck isn't open (shown as DevDeck pop-ups). |
 | `scripting`, host access to all sites | Shows a reminder banner at the top of the page you're on, and fetches feeds and icons without browser errors. DevDeck never reads or changes page content. |
 | `geolocation` | Local weather, only if you choose "Use my location". |
 | `favicon` | Site icons from the browser's own cache. |

@@ -187,8 +187,11 @@ export function migrate(persisted: unknown, fromVersion: number): PersistedState
   // v3: a new reminder used to stop at the end of the month it was made in
   // (from = to). That was never chosen on purpose, so those keep going now.
   if (fromVersion < 3) {
-    // and Chrome's built-in notifications go off (DevDeck's own pop-ups stay on)
-    out.settings = { ...out.settings, notifyAll: false, notifyChrome: false, notifyPopups: out.settings.notifyPopups ?? true };
+    // the old Chrome-notification switches are gone (DevDeck's pop-ups stay as they were)
+    const { notifyAll: _a, notifyChrome: _c, ...rest } = out.settings as typeof out.settings & { notifyAll?: unknown; notifyChrome?: unknown };
+    void _a;
+    void _c;
+    out.settings = { ...rest, notifyPopups: rest.notifyPopups ?? true };
     out.processing = out.processing.map((p) => (p.schedule.to && p.schedule.to === p.schedule.from ? { ...p, schedule: { ...p.schedule, to: '' } } : p));
   }
   return out;

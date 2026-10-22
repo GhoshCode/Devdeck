@@ -99,7 +99,7 @@ export function DashboardLayout({
     <LayoutContext.Provider value={{ rightInline, cards: rightInline ? snap.cards : 3 }}>
     <div
       data-testid="dashboard"
-      className="relative z-0 flex h-screen w-screen flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 pt-4 pb-4 sm:px-6 lg:overflow-y-hidden"
+      className="relative z-0 flex h-[calc(100vh/var(--ui-zoom,1))] w-[calc(100vw/var(--ui-zoom,1))] flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 pt-4 pb-4 sm:px-6 lg:overflow-y-hidden"
     >
       {/* above the cockpit, so the search suggestions and panel cover the terminal box */}
       <div data-zone="top-bar" className="relative z-40 shrink-0">
