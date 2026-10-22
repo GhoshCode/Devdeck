@@ -5,7 +5,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
 import { cardsAtRest, freeColumns, nextMode, sideMax, type SnapGeometry } from '../../lib/cardSnap';
 import { CardSnapHandle, EdgeTab } from './CardSnapHandle';
-import { TopSplitHandle } from './TopSplitHandle';
+import { MIN_LINKS, MIN_TERMINAL, TopSplitHandle } from './TopSplitHandle';
 
 // The v2 page shell (plan §1, §4 Phase 0): Top Bar, Search Row, then the
 // 3-column cockpit — D on the left, the E/F + cards frame in the centre, I/J on
@@ -74,8 +74,11 @@ export function DashboardLayout({
   const snap = useCardSnap(rightInline);
   // Unresized, the terminal is as wide as the Git box in the top bar (or the news column without one).
   const gitWidth = useWidthOf('[data-testid="git-widget"]', rightInline);
-  const terminal = termWidth ?? gitWidth ?? snap.rightWidth;
   const searchSpan = useSpanOf('[data-search-row]', topRowRef, rightInline);
+  // On narrower screens the terminal gives way first, so the links bar keeps
+  // room for its fixed quick links (never below MIN_TERMINAL).
+  const room = searchSpan ? searchSpan.row - searchSpan.left - 36 - MIN_LINKS : Infinity;
+  const terminal = Math.round(Math.max(MIN_TERMINAL, Math.min(termWidth ?? gitWidth ?? snap.rightWidth, room)));
 
   const columns = rightInline
     ? snap.dragging || !snap.settled
@@ -160,8 +163,8 @@ export function DashboardLayout({
         <section ref={snap.centerRef} data-zone="center" className="relative flex min-h-0 min-w-0 flex-col gap-3" style={rightInline ? { gridColumn: 3, gridRow: 2 } : undefined}>
           {!rightInline && <div className="mt-[7px] shrink-0">{linksRow}</div>}
           {center}
-          {rightInline && <EdgeTab side="left" cards={snap.cards} next={snap.next} unit={snap.unit} onStep={snap.step} onCards={snap.toCards} />}
-          {rightInline && <EdgeTab side="right" cards={snap.cards} next={snap.next} unit={snap.unit} onStep={snap.step} onCards={snap.toCards} />}
+          {rightInline && snap.canStep && <EdgeTab side="left" cards={snap.cards} next={snap.next} unit={snap.unit} onStep={snap.step} onCards={snap.toCards} />}
+          {rightInline && snap.canStep && <EdgeTab side="right" cards={snap.cards} next={snap.next} unit={snap.unit} onStep={snap.step} onCards={snap.toCards} />}
         </section>
         {rightInline && (
           <div style={{ gridColumn: 4, gridRow: 2 }} className="flex min-h-0">
@@ -304,15 +307,17 @@ function useCardSnap(enabled: boolean) {
   const toCards = (n: number) => updateSettings({ cockpitCards: n, cockpitLeftWidth: null, cockpitRightWidth: null });
   const step = () => geo && toCards(nextMode(geo, left, right));
   const next = geo ? nextMode(geo, left, right) : 1;
+  // only one mode fits (narrow screen or a single category): no tabs to show
+  const canStep = !!geo && cardsAtRest(geo) > 1;
   const unit = geo ? geo.card + geo.gap : 420;
   const cards = cols?.cards ?? (geo ? Math.max(1, cardsAtRest(geo)) : 3);
-  return { cockpitRef, centerRef, style, handle, step, toCards, next, unit, cards, rightWidth: right, dragging, settled };
+  return { cockpitRef, centerRef, style, handle, step, toCards, next, canStep, unit, cards, rightWidth: right, dragging, settled };
 }
 
 // Where the first element matching the selector sits horizontally, relative to
 // the given row ({ left, width } px; null if either is missing). Kept current.
 function useSpanOf(selector: string, rowRef: RefObject<HTMLElement | null>, enabled: boolean) {
-  const [span, setSpan] = useState<{ left: number; width: number } | null>(null);
+  const [span, setSpan] = useState<{ left: number; width: number; row: number } | null>(null);
   useEffect(() => {
     const row = rowRef.current;
     const el = document.querySelector(selector);
@@ -321,8 +326,8 @@ function useSpanOf(selector: string, rowRef: RefObject<HTMLElement | null>, enab
       const r = row.getBoundingClientRect();
       const b = el.getBoundingClientRect();
       setSpan((prev) => {
-        const next = { left: Math.round(b.left - r.left), width: Math.round(b.width) };
-        return prev && prev.left === next.left && prev.width === next.width ? prev : next;
+        const next = { left: Math.round(b.left - r.left), width: Math.round(b.width), row: Math.round(r.width) };
+        return prev && prev.left === next.left && prev.width === next.width && prev.row === next.row ? prev : next;
       });
     };
     read();

@@ -35,9 +35,10 @@ export const LinksStrip = memo(function LinksStrip() {
 
   return (
     <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-3">
-      {/* The first five quick links stay put (never cut or scrolled); the rest
-          and the recent links scroll sideways beside them. */}
-      <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
+      {/* The first five quick links stay put while the rest and the recent
+          links scroll sideways beside them. On a bar too narrow for all five,
+          they scroll too rather than being cut. */}
+      <div data-strip="fixed" onWheel={onWheel} className="scrollbar-none flex min-w-0 shrink items-center gap-2 overflow-x-auto">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />
         ))}
@@ -48,7 +49,7 @@ export const LinksStrip = memo(function LinksStrip() {
           ref={scrollerRef}
           onWheel={onWheel}
           data-strip="scroll"
-          className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pl-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-40px),transparent)]"
+          className="scrollbar-none flex min-w-24 flex-1 items-center gap-2 overflow-x-auto pl-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-40px),transparent)]"
         >
           {strip.scrolling.map((link) => (
             <Chip key={link.id} link={link} variant="auto" onOpen={open} />

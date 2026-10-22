@@ -4,8 +4,8 @@ import { useState, type PointerEvent, type RefObject } from 'react';
 // terminal on its own (independent of the news column below); arrow keys step
 // 24 px; double-click goes back to the Git box's width.
 
-const MIN_TERMINAL = 240;
-const MIN_LINKS = 820; // All categories + the five fixed quick links (~700px) + room for the scrolling ones
+export const MIN_TERMINAL = 240;
+export const MIN_LINKS = 820; // All categories + the five fixed quick links (~700px) + room for the scrolling ones
 
 export function TopSplitHandle({ width, custom, rowRef, lead = 0, onChange }: { width: number; custom: boolean; rowRef: RefObject<HTMLDivElement | null>; lead?: number; onChange: (w: number | null) => void }) {
   const [dragging, setDragging] = useState(false);

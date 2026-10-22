@@ -17,6 +17,16 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22h — QA pass
+
+- On smaller screens (1440–1700 px) the terminal narrows first, so the quick links keep their room. If the pinned links still don't fit, they scroll instead of being cut.
+- The resize tabs inside the cards box only appear when there is more than one card mode to switch to.
+- Checked automatically:
+  - light theme;
+  - 1440, 1600 and 1920 px widths;
+  - the CPU temperature (shown when Chrome provides one);
+  - Alt+Enter with a 45-line prompt to Gemini, ChatGPT and Claude, on test pages, not the real sites.
+
 ## Round 2026-10-22g — quick links
 
 - Five quick links are always pinned at the start of the bar. If you've set fewer, your most-visited sites fill the spare slots. The other links and the recent ones scroll sideways beside them.

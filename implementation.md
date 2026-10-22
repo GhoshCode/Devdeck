@@ -10,6 +10,33 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22h — QA of the untested parts, narrow-screen fixes
+
+What was checked, and how:
+
+- **Light theme** (browser, 1920 × 1080):
+  - The grey dots and lines are visible.
+  - The long-search panel is readable (dark text on the tinted panel).
+  - The calendar mark: dark day digits (`#2b2f36`) on a near-white slab, accent rail.
+- **Screen widths** (browser):
+  - 1440 px: only one card fits, so there are no other modes.
+  - 1600 px: the 1- and 2-card modes are right; three don't fit.
+  - 1920 px: as in 22f.
+  - No horizontal page overflow at any of them.
+- **CPU temperature** (`e2e/system-stats.spec.ts`, `chrome.system` stubbed): with temperatures [48.6, 55.2, 0] the meter shows `55°` and the title "55 °C"; with none it shows no temperature. RAM shows 63 % for 10 of 16 GB.
+- **Alt+Enter hand-off** (`e2e/qa/ai-handoff.spec.ts`, built extension in Chromium):
+  - A 45-line prompt, typed into the long-search panel and sent with Alt+Enter, reaches Gemini, ChatGPT and Claude stand-in pages. Every line arrives in order, the send button (enabled only once there is text) is clicked, and DevDeck's box is cleared.
+  - The AI is picked by scrolling on its icon.
+  - The real sites need a sign-in, so `--host-resolver-rules` sends their names nowhere and `context.route` serves the stand-ins. Without that rule Playwright's routing did not catch the tabs the extension opens, and the first runs reached the real gemini.google.com (signed out, throwaway profile).
+
+Fixes from this pass:
+
+- **Narrow screens:**
+  - Below about 1700 px the default terminal (the Git box's width) left the links bar too narrow for the five fixed chips, and the fifth was cut.
+  - The terminal now gives way first (`room` from `useSpanOf`'s row width; never below `MIN_TERMINAL`).
+  - The fixed group may scroll on its own rather than be cut, and the scrolling part keeps at least 96 px (`min-w-24`).
+- **Edge tabs** are hidden when only one mode fits (`canStep`: `cardsAtRest` ≤ 1, a narrow screen or a single category).
+
 ## Round 2026-10-22g — links fill to the terminal, five fixed quick links
 
 - **Links row:** it starts under the search row (`marginLeft` from `useSpanOf`) and is `flex-1` up to the split handle (12 px spacer, handle, `ml-3` terminal), so it grows when the terminal narrows and no gap opens. `MIN_LINKS` is 820 px: All categories plus the five fixed chips (~700 px) plus room for the scrolling ones.
