@@ -97,7 +97,8 @@ export function DashboardLayout({
       data-testid="dashboard"
       className="relative z-0 flex h-screen w-screen flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 pt-4 pb-4 sm:px-6 lg:overflow-y-hidden"
     >
-      <div data-zone="top-bar" className="shrink-0">
+      {/* above the cockpit, so the search suggestions and panel cover the terminal box */}
+      <div data-zone="top-bar" className="relative z-40 shrink-0">
         {topBar}
       </div>
       {searchRow && (
