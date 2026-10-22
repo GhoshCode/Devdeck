@@ -472,6 +472,8 @@ function SitemapFlow() {
         <Background color="rgba(255,255,255,0.06)" gap={24} />
         <Controls className="!bg-[var(--color-base-elevated)] !border-white/10 !fill-white" />
         <MiniMap
+          bgColor="var(--color-base-elevated)"
+          maskColor="rgba(0, 0, 0, 0.5)"
           nodeColor={(node) => {
             if (node.type === 'root') return '#ff2e9a';
             if (node.type === 'category') return (node.data?.color as string) || '#a78bfa';

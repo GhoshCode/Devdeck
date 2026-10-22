@@ -101,8 +101,8 @@ export function WeatherSourcePicker() {
   };
 
   return (
-    <div className="space-y-2">
-      <span className="block text-xs font-semibold tracking-wider text-white/80 uppercase">Weather source</span>
+    <section aria-label="Weather source" className="set-card space-y-3 rounded-2xl border p-5">
+      <span className="set-card-title block text-[13.5px] font-semibold">Weather source</span>
       <div ref={rootRef} className="relative" onKeyDown={onKeyDown}>
         <button
           type="button"
@@ -186,7 +186,7 @@ export function WeatherSourcePicker() {
           </div>
         )}
       </div>
-      <p className="text-[11px] text-white/55">
+      <p className="set-card-hint text-[12px] leading-relaxed">
         Your choice is tried first; if it fails, the other sources take over. Clicking the weather opens the site the
         reading came from.
       </p>
@@ -201,7 +201,7 @@ export function WeatherSourcePicker() {
           }}
         />
       )}
-    </div>
+    </section>
   );
 }
 

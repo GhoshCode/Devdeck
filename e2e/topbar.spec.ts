@@ -18,9 +18,9 @@ test('top bar renders every widget slot', async ({ page }) => {
   await expect(page.getByRole('textbox', { name: 'Command prompt' })).toBeVisible();
 });
 
-test('clock style switches in Settings → Appearance; Cyberpunk has no city row', async ({ page }) => {
+test('clock style switches in Settings → Clock; Cyberpunk has no city row', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: /Appearance/ }).click();
+  await page.getByRole('dialog', { name: 'DevDeck Settings' }).getByRole('button', { name: 'Clock', exact: true }).click();
   await page.getByRole('radio', { name: 'Cyberpunk 2077' }).click();
   await page.keyboard.press('Escape');
 

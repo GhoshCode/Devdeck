@@ -100,7 +100,7 @@ test('AI mode tints the search bar with the chosen AI', async ({ page }) => {
 test('greeting styles colour the words, not the name', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const modal = page.getByRole('dialog', { name: 'DevDeck Settings' });
-  await modal.getByRole('button', { name: /Appearance/ }).click();
+  await modal.getByRole('button', { name: /You & greeting/ }).click();
   await modal.getByRole('textbox', { name: 'Greeting name' }).fill('Ada');
   await modal.getByRole('radio', { name: 'Accent greeting' }).click();
   await page.keyboard.press('Escape');
@@ -111,7 +111,7 @@ test('greeting styles colour the words, not the name', async ({ page }) => {
 test('dropdowns are themed comboboxes with keyboard support', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const modal = page.getByRole('dialog', { name: 'DevDeck Settings' });
-  await modal.getByRole('button', { name: /Scraping|Feeds/ }).first().click();
+  await modal.getByRole('button', { name: /News & jobs/ }).first().click();
   await expect(modal.locator('select')).toHaveCount(0);
   const combo = modal.getByRole('combobox', { name: 'Feed panel' });
   await combo.focus();

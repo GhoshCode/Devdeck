@@ -39,10 +39,10 @@ export default function App() {
   const searchRef = useRef<HTMLTextAreaElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [overview, setOverview] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('library');
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('you');
   const [settingsPrefill, setSettingsPrefill] = useState('');
 
-  const openSettings = (tab: SettingsTabId = 'library', prefill = '') => {
+  const openSettings = (tab: SettingsTabId = 'you', prefill = '') => {
     setSettingsPrefill(prefill);
     setSettingsTab(tab);
     setIsSettingsOpen(true);
@@ -154,7 +154,7 @@ export default function App() {
   const settingsButton = (
     <button
       type="button"
-      onClick={() => openSettings('library')}
+      onClick={() => openSettings()}
       title="Open Settings (,)"
       aria-label="Settings"
       className="settings-orb group relative flex size-10 shrink-0 items-center justify-center rounded-xl"
@@ -170,7 +170,7 @@ export default function App() {
       <DashboardLayout
         topBar={
           <TopBar
-            weather={<WeatherUV onSetup={() => openSettings('profile')} lead={<DateLine />} />}
+            weather={<WeatherUV onSetup={() => openSettings('weather')} lead={<DateLine />} />}
             search={
               <div data-search-row className="relative mx-auto flex w-full max-w-[940px] items-center gap-2 lg:right-6">
                 <SearchBar inputRef={searchRef} onAddSite={(url) => openSettings('library', url)} />
@@ -179,7 +179,7 @@ export default function App() {
               </div>
             }
             git={<GitWidget />}
-            command={<CommandPrompt onSetup={() => openSettings('profile')} />}
+            command={<CommandPrompt onSetup={() => openSettings('terminal')} />}
           />
         }
         left={
@@ -197,7 +197,7 @@ export default function App() {
             <SystemStats />
           </div>
         }
-        rightTop={<CommandPrompt onSetup={() => openSettings('profile')} />}
+        rightTop={<CommandPrompt onSetup={() => openSettings('terminal')} />}
         linksRow={
             // All categories stands on its own, left of the quick links + recent bar.
             <div className="mx-3 flex min-w-0 shrink-0 items-center gap-2">
@@ -231,7 +231,7 @@ export default function App() {
             </div>
           </div>
         }
-        right={<FeedColumn onManage={() => openSettings('scraping')} />}
+        right={<FeedColumn onManage={() => openSettings('feeds')} />}
       />
 
       <UndoToast />

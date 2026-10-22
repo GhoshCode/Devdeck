@@ -17,6 +17,27 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22j — new Settings
+
+- **Settings is reorganised** by what you're doing:
+  - General (You & greeting, Clock, Weather & location)
+  - Look (Appearance)
+  - Workspace (Library, Site map, Quick links, Queue & processing)
+  - Search & AI
+  - Stay informed (Notifications, News & jobs)
+  - Connections (GitHub, Terminal)
+  - Data & backup
+
+  Each page says what it is for. "Find a setting" at the top of the list jumps to the right page. Options appear only when they apply, for example the GitHub token once you've entered a username.
+- Every panel, dialog and the calendar now takes on your theme and accent colour.
+- **Reminder floods stay calm.** A site that keeps firing shows one card with "×N". Several at once become one "N reminders now" card. While a panel is open they wait behind a small bell. Clear all is always at the top.
+- Chrome's built-in notifications are off by default. DevDeck's own pop-ups stay on; turn Chrome's on in Settings → Notifications.
+
+**Manual test checklist**
+- [ ] Open Settings: it starts on You & greeting; type "token" in Find a setting, and GitHub is offered.
+- [ ] Switch theme: Settings, the sites panel and the calendar all follow it.
+- [ ] With several reminders due at once: one grouped card; open the sites panel and they wait behind the bell.
+
 ## Round 2026-10-22i — sites panel, quick-links panel, busy calendars
 
 - **Your sites panel** (the sliders button in the Queue box, or Manage in Currently processing): a centred panel.

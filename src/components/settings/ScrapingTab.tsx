@@ -25,13 +25,7 @@ const field =
 
 export function ScrapingTab() {
   return (
-    <div className="max-w-2xl space-y-6 p-6 text-sm text-white/90">
-      <div className="pr-12">
-        <h3 className="font-display text-[1rem] font-semibold text-white">Scraping &amp; News</h3>
-        <p className="text-xs text-white/50">
-          Topic chips filter the news and jobs panels; sources decide what they show.
-        </p>
-      </div>
+    <div className="space-y-5 text-sm text-white/90">
       <SectionCounts />
       <Topics />
       <Sources />
@@ -48,8 +42,8 @@ function SectionCounts() {
   return (
     <section aria-label="Items per section" className="glass-inner space-y-4 rounded-xl p-4">
       <div>
-        <h4 className="text-xs font-semibold tracking-wider text-white/80 uppercase">Items per section</h4>
-        <p className="mt-0.5 text-[11px] text-white/45">How many scraped items each panel lists (0 hides the list).</p>
+        <h4 className="set-card-title text-[13.5px] font-semibold">Items per section</h4>
+        <p className="set-card-hint mt-0.5 text-[12px]">How many stories and jobs each column shows (0 hides it).</p>
       </div>
       <CountSlider id="count-news" label="Tech news" value={news} onChange={(v) => updateSettings({ feedNewsCount: v })} />
       <CountSlider id="count-jobs" label="Dev jobs" value={jobs} onChange={(v) => updateSettings({ feedJobsCount: v })} />
@@ -99,7 +93,7 @@ function Topics() {
 
   return (
     <section aria-label="Topics" className="glass-inner space-y-3 rounded-xl p-4">
-      <h4 className="text-xs font-semibold tracking-wider text-white/80 uppercase">Topics</h4>
+      <h4 className="set-card-title text-[13.5px] font-semibold">Topics</h4>
       <ul className="space-y-2">
         {topics.map((t) => (
           <li key={t.id} className="grid grid-cols-[8rem_1fr_auto] items-center gap-2">
@@ -173,7 +167,7 @@ function Sources() {
   return (
     <section aria-label="Sources" className="glass-inner space-y-3 rounded-xl p-4">
       <div className="flex items-center">
-        <h4 className="text-xs font-semibold tracking-wider text-white/80 uppercase">Sources</h4>
+        <h4 className="set-card-title text-[13.5px] font-semibold">Sources</h4>
         <button type="button" onClick={resetFeeds} className="ml-auto text-[11px] text-white/40 hover:text-white">
           Restore defaults
         </button>

@@ -10,6 +10,45 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22j — settings redesign, theme-following surfaces, alert floods, release clean-up
+
+- **Settings redesigned** (`settings/SettingsModal.tsx`, new `settings/pages.tsx`):
+  - A grouped rail with SVG icons and a "Find a setting" search (page names, descriptions and keywords; Enter opens the first match).
+  - Each page has a header with its title and one line on what it's for. Content sits in a centred 820 px column (Library, Site map and Queue & processing use the full width), built from one card style (`.set-card`).
+  - Groups and pages:
+    - General: You & greeting · Clock · Weather & location
+    - Look: Appearance
+    - Workspace: Library · Site map · Quick links · Queue & processing
+    - Search: Search & AI
+    - Stay informed: Notifications · News & jobs
+    - Connections: GitHub · Terminal
+    - Data: Data & backup
+  - Moves:
+    - `ClockSettings` and `GreetingSettings` are split out of `AppearanceTab`.
+    - The GitHub username (it appeared twice) and the weather switch left Appearance.
+    - Search, AI, terminal and weather left the old Profile tab, which is deleted.
+    - Notifications left Processing.
+  - Settings that only apply when something else is on: weather location and source only while weather is on; the GitHub token and refresh only once a username is set; the name font only once a name is set.
+  - Old deep links (`profile`, `scraping`) map to the new pages. The weather setup opens Weather & location, the terminal setup opens Terminal, and the feeds open News & jobs. The gear opens the first page.
+  - Fixes found during the visual pass:
+    - The page-change scroll effect returned `scrollTo()`'s value, which is a Promise in current Chrome, so React treated it as a clean-up and crashed.
+    - The site map rendered 0 px tall without a definite height.
+    - The map's zoom buttons and mini-map ignored the theme.
+    - Light mode's `[role=dialog] input { background:#fff !important }` (in an earlier cascade layer) whitened the new switches; they now paint with `background-image`.
+- **Surfaces follow the theme:**
+  - `--color-base` and `--color-base-elevated` are mixed from the accent in dark mode. They were a fixed violet-black, so every solid panel, dialog, menu and the calendar stayed violet on other themes.
+  - Hard-coded violets in the Site Map, Library, reminder pop-ups, the glass fallbacks and the mode thumbnail are gone.
+  - The sites panel and the quick-links panel use theme glass.
+- **Alert floods** (`alertStore`, `AlertCenter`, `alertOverlay`):
+  - A site's reminder that fires again while its card is up updates that card ("×N", timer restarted).
+  - Three or more reminders at once become one "N reminders now" card that opens into the list, with Snooze all and dismiss all.
+  - While a dialog or the calendar is open, alerts wait behind a "N reminders waiting" pill.
+  - Clear all sits at the top of both stacks.
+  - The worker never draws the other-websites overlay into a DevDeck tab; that was how two stacks appeared.
+- **Chrome built-in notifications are off by default:** `notifyAll` and `notifyChrome` default to false, the worker assumes off, and the v3 migration turns them off once.
+- **Release clean-up:** "Load demo data" is only in dev and demo builds; the store build can only remove demo data if a backup brought some in. No debug logging ships.
+- **Tests:** 270 unit, 103/103 Chromium end-to-end, and 4/4 extension (built `dist/`). Tests were updated for the new page names and for the add side's tabs and list dropdown.
+
 ## Round 2026-10-22i — quick-links panel, sites panel redesign, 500-site calendar QA
 
 - **Quick-links panel** (`LinksStrip`):

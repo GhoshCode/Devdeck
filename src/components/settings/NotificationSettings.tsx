@@ -21,10 +21,10 @@ export function NotificationSettings() {
     },
   ];
   return (
-    <section aria-label="Notifications" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+    <section aria-label="Notifications" className="set-card space-y-4 rounded-2xl border p-5">
       <div>
-        <h3 className="font-display text-[1rem] font-semibold text-white">Notifications</h3>
-        <p className="text-xs text-white/50">How reminders, due dates, timers and calendar alerts reach you.</p>
+        <h3 className="set-card-title text-[13.5px] font-semibold">How alerts reach you</h3>
+        <p className="set-card-hint mt-0.5 text-[12px]">Reminders, due dates, timers and calendar alerts. Several at once are grouped; while a panel is open they wait behind a bell.</p>
       </div>
       <label className="flex cursor-pointer items-start gap-2.5">
         <input

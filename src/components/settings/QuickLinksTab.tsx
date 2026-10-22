@@ -158,12 +158,8 @@ export function QuickLinksTab() {
   };
 
   return (
-    <div className="max-w-2xl space-y-6 p-6 text-sm text-white/90">
-      <div className="flex items-center justify-between pr-12">
-        <div>
-          <h3 className="font-display text-[1rem] font-semibold text-white">Quick Links</h3>
-          <p className="text-xs text-white/50">The links strip at the top of the centre frame.</p>
-        </div>
+    <div className="space-y-5 text-sm text-white/90">
+      <div className="flex items-center justify-end">
         {!isAdding && (
           <button
             type="button"
@@ -250,13 +246,14 @@ function StripSettings() {
   const [cleared, setCleared] = useState(false);
 
   return (
-    <section className="glass-inner space-y-4 rounded-xl p-4">
-      <p className="text-xs text-white/50">
+    <section aria-label="After the pinned links" className="set-card space-y-4 rounded-2xl border p-5">
+      <h3 className="set-card-title text-[13.5px] font-semibold">After the pinned links</h3>
+      <p className="set-card-hint -mt-3 text-[12px] leading-relaxed">
         The first 5 links are pinned to the left of the strip. After them come auto-picked sites (most visited,
         boosted by recency), then your recently opened sites.
       </p>
       <label className="block space-y-1.5">
-        <span className="flex justify-between text-xs font-semibold tracking-wider text-white/80 uppercase">
+        <span className="set-label flex justify-between text-[12px] font-semibold">
           Auto-picked links <span className="font-mono text-white/60">{autoCount}</span>
         </span>
         <input
@@ -270,7 +267,7 @@ function StripSettings() {
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="flex justify-between text-xs font-semibold tracking-wider text-white/80 uppercase">
+        <span className="set-label flex justify-between text-[12px] font-semibold">
           Recent links <span className="font-mono text-white/60">{recentCount}</span>
         </span>
         <input

@@ -104,9 +104,6 @@ export function AppearanceTab() {
         backgroundImage: null,
         overlayOpacity: DEFAULT_SETTINGS.overlayOpacity,
         backgroundBlur: DEFAULT_SETTINGS.backgroundBlur,
-        clockStyle: DEFAULT_SETTINGS.clockStyle,
-        clock24h: DEFAULT_SETTINGS.clock24h,
-        showSeconds: DEFAULT_SETTINGS.showSeconds,
         followSystem: false,
         modeLooks: undefined,
         reduceTransparency: false,
@@ -120,16 +117,7 @@ export function AppearanceTab() {
   const uploaded = settings.backgroundImage?.startsWith('data:');
 
   return (
-    <div className="max-w-3xl space-y-6 p-6 text-sm text-white/90">
-      <div className="border-b border-white/[0.07] pb-4">
-        <h3 className="flex items-center gap-2 font-display text-[1rem] font-semibold tracking-wide text-white">
-          Appearance &amp; Display
-        </h3>
-        <p className="text-xs text-white/55">
-          Mode, accent, wallpapers, your own gradients, glass and the clock. Changes apply instantly — the preview shows the
-          page behind this sheet.
-        </p>
-      </div>
+    <div className="space-y-5 text-sm text-white/90">
 
       <LivePreview settings={settings} />
 
@@ -325,7 +313,27 @@ export function AppearanceTab() {
         />
       </Section>
 
-      <Section title="Clock & cockpit" hint="You can also click the clock on the dashboard to cycle faces.">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={resetAppearance}
+          className="btn-secondary rounded-xl border px-3.5 py-2 text-xs text-white/70 hover:text-white"
+        >
+          Reset appearance to defaults
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---- General → Clock -----------------------------------------------------------
+
+export function ClockSettings() {
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+  return (
+    <div className="space-y-5 text-sm text-white/90">
+      <Section title="Clock face" hint="You can also click the clock on the dashboard to step through the faces.">
         <ClockFaces
           style={settings.clockStyle}
           h24={settings.clock24h}
@@ -335,8 +343,10 @@ export function AppearanceTab() {
         {settings.clockStyle === 'multi-timezone' && (
           <ZonePicker zones={settings.clockZones ?? DEFAULT_ZONES} onChange={(clockZones) => updateSettings({ clockZones })} />
         )}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Hour format">
+      </Section>
+      <Section title="Time format">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Field label="Hours">
             <div role="radiogroup" aria-label="Clock format" className="segmented flex w-fit rounded-lg p-0.5">
               {[
                 { v: false, label: '12-hour' },
@@ -360,37 +370,55 @@ export function AppearanceTab() {
           <Field label="Seconds">
             <Toggle inline label="Show seconds" checked={settings.showSeconds} onChange={(v) => updateSettings({ showSeconds: v })} />
           </Field>
-          <Field label="GitHub username">
-            <input
-              type="text"
-              value={settings.githubUsername}
-              onChange={(e) => updateSettings({ githubUsername: e.target.value.trim() })}
-              placeholder="octocat"
-              aria-label="GitHub username"
-              spellCheck={false}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 font-mono text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
-            />
-          </Field>
-          <Field label="Weather & UV">
-            <Toggle
-              inline
-              label="Show weather"
-              checked={settings.weatherEnabled}
-              onChange={(v) => updateSettings({ weatherEnabled: v })}
-            />
-          </Field>
         </div>
       </Section>
+    </div>
+  );
+}
 
-      <Section title="Greeting" hint="Your name is shown after Good morning / afternoon / evening.">
+// ---- General → You & greeting --------------------------------------------------
+
+export function GreetingSettings() {
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+  return (
+    <div className="space-y-5 text-sm text-white/90">
+      <Section title="Your name" hint="Shown after Good morning / afternoon / evening.">
         <input
           type="text"
           value={settings.greetingName}
           onChange={(e) => updateSettings({ greetingName: e.target.value })}
           placeholder="Your name"
           aria-label="Greeting name"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-[13px] text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
         />
+        {settings.greetingName.trim() && (
+          <>
+            <p className="pt-1 text-[11.5px] font-semibold text-white/70">Name font</p>
+            <div role="radiogroup" aria-label="Name font" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {NAME_FONTS.map((f) => {
+                const on = (settings.nameFont ?? 'grotesk') === f.id;
+                const sample = settings.greetingName.trim();
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    aria-label={`${f.name} name font`}
+                    onClick={() => updateSettings({ nameFont: f.id })}
+                    className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
+                  >
+                    <span className={`name-font-${f.id} max-w-full truncate text-[17px] leading-tight text-white`}>{f.upper ? sample.toUpperCase() : sample}</span>
+                    <span className="text-[10.5px] text-white/55">{f.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </Section>
+      <Section title="Greeting style" hint="Click the greeting on the dashboard for the next style; right-click for another phrase.">
         <div role="radiogroup" aria-label="Greeting style" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {GREET_STYLES.map((g) => {
             const on = (settings.greetStyle ?? 'classic') === g.id;
@@ -404,58 +432,29 @@ export function AppearanceTab() {
                 onClick={() => updateSettings({ greetStyle: g.id })}
                 className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
               >
-                <span className={`greet-words greet-${g.id} font-display text-[15px] leading-tight font-bold tracking-tight`}>LATE-NIGHT HACKING,</span>
+                <span className={`greet-words greet-${g.id} font-display text-[15px] leading-tight font-bold tracking-tight`}>GOOD MORNING,</span>
                 <span className="text-[10.5px] text-white/55">{g.name}</span>
               </button>
             );
           })}
         </div>
-        <div role="group" aria-label="Lines under the greeting" className="flex flex-wrap gap-x-5 gap-y-2 px-0.5 pt-0.5">
+      </Section>
+      <Section title="Under the greeting">
+        <div role="group" aria-label="Lines under the greeting" className="space-y-3">
           <CheckLine
-            label="Show “On this day” line"
-            hint="A tech event from today's date in history; ↻ shows another"
+            label="“On this day” line"
+            hint="A tech event from today's date in history; ↻ shows another."
             checked={settings.showOnThisDay ?? true}
             onChange={(v) => updateSettings({ showOnThisDay: v })}
           />
           <CheckLine
-            label="Show quote line"
-            hint="A daily quote from a public quotes library; ↻ shows another"
+            label="Quote line"
+            hint="A quote that changes every 30 minutes; ↻ shows another."
             checked={settings.showQuote ?? true}
             onChange={(v) => updateSettings({ showQuote: v })}
           />
         </div>
-        <p className="pt-1 text-[11px] font-semibold tracking-wider text-white/60 uppercase">Name font</p>
-        <div role="radiogroup" aria-label="Name font" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {NAME_FONTS.map((f) => {
-            const on = (settings.nameFont ?? 'grotesk') === f.id;
-            const sample = settings.greetingName.trim() || 'Alex';
-            return (
-              <button
-                key={f.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                aria-label={`${f.name} name font`}
-                onClick={() => updateSettings({ nameFont: f.id })}
-                className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
-              >
-                <span className={`name-font-${f.id} max-w-full truncate text-[17px] leading-tight text-white`}>{f.upper ? sample.toUpperCase() : sample}</span>
-                <span className="text-[10.5px] text-white/55">{f.name}</span>
-              </button>
-            );
-          })}
-        </div>
       </Section>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={resetAppearance}
-          className="btn-secondary rounded-xl border px-3.5 py-2 text-xs text-white/70 hover:text-white"
-        >
-          Reset appearance to defaults
-        </button>
-      </div>
     </div>
   );
 }
@@ -807,10 +806,10 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="glass-inner rounded-2xl border border-white/10 p-5">
-      <div className="mb-3.5 flex items-start gap-3">
+    <section aria-label={title} className="set-card rounded-2xl border p-5">
+      <div className="mb-4 flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h4 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-white/85 uppercase">
+          <h4 className="set-card-title flex items-center gap-2 text-[13.5px] font-semibold">
             {title}
             {badge && (
               <span className="rounded border border-cyan-400/30 bg-cyan-500/10 px-1.5 font-mono text-[9px] tracking-normal text-cyan-300 normal-case">
@@ -818,7 +817,7 @@ function Section({
               </span>
             )}
           </h4>
-          {hint && <p className="mt-0.5 text-[11px] text-white/55">{hint}</p>}
+          {hint && <p className="set-card-hint mt-0.5 text-[12px] leading-relaxed">{hint}</p>}
         </div>
         {aside}
       </div>

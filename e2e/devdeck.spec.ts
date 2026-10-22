@@ -350,8 +350,8 @@ test.describe('Settings Modal', () => {
     const modal = page.locator('[aria-label="DevDeck Settings"]');
 
     await expect(modal.getByRole('button', { name: /Library/ })).toBeVisible();
-    await expect(modal.getByRole('button', { name: /Sitemap/ })).toBeVisible();
-    await expect(modal.getByRole('button', { name: /Quick Links/ })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Site map/ })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Quick links/ })).toBeVisible();
     await expect(modal.getByRole('button', { name: /Appearance/ })).toBeVisible();
     await expect(modal.getByRole('button', { name: /Data/ })).toBeVisible();
   });

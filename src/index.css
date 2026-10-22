@@ -3347,3 +3347,68 @@ html[data-theme='light'] .sites-tab.is-on { color: #0f172a; }
 .alert-group-row { background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
 .alert-group-kind { color: color-mix(in srgb, var(--color-accent) 60%, #fff); background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
 html[data-theme='light'] .alert-group-row { background: rgba(15, 23, 42, 0.04); box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08); }
+
+/* ---- Settings: theme surfaces, grouped rail, cards and fields ------------- */
+.settings-shell {
+  color: #f1f5f9;
+  border-color: var(--color-glass-border-raised, rgba(255, 255, 255, 0.14));
+  background: linear-gradient(color-mix(in srgb, var(--color-accent) 6%, transparent), color-mix(in srgb, var(--color-accent) 6%, transparent)), color-mix(in srgb, var(--color-base) 90%, transparent);
+  backdrop-filter: blur(40px) saturate(1.4);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.settings-rail { background: rgba(0, 0, 0, 0.16); border-color: rgba(255, 255, 255, 0.07); }
+.settings-rail-foot, .settings-head { border-color: rgba(255, 255, 255, 0.07); }
+.set-group { color: rgba(255, 255, 255, 0.4); }
+.set-rail-item { color: rgba(255, 255, 255, 0.68); transition: background 0.15s, color 0.15s; }
+.set-rail-item:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.set-rail-item.is-on { background: color-mix(in srgb, var(--color-accent) 20%, transparent); color: #fff; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent); }
+.set-rail-icon { color: rgba(255, 255, 255, 0.45); }
+.set-rail-item.is-on .set-rail-icon { color: var(--color-accent); }
+.set-card { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.08); }
+.set-card.is-danger { border-color: rgba(239, 68, 68, 0.28); }
+.set-card-title { color: rgba(255, 255, 255, 0.95); }
+.set-card-hint { color: rgba(255, 255, 255, 0.52); }
+.set-label { color: rgba(255, 255, 255, 0.72); }
+.set-row-label { color: rgba(255, 255, 255, 0.88); }
+.set-field { background: rgba(0, 0, 0, 0.22); border-color: rgba(255, 255, 255, 0.1); color: #fff; }
+.set-field::placeholder { color: rgba(255, 255, 255, 0.32); }
+.set-field:focus { border-color: color-mix(in srgb, var(--color-accent) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+.set-btn { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.75); transition: background 0.15s, color 0.15s; }
+.set-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.set-link { color: var(--color-accent); }
+.set-link:hover { text-decoration: underline; }
+/* a switch made from a checkbox */
+.set-switch { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); position: relative; cursor: pointer; transition: background 0.18s; }
+.set-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+.set-switch:checked { background: var(--color-accent); }
+.set-switch:checked::after { transform: translateX(16px); }
+.set-switch:focus-visible { outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent); outline-offset: 2px; }
+html[data-theme='light'] .settings-shell { color: #0f172a; background: rgba(250, 250, 252, 0.94); border-color: rgba(15, 23, 42, 0.1); box-shadow: 0 40px 100px -30px rgba(15, 23, 42, 0.35); }
+html[data-theme='light'] .settings-rail { background: rgba(15, 23, 42, 0.03); border-color: rgba(15, 23, 42, 0.08); }
+html[data-theme='light'] .settings-rail-foot, html[data-theme='light'] .settings-head { border-color: rgba(15, 23, 42, 0.08); }
+html[data-theme='light'] .set-group { color: rgba(15, 23, 42, 0.45); }
+html[data-theme='light'] .set-rail-item { color: rgba(15, 23, 42, 0.7); }
+html[data-theme='light'] .set-rail-item:hover { background: rgba(15, 23, 42, 0.05); color: #0f172a; }
+html[data-theme='light'] .set-rail-item.is-on { color: #0f172a; background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+html[data-theme='light'] .set-rail-icon { color: rgba(15, 23, 42, 0.45); }
+html[data-theme='light'] .set-card { background: #fff; border-color: rgba(15, 23, 42, 0.09); }
+html[data-theme='light'] .set-card-title { color: #0f172a; }
+html[data-theme='light'] .set-card-hint { color: rgba(15, 23, 42, 0.55); }
+html[data-theme='light'] .set-label { color: rgba(15, 23, 42, 0.7); }
+html[data-theme='light'] .set-row-label { color: rgba(15, 23, 42, 0.88); }
+html[data-theme='light'] .set-field { background: #fff; border-color: rgba(15, 23, 42, 0.15); color: #0f172a; }
+html[data-theme='light'] .set-field::placeholder { color: rgba(15, 23, 42, 0.38); }
+html[data-theme='light'] .set-btn { background: rgba(15, 23, 42, 0.04); border-color: rgba(15, 23, 42, 0.12); color: rgba(15, 23, 42, 0.75); }
+/* painted as an image: light mode's 'every input in a dialog is white' rule only sets the colour */
+html[data-theme='light'] .set-switch { background-image: linear-gradient(rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.2)); border: 0; }
+.set-switch:checked, html[data-theme='light'] .set-switch:checked { background-image: linear-gradient(var(--color-accent), var(--color-accent)); }
+
+/* Site map: the map library's zoom buttons follow the theme too */
+.react-flow__controls-button { background: var(--color-base-elevated); border-color: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.8); fill: currentColor; }
+.react-flow__controls-button:hover { background: color-mix(in srgb, var(--color-accent) 18%, var(--color-base-elevated)); }
+.react-flow__controls-button svg { fill: currentColor; }
+.react-flow__minimap { background: var(--color-base-elevated); }
+html[data-theme='light'] .react-flow__controls-button { background: #fff; border-color: rgba(15, 23, 42, 0.1); color: rgba(15, 23, 42, 0.75); }
+.react-flow__attribution { background: transparent; opacity: 0.45; }
+.react-flow__attribution a { color: inherit; }

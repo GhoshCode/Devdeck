@@ -6,10 +6,10 @@ export function SearchSettings() {
   const engine = useStore((s) => s.settings.searchEngine ?? 'google');
   const updateSettings = useStore((s) => s.updateSettings);
   return (
-    <section aria-label="Search" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+    <section aria-label="Search" className="set-card space-y-4 rounded-2xl border p-5">
       <div>
-        <span className="block text-xs font-semibold tracking-wider text-white/80 uppercase">Search</span>
-        <p className="mt-0.5 text-[11px] text-white/55">
+        <span className="set-card-title block text-[13.5px] font-semibold">Search engine</span>
+        <p className="set-card-hint mt-0.5 text-[12px] leading-relaxed">
           Enter searches in a new tab · Ctrl+Enter opens a new window · Alt+Enter asks your AI (scroll on the AI icon to switch).
         </p>
       </div>
