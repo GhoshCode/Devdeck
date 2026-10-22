@@ -1,9 +1,11 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import { loadBackgroundVideo } from '../lib/videoStore';
 import { useStore } from '../store';
 import { skinFor } from '../lib/skin';
 
 export const Backdrop = memo(function Backdrop() {
-  const { backgroundImage, overlayOpacity, backgroundBlur, themeMode } = useStore((s) => s.settings);
+  const { backgroundImage, overlayOpacity, backgroundBlur, themeMode, backgroundVideo } = useStore((s) => s.settings);
+  const videoUrl = useBackgroundVideo(!!backgroundVideo);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isLight = themeMode === 'light';
   // Sonoma Glass paints its own calm backdrop in CSS: no mesh, no particles.
@@ -52,8 +54,8 @@ export const Backdrop = memo(function Backdrop() {
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = isLight ? 'rgba(99, 102, 241, 0.16)' : 'rgba(255, 255, 255, 0.05)';
-      ctx.strokeStyle = isLight ? 'rgba(99, 102, 241, 0.09)' : 'rgba(255, 255, 255, 0.03)';
+      ctx.fillStyle = isLight ? 'rgba(74, 78, 86, 0.30)' : 'rgba(255, 255, 255, 0.09)';
+      ctx.strokeStyle = isLight ? 'rgba(74, 78, 86, 0.16)' : 'rgba(255, 255, 255, 0.055)';
       ctx.font = '14px var(--font-sans)';
 
       for (let i = 0; i < nodes.length; i++) {
@@ -122,7 +124,8 @@ export const Backdrop = memo(function Backdrop() {
         backgroundImage: !backgroundImage && isLight && !skin ? defaultLightMesh : undefined,
       }}
     >
-      {backgroundImage && (
+      {videoUrl && <BackgroundVideo src={videoUrl} blur={backgroundBlur} />}
+      {backgroundImage && !videoUrl && (
         <div 
           className="absolute inset-0 bg-cover bg-center transition-all duration-300"
           style={{ 
@@ -133,9 +136,77 @@ export const Backdrop = memo(function Backdrop() {
       )}
       <div 
         className="absolute inset-0 bg-[var(--color-base)] transition-opacity duration-300" 
-        style={{ opacity: backgroundImage ? (isLight ? 0.06 : overlayOpacity) : 0 }} 
+        style={{ opacity: backgroundImage || videoUrl ? (isLight ? 0.06 : overlayOpacity) : 0 }} 
       />
       {!skin && <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />}
     </div>
   );
 });
+
+// The stored background video as an object URL (null while there is none).
+function useBackgroundVideo(on: boolean): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!on) return setUrl(null);
+    let made: string | null = null;
+    let alive = true;
+    loadBackgroundVideo()
+      .then((blob) => {
+        if (!alive || !blob) return;
+        made = URL.createObjectURL(blob);
+        setUrl(made);
+      })
+      .catch(() => setUrl(null));
+    // re-read when a new video is saved
+    const onChange = () => {
+      alive = false;
+      if (made) URL.revokeObjectURL(made);
+      made = null;
+      alive = true;
+      void loadBackgroundVideo().then((blob) => {
+        if (!alive || !blob) return;
+        made = URL.createObjectURL(blob);
+        setUrl(made);
+      });
+    };
+    window.addEventListener('devdeck:background-video', onChange);
+    return () => {
+      alive = false;
+      window.removeEventListener('devdeck:background-video', onChange);
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [on]);
+  return url;
+}
+
+// Muted, looping, behind everything; paused while the tab is hidden, and held
+// on its first frame when the system asks for reduced motion.
+function BackgroundVideo({ src, blur }: { src: string; blur: number }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const sync = () => {
+      if (still || document.hidden) v.pause();
+      else void v.play().catch(() => undefined);
+    };
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, [src]);
+  return (
+    <video
+      ref={ref}
+      src={src}
+      muted
+      loop
+      playsInline
+      preload="auto"
+      data-testid="background-video"
+      aria-hidden
+      className="absolute inset-0 size-full object-cover"
+      style={{ filter: blur > 0 ? `blur(${blur}px)` : undefined, transform: blur > 0 ? 'scale(1.04)' : undefined }}
+    />
+  );
+}

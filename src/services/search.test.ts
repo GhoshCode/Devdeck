@@ -48,12 +48,12 @@ test('linkScore weighs recency', () => {
 });
 
 describe('buildStrip', () => {
-  const quick = [ql('q5', 4), ql('q1', 0), ql('q2', 1), ql('q3', 2), ql('q4', 3)];
+  const quick = [ql('q6', 5), ql('q5', 4), ql('q1', 0), ql('q2', 1), ql('q3', 2), ql('q4', 3)];
 
-  test('first 4 quick links (by order) are fixed; the 5th leads the scrolling part', () => {
+  test('first 5 quick links (by order) are fixed; the 6th leads the scrolling part', () => {
     const m = buildStrip(quick, [], 6, 8, NOW);
-    expect(m.fixed.map((l) => l.id)).toEqual(['q1', 'q2', 'q3', 'q4']);
-    expect(m.scrolling.map((l) => l.id)).toEqual(['q5']);
+    expect(m.fixed.map((l) => l.id)).toEqual(['q1', 'q2', 'q3', 'q4', 'q5']);
+    expect(m.scrolling.map((l) => l.id)).toEqual(['q6']);
   });
 
   test('auto-picks by score, skips hosts already shown, respects the count', () => {
@@ -64,12 +64,12 @@ describe('buildStrip', () => {
       site('mid', { visits: 4, lastVisited: NOW - 7 * DAY }),
     ];
     const m = buildStrip(quick, sites, 2, 8, NOW);
-    expect(m.scrolling.map((l) => l.name)).toEqual(['q5', 'HOT', 'MID']);
+    expect(m.scrolling.map((l) => l.name)).toEqual(['q6', 'HOT', 'MID']);
   });
 
   test('falls back to primary sites on a fresh deck', () => {
     const m = buildStrip([], [site('a', { primary: true }), site('b')], 6, 8, NOW);
-    expect(m.scrolling.map((l) => l.siteId)).toEqual(['a']);
+    expect(m.fixed.map((l) => l.siteId)).toEqual(['a']); // empty fixed slots take it first
   });
 
   test('recent lists visited sites newest first, capped', () => {
@@ -94,4 +94,14 @@ test('parseSuggestResponse reads the second array and caps it', () => {
   expect(parseSuggestResponse(['vite', ['vite', 'vitest', 'vite react'], []], 2)).toEqual(['vite', 'vitest']);
   expect(parseSuggestResponse(null, 5)).toEqual([]);
   expect(parseSuggestResponse(['x', 'nope'], 5)).toEqual([]);
+});
+
+describe('buildStrip with fewer than five quick links', () => {
+  test('the top auto-picked site fills the fifth fixed slot', () => {
+    const quick = [ql('q1', 0), ql('q2', 1), ql('q3', 2), ql('q4', 3)];
+    const sites = [site('hot', { visits: 2, lastVisited: NOW }), site('mid', { visits: 1, lastVisited: NOW - 7 * DAY })];
+    const m = buildStrip(quick, sites, 6, 8, NOW);
+    expect(m.fixed.map((l) => l.name)).toEqual(['q1', 'q2', 'q3', 'q4', 'HOT']);
+    expect(m.scrolling.map((l) => l.name)).toEqual(['MID']);
+  });
 });

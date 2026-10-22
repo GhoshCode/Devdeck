@@ -11,6 +11,7 @@ import {
 import type { Site } from '../types';
 import { useStore } from '../store';
 import { Favicon } from './Favicon';
+import { PinIcon } from './SiteRow';
 
 interface PrimaryRowProps {
   sites: Site[];
@@ -19,6 +20,7 @@ interface PrimaryRowProps {
 
 export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: PrimaryRowProps) {
   const recordVisit = useStore((s) => s.recordVisit);
+  const togglePrimary = useStore((s) => s.togglePrimary);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -167,6 +169,21 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
                   {site.name}
                 </span>
               </a>
+              {/* Main sites are pinned: unpin right here (it stays in its list). */}
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  togglePrimary(site.id);
+                }}
+                aria-label={`${site.name}: unpin from the main sites`}
+                title="Pinned — click to unpin"
+                className="tile-pin site-pinned absolute top-0.5 right-0.5 z-10 flex size-[18px] items-center justify-center"
+              >
+                <PinIcon filled className="size-3.5" />
+              </button>
             </div>
           ))}
         </div>

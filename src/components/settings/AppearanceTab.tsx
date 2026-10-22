@@ -4,7 +4,10 @@ import { useStore } from '../../store';
 import { PRESET_THEMES, THEME_CATEGORIES, type PresetTheme, type ThemeCategory } from '../../store/themes';
 import { DEFAULT_SETTINGS } from '../../store/seed';
 import { withThemeTransition } from '../../lib/themeTransition';
-import { contrastWithWhite, switchModePatch, systemMode } from '../../lib/appearance';
+import { contrastWithWhite, lookFor, switchModePatch, systemMode } from '../../lib/appearance';
+import { Select } from '../ui/Select';
+import { deleteBackgroundVideo, saveBackgroundVideo, videoProblem } from '../../lib/videoStore';
+import { clampScale } from '../../lib/uiScale';
 import { DEFAULT_STUDIO, STUDIO_PALETTES, accentFromGradient, gradientCss, modeForGradient } from '../../lib/gradient';
 import { useNow } from '../../hooks/useNow';
 import { CLOCK_STYLE_INFO } from '../../lib/clockStyles';
@@ -56,6 +59,30 @@ const backdropFor = (s: Pick<Settings, 'backgroundImage' | 'presetTheme' | 'them
 
 type Filter = 'all' | ThemeCategory;
 
+// The theme each mode switches to (Light / Dark / Auto all use these).
+function ModeDefaults({ onPick }: { onPick: (mode: ThemeMode, preset: PresetTheme) => void }) {
+  const settings = useStore((s) => s.settings);
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {(['dark', 'light'] as const).map((m) => {
+        const current = (settings.themeMode ?? 'dark') === m ? settings.presetTheme : lookFor(settings, m).presetTheme;
+        const options = PRESET_THEMES.filter((p) => p.mode === m).map((p) => ({ value: p.id, label: p.name }));
+        return (
+          <Field key={m} label={m === 'dark' ? 'Dark mode uses' : 'Light mode uses'}>
+            <Select
+              value={options.some((o) => o.value === current) ? (current as string) : ''}
+              placeholder="Your own look"
+              onChange={(id) => onPick(m, PRESET_THEMES.find((p) => p.id === id)!)}
+              ariaLabel={m === 'dark' ? 'Default dark theme' : 'Default light theme'}
+              options={options}
+            />
+          </Field>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AppearanceTab() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
@@ -79,11 +106,42 @@ export function AppearanceTab() {
         presetTheme: look.presetTheme,
         accentColor: look.accentColor ?? s.accentColor,
         backgroundImage: look.backgroundImage,
+        backgroundVideo: false,
       });
     });
 
   const pickPreset = (preset: PresetTheme) =>
     applyLook(preset.mode, { presetTheme: preset.id, accentColor: preset.accentColor, backgroundImage: preset.gradient });
+
+  // A preset picked for a mode: applied now when that mode is showing,
+  // otherwise remembered for the next time it is.
+  const setModeDefault = (m: ThemeMode, preset: PresetTheme) => {
+    const s = useStore.getState().settings;
+    const look = { presetTheme: preset.id, accentColor: preset.accentColor, backgroundImage: preset.gradient };
+    if ((s.themeMode ?? 'dark') === m) withThemeTransition(() => updateSettings({ ...look, backgroundVideo: false }));
+    else updateSettings({ modeLooks: { ...s.modeLooks, [m]: look } });
+  };
+
+  const [videoNote, setVideoNote] = useState<string | null>(null);
+  const onVideo = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const problem = videoProblem(file);
+    if (problem) return setVideoNote(problem);
+    try {
+      await saveBackgroundVideo(file);
+      updateSettings({ backgroundVideo: true });
+      window.dispatchEvent(new Event('devdeck:background-video'));
+      setVideoNote(null);
+    } catch {
+      setVideoNote("Couldn't store that video in this browser.");
+    }
+  };
+  const removeVideo = async () => {
+    updateSettings({ backgroundVideo: false });
+    await deleteBackgroundVideo().catch(() => undefined);
+  };
 
   const onUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,9 +162,6 @@ export function AppearanceTab() {
         backgroundImage: null,
         overlayOpacity: DEFAULT_SETTINGS.overlayOpacity,
         backgroundBlur: DEFAULT_SETTINGS.backgroundBlur,
-        clockStyle: DEFAULT_SETTINGS.clockStyle,
-        clock24h: DEFAULT_SETTINGS.clock24h,
-        showSeconds: DEFAULT_SETTINGS.showSeconds,
         followSystem: false,
         modeLooks: undefined,
         reduceTransparency: false,
@@ -120,16 +175,7 @@ export function AppearanceTab() {
   const uploaded = settings.backgroundImage?.startsWith('data:');
 
   return (
-    <div className="max-w-3xl space-y-6 p-6 text-sm text-white/90">
-      <div className="border-b border-white/[0.07] pb-4">
-        <h3 className="flex items-center gap-2 font-display text-[1rem] font-semibold tracking-wide text-white">
-          Appearance &amp; Display
-        </h3>
-        <p className="text-xs text-white/55">
-          Mode, accent, wallpapers, your own gradients, glass and the clock. Changes apply instantly — the preview shows the
-          page behind this sheet.
-        </p>
-      </div>
+    <div className="space-y-5 text-sm text-white/90">
 
       <LivePreview settings={settings} />
 
@@ -156,6 +202,7 @@ export function AppearanceTab() {
             );
           })}
         </div>
+        <ModeDefaults onPick={setModeDefault} />
       </Section>
 
       <Section
@@ -228,7 +275,7 @@ export function AppearanceTab() {
 
       <ThemeGallery selected={settings.presetTheme ?? null} onPick={pickPreset} />
 
-      <Section title="Custom wallpaper" hint="Any image URL, a CSS gradient, or a picture from your computer.">
+      <Section title="Custom wallpaper" hint="An image URL, a CSS gradient, a picture from your computer — or a short video (MP4 or WebM, up to 20 MB).">
         <div className="flex gap-2">
           <input
             type="text"
@@ -248,6 +295,10 @@ export function AppearanceTab() {
             Upload
             <input type="file" accept="image/*" onChange={onUpload} className="hidden" aria-label="Upload a backdrop image" />
           </label>
+          <label className="btn-secondary cursor-pointer rounded-xl border px-3.5 py-2 text-xs font-medium text-white transition-colors">
+            Video
+            <input type="file" accept="video/mp4,video/webm" onChange={onVideo} className="hidden" aria-label="Upload a background video" />
+          </label>
           {settings.backgroundImage && (
             <button
               type="button"
@@ -258,6 +309,19 @@ export function AppearanceTab() {
             </button>
           )}
         </div>
+        {settings.backgroundVideo && (
+          <div className="mt-3 flex items-center gap-3 text-[12px] text-white/70">
+            <span data-testid="video-on">A video is playing as your background (paused while the tab is hidden).</span>
+            <button type="button" onClick={removeVideo} className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-300 hover:bg-red-500/20">
+              Remove video
+            </button>
+          </div>
+        )}
+        {videoNote && (
+          <p role="alert" className="mt-2 text-[12px] text-amber-300">
+            {videoNote}
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Slider
             label="Wallpaper tint & darkness"
@@ -277,6 +341,36 @@ export function AppearanceTab() {
             step={1}
             onChange={(v) => updateSettings({ backgroundBlur: v })}
           />
+        </div>
+      </Section>
+
+      <Section title="Browser tab" hint="The tab shows a >_ icon in your accent colour.">
+        <Toggle
+          label="Terminal-style tab title"
+          hint="The tab title types short shell commands, like a terminal. Off: a plain DevDeck title."
+          checked={settings.tabTitleAnimation ?? true}
+          onChange={(v) => updateSettings({ tabTitleAnimation: v })}
+        />
+      </Section>
+
+      <Section title="Interface size" hint="Chrome already follows your display scaling. Auto also fits DevDeck to your screen: a little smaller on small laptops, larger on very wide screens.">
+        <div className="flex flex-wrap items-center gap-4">
+          <Toggle inline label="Auto" checked={settings.uiScale == null} onChange={(v) => updateSettings({ uiScale: v ? null : 1 })} />
+          {settings.uiScale != null && (
+            <div className="min-w-[240px] flex-1">
+              <Slider
+                label="Size"
+                value={Math.round(settings.uiScale * 100)}
+                unit="%"
+                min={80}
+                max={125}
+                step={5}
+                hintLeft="Smaller"
+                hintRight="Larger"
+                onChange={(v) => updateSettings({ uiScale: clampScale(v / 100) })}
+              />
+            </div>
+          )}
         </div>
       </Section>
 
@@ -325,7 +419,27 @@ export function AppearanceTab() {
         />
       </Section>
 
-      <Section title="Clock & cockpit" hint="You can also click the clock on the dashboard to cycle faces.">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={resetAppearance}
+          className="btn-secondary rounded-xl border px-3.5 py-2 text-xs text-white/70 hover:text-white"
+        >
+          Reset appearance to defaults
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---- General → Clock -----------------------------------------------------------
+
+export function ClockSettings() {
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+  return (
+    <div className="space-y-5 text-sm text-white/90">
+      <Section title="Clock face" hint="You can also click the clock on the dashboard to step through the faces.">
         <ClockFaces
           style={settings.clockStyle}
           h24={settings.clock24h}
@@ -335,8 +449,10 @@ export function AppearanceTab() {
         {settings.clockStyle === 'multi-timezone' && (
           <ZonePicker zones={settings.clockZones ?? DEFAULT_ZONES} onChange={(clockZones) => updateSettings({ clockZones })} />
         )}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Hour format">
+      </Section>
+      <Section title="Time format">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Field label="Hours">
             <div role="radiogroup" aria-label="Clock format" className="segmented flex w-fit rounded-lg p-0.5">
               {[
                 { v: false, label: '12-hour' },
@@ -360,37 +476,55 @@ export function AppearanceTab() {
           <Field label="Seconds">
             <Toggle inline label="Show seconds" checked={settings.showSeconds} onChange={(v) => updateSettings({ showSeconds: v })} />
           </Field>
-          <Field label="GitHub username">
-            <input
-              type="text"
-              value={settings.githubUsername}
-              onChange={(e) => updateSettings({ githubUsername: e.target.value.trim() })}
-              placeholder="octocat"
-              aria-label="GitHub username"
-              spellCheck={false}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 font-mono text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
-            />
-          </Field>
-          <Field label="Weather & UV">
-            <Toggle
-              inline
-              label="Show weather"
-              checked={settings.weatherEnabled}
-              onChange={(v) => updateSettings({ weatherEnabled: v })}
-            />
-          </Field>
         </div>
       </Section>
+    </div>
+  );
+}
 
-      <Section title="Greeting" hint="Your name is shown after Good morning / afternoon / evening.">
+// ---- General → You & greeting --------------------------------------------------
+
+export function GreetingSettings() {
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+  return (
+    <div className="space-y-5 text-sm text-white/90">
+      <Section title="Your name" hint="Shown after Good morning / afternoon / evening.">
         <input
           type="text"
           value={settings.greetingName}
           onChange={(e) => updateSettings({ greetingName: e.target.value })}
           placeholder="Your name"
           aria-label="Greeting name"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-[13px] text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
         />
+        {settings.greetingName.trim() && (
+          <>
+            <p className="pt-1 text-[11.5px] font-semibold text-white/70">Name font</p>
+            <div role="radiogroup" aria-label="Name font" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {NAME_FONTS.map((f) => {
+                const on = (settings.nameFont ?? 'grotesk') === f.id;
+                const sample = settings.greetingName.trim();
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    aria-label={`${f.name} name font`}
+                    onClick={() => updateSettings({ nameFont: f.id })}
+                    className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
+                  >
+                    <span className={`name-font-${f.id} max-w-full truncate text-[17px] leading-tight text-white`}>{f.upper ? sample.toUpperCase() : sample}</span>
+                    <span className="text-[10.5px] text-white/55">{f.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </Section>
+      <Section title="Greeting style" hint="Click the greeting on the dashboard for the next style; right-click for another phrase.">
         <div role="radiogroup" aria-label="Greeting style" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {GREET_STYLES.map((g) => {
             const on = (settings.greetStyle ?? 'classic') === g.id;
@@ -410,50 +544,23 @@ export function AppearanceTab() {
             );
           })}
         </div>
-        <p className="pt-1 text-[11px] font-semibold tracking-wider text-white/60 uppercase">Name font</p>
-        <div role="radiogroup" aria-label="Name font" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {NAME_FONTS.map((f) => {
-            const on = (settings.nameFont ?? 'grotesk') === f.id;
-            const sample = settings.greetingName.trim() || 'Alex';
-            return (
-              <button
-                key={f.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                aria-label={`${f.name} name font`}
-                onClick={() => updateSettings({ nameFont: f.id })}
-                className={`greet-option flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'is-on' : ''}`}
-              >
-                <span className={`name-font-${f.id} max-w-full truncate text-[17px] leading-tight text-white`}>{f.upper ? sample.toUpperCase() : sample}</span>
-                <span className="text-[10.5px] text-white/55">{f.name}</span>
-              </button>
-            );
-          })}
-        </div>
-        <Toggle
-          label="On this day in tech"
-          hint="A tech or computing event from today's date in history, under the greeting. Hover it and press ↻ for another."
-          checked={settings.showOnThisDay ?? true}
-          onChange={(v) => updateSettings({ showOnThisDay: v })}
-        />
-        <Toggle
-          label="Daily motivational quote"
-          hint="A new quote every day under the greeting, from a public quotes library — hover it and press ↻ for another."
-          checked={settings.showQuote ?? true}
-          onChange={(v) => updateSettings({ showQuote: v })}
-        />
       </Section>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={resetAppearance}
-          className="btn-secondary rounded-xl border px-3.5 py-2 text-xs text-white/70 hover:text-white"
-        >
-          Reset appearance to defaults
-        </button>
-      </div>
+      <Section title="Under the greeting">
+        <div role="group" aria-label="Lines under the greeting" className="space-y-3">
+          <CheckLine
+            label="“On this day” line"
+            hint="A tech event from today's date in history; ↻ shows another."
+            checked={settings.showOnThisDay ?? true}
+            onChange={(v) => updateSettings({ showOnThisDay: v })}
+          />
+          <CheckLine
+            label="Quote line"
+            hint="A quote that changes every 30 minutes; ↻ shows another."
+            checked={settings.showQuote ?? true}
+            onChange={(v) => updateSettings({ showQuote: v })}
+          />
+        </div>
+      </Section>
     </div>
   );
 }
@@ -805,10 +912,10 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="glass-inner rounded-2xl border border-white/10 p-5">
-      <div className="mb-3.5 flex items-start gap-3">
+    <section aria-label={title} className="set-card rounded-2xl border p-5">
+      <div className="mb-4 flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h4 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-white/85 uppercase">
+          <h4 className="set-card-title flex items-center gap-2 text-[13.5px] font-semibold">
             {title}
             {badge && (
               <span className="rounded border border-cyan-400/30 bg-cyan-500/10 px-1.5 font-mono text-[9px] tracking-normal text-cyan-300 normal-case">
@@ -816,7 +923,7 @@ function Section({
               </span>
             )}
           </h4>
-          {hint && <p className="mt-0.5 text-[11px] text-white/55">{hint}</p>}
+          {hint && <p className="set-card-hint mt-0.5 text-[12px] leading-relaxed">{hint}</p>}
         </div>
         {aside}
       </div>
@@ -917,7 +1024,8 @@ function LivePreview({ settings }: { settings: Settings }) {
   const solid = !!settings.reduceTransparency;
   const solidity = solid ? 100 : (settings.panelSolidity ?? 0);
   const glassBase = light ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.07)';
-  const solidBase = light ? '#ffffff' : '#1b1329';
+  const accent = settings.accentColor;
+  const solidBase = light ? '#ffffff' : `color-mix(in srgb, ${accent} 12%, #12131a)`;
   const panel: CSSProperties = {
     background: `color-mix(in srgb, ${glassBase}, ${solidBase} ${solidity}%)`,
     border: `1px solid ${light ? 'rgba(60,60,67,0.12)' : 'rgba(255,255,255,0.12)'}`,
@@ -943,7 +1051,7 @@ function LivePreview({ settings }: { settings: Settings }) {
         aria-label="Live preview"
         role="img"
         className="relative overflow-hidden"
-        style={{ background: backdropFor(settings), height: 172 }}
+        style={{ background: backdropFor(settings), height: 210 }}
       >
         <div
           className="absolute inset-0"
@@ -952,38 +1060,83 @@ function LivePreview({ settings }: { settings: Settings }) {
             backdropFilter: settings.backgroundBlur ? `blur(${Math.round(settings.backgroundBlur / 4)}px)` : undefined,
           }}
         />
-        <div className="relative grid h-full grid-rows-[46px_22px_1fr] gap-2 p-3">
-          <div className="grid grid-cols-[1.1fr_1fr_1fr_0.9fr] gap-2">
+        {/* A miniature of today's dashboard: clock · greeting + search · Git;
+            quick links + terminal; work column · two category cards · news. */}
+        <div className="relative grid h-full grid-rows-[52px_18px_1fr] gap-2 p-3">
+          <div className="grid grid-cols-[1fr_2.2fr_1.2fr] gap-2">
             <div className="overflow-hidden rounded-lg" style={panel}>
               <ClockFace style={settings.clockStyle} parts={clockParts(now, settings.clock24h)} showSeconds={false} now={now} />
             </div>
-            {[0, 1].map((i) => (
-              <div key={i} className="space-y-1.5 rounded-lg p-2" style={panel}>
-                <div className="h-1.5 w-1/2 rounded-full" style={{ background: muted }} />
-                <div className="h-1.5 w-4/5 rounded-full" style={{ background: muted }} />
+            <div className="flex flex-col items-center justify-between py-0.5">
+              <div className="h-2 w-2/5 rounded-full" style={{ background: ink, opacity: 0.75 }} />
+              <div className="h-1 w-3/5 rounded-full" style={{ background: muted }} />
+              <div className="flex w-full items-center gap-1.5">
+                <div className="flex h-[15px] flex-1 items-center rounded-md px-1.5" style={panel}>
+                  <div className="h-1 w-1/3 rounded-full" style={{ background: muted }} />
+                </div>
+                <div className="h-[15px] w-9 rounded-md" style={{ background: accent }} />
               </div>
-            ))}
-            <div className="flex flex-col items-end justify-center pr-1">
-              <div className="h-1.5 w-3/4 rounded-full" style={{ background: settings.accentColor, opacity: 0.85 }} />
-              <div className="mt-1.5 h-2.5 w-full rounded-full" style={{ background: ink, opacity: 0.6 }} />
+            </div>
+            <div className="rounded-lg p-1.5" style={panel}>
+              <div className="grid h-full grid-cols-[repeat(14,1fr)] grid-rows-4 gap-[2px]">
+                {Array.from({ length: 56 }, (_, i) => (
+                  <span key={i} className="rounded-[1px]" style={{ background: (i * 7) % 11 < 2 ? accent : muted, opacity: (i * 7) % 11 < 2 ? 0.9 : 1 }} />
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <div className="flex flex-1 items-center rounded-lg px-2" style={panel}>
-              <div className="h-1.5 w-1/3 rounded-full" style={{ background: muted }} />
-            </div>
-            <div className="w-14 rounded-lg" style={{ background: settings.accentColor }} />
-          </div>
-          <div className="grid grid-cols-[0.8fr_2.2fr_1fr] gap-2">
-            <div className="rounded-lg" style={panel} />
-            <div className="grid grid-cols-2 gap-2 rounded-lg p-2" style={panel}>
+          <div className="grid grid-cols-[1fr_2.2fr_1.2fr] gap-2">
+            <div />
+            <div className="flex items-center gap-1 rounded-md px-1" style={panel}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span key={i} className="h-2 w-6 rounded-sm" style={{ boxShadow: `inset 0 0 0 1px ${accent}`, background: muted }} />
+              ))}
               {[0, 1].map((i) => (
-                <div key={i} className="rounded-md p-1.5" style={panel}>
-                  <div className="h-1.5 w-1/3 rounded-full" style={{ background: settings.accentColor }} />
+                <span key={`r${i}`} className="h-2 w-5 rounded-sm" style={{ background: muted }} />
+              ))}
+            </div>
+            <div className="flex items-center gap-1 rounded-md px-1" style={{ background: 'rgba(0,0,0,0.55)' }}>
+              <span className="h-2 w-4 rounded-sm" style={{ background: accent }} />
+              <span className="h-1 w-1/2 rounded-full" style={{ background: 'rgba(255,255,255,0.25)' }} />
+            </div>
+          </div>
+          <div className="grid grid-cols-[1fr_2.2fr_1.2fr] gap-2">
+            <div className="grid grid-rows-[14px_1fr_1fr] gap-1.5">
+              <div className="rounded-md" style={panel} />
+              <div className="rounded-md" style={panel} />
+              <div className="rounded-md" style={panel} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 rounded-lg p-1.5" style={panel}>
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-1 rounded-md p-1.5" style={panel}>
+                  <div className="h-1.5 w-1/3 rounded-full" style={{ background: accent }} />
+                  <div className="flex gap-1">
+                    {[0, 1, 2, 3].map((j) => (
+                      <span key={j} className="h-3 flex-1 rounded-sm" style={{ background: muted }} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[0, 1].map((j) => (
+                      <div key={j} className="space-y-0.5 rounded-sm p-1" style={panel}>
+                        {[0, 1, 2].map((k) => (
+                          <div key={k} className="h-0.5 rounded-full" style={{ background: muted }} />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="rounded-lg" style={panel} />
+            <div className="grid grid-rows-[1fr_1fr_12px] gap-1.5">
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-1 rounded-md p-1.5" style={panel}>
+                  {[0, 1, 2].map((k) => (
+                    <div key={k} className="h-0.5 rounded-full" style={{ background: muted, width: `${90 - k * 15}%` }} />
+                  ))}
+                </div>
+              ))}
+              <div className="rounded-md" style={panel} />
+            </div>
           </div>
         </div>
       </div>
@@ -995,7 +1148,7 @@ function ModeThumb({ mode, accent, selected }: { mode: 'light' | 'dark' | 'auto'
   const pane = (light: boolean) => (
     <div
       className="absolute inset-0 p-2"
-      style={{ background: light ? 'linear-gradient(160deg, #dfe7f8, #f6eef3)' : 'linear-gradient(160deg, #1d1033, #0b0713)' }}
+      style={{ background: light ? 'linear-gradient(160deg, #dfe7f8, #f6eef3)' : `linear-gradient(160deg, color-mix(in srgb, ${accent} 18%, #101118), #07080b)` }}
     >
       <div className="mb-1.5 flex gap-1">
         {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
@@ -1169,5 +1322,15 @@ function ZonePicker({ zones, onChange }: { zones: string[]; onChange: (z: string
         />
       )}
     </div>
+  );
+}
+
+// A compact checkbox with a one-line hint (Greeting → which lines show).
+function CheckLine({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label title={hint} className="flex cursor-pointer items-center gap-2 text-[12px] font-medium text-white/80 select-none">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 cursor-pointer rounded accent-[var(--color-accent)]" />
+      {label}
+    </label>
   );
 }

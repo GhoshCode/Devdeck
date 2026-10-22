@@ -25,7 +25,8 @@ export const DEFAULT_SETTINGS: Settings = {
   githubUsername: '',
   githubToken: '',
   autoQuickLinkCount: 6,
-  recentLinkCount: 8,
+  recentLinkCount: 15,
+  notifyPopups: true, // DevDeck's alert pop-ups
   weatherEnabled: true,
   useGeolocation: true,
   manualCity: '',
@@ -51,14 +52,16 @@ export const DEFAULT_FEEDS: FeedsConfig = {
 // callers never share (and accidentally mutate) the same arrays.
 export const emptyV2Collections = (): Pick<
   PersistedState,
-  'pinnedCategoryId' | 'todos' | 'processing' | 'feeds' | 'trash'
+  'pinnedCategoryId' | 'todos' | 'processing' | 'feeds' | 'trash' | 'events'
 > => ({
   pinnedCategoryId: null,
   todos: [],
   processing: [],
   feeds: structuredClone(DEFAULT_FEEDS),
   trash: { sites: [], processing: [] },
+  events: [],
 });
+
 
 // Built-in rotating dev quotes (SPEC §2 header — one per page load, ~20).
 // The first ten are the user's real v1 quotes (`js/widgets.js`); the rest round

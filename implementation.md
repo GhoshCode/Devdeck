@@ -4,13 +4,380 @@ Technical record of what was built, where it lives and why. Newest round first.
 User-facing behaviour and the manual test checklist are in
 [features-functionality.md](features-functionality.md).
 
-Branch: `v8.1` · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
+Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeScript, Zustand (persisted to
 `localStorage["devdeck"]`), Tailwind v4, motion/react, dnd-kit, MV3 extension
 (`npm run build` → `dist/`, load unpacked).
 
 ---
 
+## Round 2026-10-22k — video background, mode defaults, interface size, tab identity; Chrome notifications removed
+
+- **Video background** (`lib/videoStore.ts`, `Backdrop`):
+  - MP4 or WebM up to 20 MB, kept in IndexedDB (`devdeck-media`). `settings.backgroundVideo` only flags that one is set.
+  - Plays muted and looped behind everything with the wallpaper blur and tint. Pauses while the tab is hidden; held on its first frame with reduced motion.
+  - Picking a preset or another look replaces it; "Remove video" deletes it.
+- **Default theme per mode:** Appearance → "Dark mode uses" / "Light mode uses" set `modeLooks[mode]` from the presets. The choice applies at once if that mode is showing, otherwise the next time it is (Auto included).
+- **Interface size** (`lib/uiScale.ts`):
+  - Auto keeps 100 % at 1440–2200 px, goes down to 80 % below 1440 and up to 125 % above 2200; phones and tablets stay at 100 %. A manual 80–125 % slider overrides it.
+  - Applied as `zoom` on `<html>` plus `--ui-zoom`. Every viewport-sized length (dashboard, dialogs, alert stack, search panel) is divided by `--ui-zoom` so it still fills the window.
+- **Browser tab** (`hooks/useTabIdentity.ts`): a `>_` icon drawn in the accent colour, and a title that types short shell commands ("❯ npm run dev▌"). Static with reduced motion or when Appearance → Browser tab is off.
+- **Calendar header:** summary numbers 17 px (labels 13 px), a 16.5 px date title, and a taller search field nudged right.
+- **Live preview** (Appearance) redrawn to match today's dashboard: clock, greeting and search, the Git heat-map, five pinned quick links and the terminal, the work column, two category cards and the news column. Its surfaces follow the accent.
+- **Chrome's built-in notifications removed:**
+  - The worker's `chrome.notifications` path and click handler, the `notifications` permission, the page's Web Notification fallback (`notifyWeb`, `useWebReminders`) and the "Enable reminder notifications" prompt are gone.
+  - Settings → Notifications is one switch, Alert pop-ups. `notifyAll` and `notifyChrome` are dropped by the v3 migration. PRIVACY.md updated.
+- **Tests:** 275 unit and 108 Chromium end-to-end. New `e2e/look.spec.ts` covers: a refused oversize video; a real WebM recorded in the page that plays, survives a reload and is removed; mode defaults; the zoom while the dashboard still fills the window; the tab icon and typing title; and the calendar header sizes.
+
+## Round 2026-10-22j — settings redesign, theme-following surfaces, alert floods, release clean-up
+
+- **Settings redesigned** (`settings/SettingsModal.tsx`, new `settings/pages.tsx`):
+  - A grouped rail with SVG icons and a "Find a setting" search (page names, descriptions and keywords; Enter opens the first match).
+  - Each page has a header with its title and one line on what it's for. Content sits in a centred 820 px column (Library, Site map and Queue & processing use the full width), built from one card style (`.set-card`).
+  - Groups and pages:
+    - General: You & greeting · Clock · Weather & location
+    - Look: Appearance
+    - Workspace: Library · Site map · Quick links · Queue & processing
+    - Search: Search & AI
+    - Stay informed: Notifications · News & jobs
+    - Connections: GitHub · Terminal
+    - Data: Data & backup
+  - Moves:
+    - `ClockSettings` and `GreetingSettings` are split out of `AppearanceTab`.
+    - The GitHub username (it appeared twice) and the weather switch left Appearance.
+    - Search, AI, terminal and weather left the old Profile tab, which is deleted.
+    - Notifications left Processing.
+  - Settings that only apply when something else is on: weather location and source only while weather is on; the GitHub token and refresh only once a username is set; the name font only once a name is set.
+  - Old deep links (`profile`, `scraping`) map to the new pages. The weather setup opens Weather & location, the terminal setup opens Terminal, and the feeds open News & jobs. The gear opens the first page.
+  - Fixes found during the visual pass:
+    - The page-change scroll effect returned `scrollTo()`'s value, which is a Promise in current Chrome, so React treated it as a clean-up and crashed.
+    - The site map rendered 0 px tall without a definite height.
+    - The map's zoom buttons and mini-map ignored the theme.
+    - Light mode's `[role=dialog] input { background:#fff !important }` (in an earlier cascade layer) whitened the new switches; they now paint with `background-image`.
+- **Surfaces follow the theme:**
+  - `--color-base` and `--color-base-elevated` are mixed from the accent in dark mode. They were a fixed violet-black, so every solid panel, dialog, menu and the calendar stayed violet on other themes.
+  - Hard-coded violets in the Site Map, Library, reminder pop-ups, the glass fallbacks and the mode thumbnail are gone.
+  - The sites panel and the quick-links panel use theme glass.
+- **Alert floods** (`alertStore`, `AlertCenter`, `alertOverlay`):
+  - A site's reminder that fires again while its card is up updates that card ("×N", timer restarted).
+  - Three or more reminders at once become one "N reminders now" card that opens into the list, with Snooze all and dismiss all.
+  - While a dialog or the calendar is open, alerts wait behind a "N reminders waiting" pill.
+  - Clear all sits at the top of both stacks.
+  - The worker never draws the other-websites overlay into a DevDeck tab; that was how two stacks appeared.
+- **Chrome built-in notifications are off by default:** `notifyAll` and `notifyChrome` default to false, the worker assumes off, and the v3 migration turns them off once.
+- **Release clean-up:** "Load demo data" is only in dev and demo builds; the store build can only remove demo data if a backup brought some in. No debug logging ships.
+- **Tests:** 270 unit, 103/103 Chromium end-to-end, and 4/4 extension (built `dist/`). Tests were updated for the new page names and for the add side's tabs and list dropdown.
+
+## Round 2026-10-22i — quick-links panel, sites panel redesign, 500-site calendar QA
+
+- **Quick-links panel** (`LinksStrip`):
+  - A six-dot grip (`GripDots`) on the bar's right edge.
+  - The panel unrolls with the pointer: one motion value drives clip-path, y and opacity. Release eases out over 0.32 s (`[0.16, 1, 0.3, 1]`), no spring.
+  - The grip opens it by dragging down or by a click. Only the panel's bottom edge (`links-panel-edge`) folds it, by dragging up; the content doesn't drag.
+  - While the panel is open, the bar shows only the five fixed sites. The panel lists the other and recent sites, deduped, up to 15 (`MORE_MAX`).
+  - The panel surface is the bar's glass, darkened and blurred at 44 px, so it takes the theme's colours and the cards don't show through.
+  - The counts are capped at 15 (`autoQuickLinkCount`, `recentLinkCount`; recent defaults to 15).
+  - The pin on a card's main sites is just the icon (`.tile-pin`, no disc).
+- **Sites panel** (`ProcessingEditor`, `ProcessingManager`), redesigned:
+  - A centred panel (1040 × 760 max), not a left drawer. Two columns when there is room (`@3xl` container query); Settings → Processing stacks them.
+  - **Add (left):**
+    - The lists are buttons (radiogroup "Section"): Currently processing, Queue, any section, and "+ New list". This replaces the datalist input, which only suggested entries matching what was typed, so Queue never showed.
+    - Search your sites or paste a URL.
+    - A starting reminder: Weekdays 9:00, Every day 9:00, Mondays 9:00, or No reminder.
+    - A site or address already in the chosen list shows "Added to …" disabled, so nothing goes in twice.
+  - **Your lists (right):**
+    - Tabs All / each list, with counts, and a find box.
+    - Each site's editor uses a Select "Move to list" (every list always listed) and shows "no end" for an open-ended range.
+  - From the Queue box the panel opens on Queue; from Currently processing, on that.
+  - New reminders have no end month (`to: ''`; before, `from = to = this month`, so they stopped at the month's end). Schema v3 migrates old `from === to` ranges to open-ended, once.
+- **Calendar with heavy schedules** (`lib/calendar.ts` `groupReminders`):
+  - Reminders that fire at the same moment become one item ("5 reminders · Figma, Netlify, Pypi…", `members`). Clicking it opens `ReminderStack`, a list where each site opens its editor.
+  - Search and filters still see every reminder.
+  - Month cells use the real chip height (`CHIP_H` 29), so "+ N more" is always visible.
+  - Agenda cards are `shrink-0`; they were squashed and their titles clipped once a column held many items.
+- **500-site QA** (`e2e/qa/processing-500.spec.ts`, `PROC500=1`, run against a frozen build so code edits can't reload it):
+  - Adds 500 sites one by one through the sites panel, half Currently processing and half Queue (231 daily, 123 weekly, 66 monthly, 80 hourly reminders, different times and days).
+  - Then walks the calendar and checks the month "+ more", readable agenda cards and an opening reminder stack.
+  - Before the fixes, Week held about 270 slivers a day and next week took 4.5 s.
+  - After: about 65 items a day, next week about 1 s, view switches about 0.9 s, no console errors.
+- **Reminder pop-ups no longer block the page** (`AlertCenter`): found by the 500-site run, where reminders started firing while sites were still being added. The blurred backdrop behind the alert stack (`alert-shield`) was `pointer-events-auto` and swallowed clicks across a 980 px strip, the sites panel's list buttons included. It is now visual only; the alert cards stay clickable.
+- `e2e/qa/calendar-500.spec.ts` (`CAL500=1`) loads events, to-dos, queue and processing items through the to-do box and the calendar composer.
+
+## Round 2026-10-22h — QA of the untested parts, narrow-screen fixes
+
+What was checked, and how:
+
+- **Light theme** (browser, 1920 × 1080):
+  - The grey dots and lines are visible.
+  - The long-search panel is readable (dark text on the tinted panel).
+  - The calendar mark: dark day digits (`#2b2f36`) on a near-white slab, accent rail.
+- **Screen widths** (browser):
+  - 1440 px: only one card fits, so there are no other modes.
+  - 1600 px: the 1- and 2-card modes are right; three don't fit.
+  - 1920 px: as in 22f.
+  - No horizontal page overflow at any of them.
+- **CPU temperature** (`e2e/system-stats.spec.ts`, `chrome.system` stubbed): with temperatures [48.6, 55.2, 0] the meter shows `55°` and the title "55 °C"; with none it shows no temperature. RAM shows 63 % for 10 of 16 GB.
+- **Alt+Enter hand-off** (`e2e/qa/ai-handoff.spec.ts`, built extension in Chromium):
+  - A 45-line prompt, typed into the long-search panel and sent with Alt+Enter, reaches Gemini, ChatGPT and Claude stand-in pages. Every line arrives in order, the send button (enabled only once there is text) is clicked, and DevDeck's box is cleared.
+  - The AI is picked by scrolling on its icon.
+  - The real sites need a sign-in, so `--host-resolver-rules` sends their names nowhere and `context.route` serves the stand-ins. Without that rule Playwright's routing did not catch the tabs the extension opens, and the first runs reached the real gemini.google.com (signed out, throwaway profile).
+
+Fixes from this pass:
+
+- **Narrow screens:**
+  - Below about 1700 px the default terminal (the Git box's width) left the links bar too narrow for the five fixed chips, and the fifth was cut.
+  - The terminal now gives way first (`room` from `useSpanOf`'s row width; never below `MIN_TERMINAL`).
+  - The fixed group may scroll on its own rather than be cut, and the scrolling part keeps at least 96 px (`min-w-24`).
+- **Edge tabs** are hidden when only one mode fits (`canStep`: `cardsAtRest` ≤ 1, a narrow screen or a single category).
+
+## Round 2026-10-22g — links fill to the terminal, five fixed quick links
+
+- **Links row:** it starts under the search row (`marginLeft` from `useSpanOf`) and is `flex-1` up to the split handle (12 px spacer, handle, `ml-3` terminal), so it grows when the terminal narrows and no gap opens. `MIN_LINKS` is 820 px: All categories plus the five fixed chips (~700 px) plus room for the scrolling ones.
+- **Five fixed quick links** (`FIXED_QUICK_LINKS` = 5 in `services/search.ts`): with fewer configured, `buildStrip` tops up the fixed slots from the auto-picked sites. The fixed group never scrolls or gets cut; the rest and the recent links scroll in `data-strip="scroll"` beside it (the 22e/22f single scroller is replaced).
+- **Tests:**
+  - Unit: the top-up, and the five-fixed split.
+  - End-to-end: five fixed chips; the fixed chips stay put while the rest scroll; the links fill up to the handle at any terminal width.
+
+## Round 2026-10-22f — card modes, links under the search, greeting clicks
+
+- **Card modes** (`lib/cardSnap.ts`, rewritten):
+  - `modeColumns(g, n)`: the centre is exactly n cards wide, and both side columns get the same extra width over their base (250 / 300). n is capped by what fits and by `count` (the number of categories).
+  - The page opens in `DEFAULT_CARDS` = 2.
+  - New setting `cockpitCards` (1–3, null = 2). `freeColumns(g, leftW, rightW, mode)`: free px widths from the outside handles win; otherwise the mode applies.
+  - `nextMode()`: a part-card view snaps to its whole cards; otherwise one card fewer, and from 1 back to the widest (2 → 1 → 3 → 2).
+  - `stepSide` / `sideFor` / `restColumns` are removed.
+  - At 1920 × 1080: 2 cards 456 | 886 | 506, 1 card 666 | 466 | 716, 3 cards 250 | 1298 | 300.
+- **Edge tabs** (`EdgeTab`): both tabs do the same thing (`onStep`, and `onCards` for whole-card drags). Choosing a mode clears the free widths. The label is "Show N cards".
+- **Outside handles:** they still drag freely (the first drag pins the other side). A double-click clears both widths, back to the card mode.
+- **Links row:**
+  - The top row spans all five columns. The links row is placed under `[data-search-row]` (`useSpanOf`: same left and width), so it no longer follows the cards; it only shrinks if the terminal needs the room.
+  - The left column now starts in row 2.
+  - A flexible spacer, then the split handle, then the terminal with `ml-3`: the handle stays 12 px left of the terminal's border.
+- **Links bar:** one horizontal scroller (`data-strip="scroll"`) holds the fixed group and the rest, so nothing overlaps or is cut. Every chip scrolls together.
+- **Greeting:** click = next style, right-click = another phrase (the first switches from the plain greeting to the themed ones). Double-click and previous-style are gone.
+- **No slide on load:** the grid column transition stays off until the first measured layout has been on screen for 120 ms (`settled`), so the page opens straight in its card mode. The terminal handle clamps the terminal so the links bar keeps 380 px (`lead` = where the links start + 36).
+- **Tests:** unit tests for the modes and the cycle. New end-to-end tests cover:
+  - the mode cycle and balance;
+  - whole-card tab drags;
+  - the links row staying under the search row in every mode;
+  - the handle staying beside the terminal;
+  - chips never overlapping.
+
+## Round 2026-10-22e — symmetric layout for few categories, stacking and links fixes
+
+- **Symmetric rest layout** (`lib/cardSnap.ts`):
+  - `SnapGeometry.count` (the number of categories, from `useCardSnap`) caps `cardsAtRest` and `wholeCards`. With two categories on a screen that fits three, the centre is sized to two cards.
+  - `restColumns` now splits the leftover width equally between the side columns (neither below its base) instead of news-first up to 560 px. `rightMax` was removed.
+  - At 1920 × 1080 with two categories: 500 | 848 | 500.
+- **Stacking:** the top bar zone is `relative z-40`, so the search suggestions and the long-text panel paint over the terminal box (an absolute `z-30` overlay since it grows downward).
+- **Long-search panel:** starts at the bar's left edge (`left-0`, 150 % wide), 25 % right of the centred position.
+- **Links bar:**
+  - Back to two scrollers: the first four chips stay put while the rest scroll (`e2e/search.spec.ts` now also checks that the rest really scrolled).
+  - The scrolling part keeps at least 45 % of the bar, and the fixed group scrolls on its own when space is tight.
+  - The 2026-10-22d single scroller is replaced.
+- **Tests:** 266 unit (symmetric split, two categories). The Chromium end-to-end tests pass.
+
+## Round 2026-10-22d — edge-tab grip and drag, centred split, scrolling links, search panel
+
+- **Edge tabs** (`EdgeTab` in `layout/CardSnapHandle.tsx`):
+  - They sit just inside the cards box's edges (`left-3` / `right-3`, the `data-center-body` padding) and carry three 1 px grip lines (`.edge-grip`, accent on hover or drag).
+  - A press without movement (under 6 px) steps as before.
+  - Dragging moves by whole cards in either direction (half a card's pull = one card; towards the centre = fewer cards, outward = more). It calls `toCards(side, n)` → `sideFor()` in `lib/cardSnap.ts`, which gives that side's width for exactly n cards, or null when the rest layout already shows n.
+  - The outside handles still resize freely.
+- **Links / terminal split:** the terminal slot gets `ml-3`, matching the links row's `mx-3`, so the grip sits midway (12 px either side).
+- **Links bar** (`LinksStrip`):
+  - The 1–2-card "fit" mode (hiding chips) is gone.
+  - All chips (fixed, auto and recent) share one scroller (`data-strip-scroller`) with the right-edge fade, so a narrow bar still reaches every chip. Scroll by trackpad, drag or the vertical wheel.
+  - `e2e/qa/baseline.spec.ts` now targets the new scroller.
+- **Search** (`SearchBar`) replaces the two-line growth and the caret strip:
+  - Text too long for the bar (`overflowing`, measured on the preview) or containing a line break: the bar stays 52 px and shows a one-line preview (`search-preview`, `truncate`, so it ends with "…").
+  - The textarea moves into `search-panel` under the bar. The panel is `w-[150%]`, starting at the bar's left edge (shifted right by 25% of the bar from centred, 2026-10-22e), at most 50vh tall and scrolling. Its colour is `color-mix(accent 12%, #07080c)`, with a light variant. A footer shows the character count and the key hints.
+  - Focus and the caret follow the textarea when it moves. Clicking the preview focuses the panel. The icons never move.
+- **Tests:** 265 unit (`sideFor`). The new Chromium end-to-end tests cover:
+  - the tab position, grip and drag both ways;
+  - the split sitting midway;
+  - a shrunk links bar scrolling to every chip;
+  - the search panel's size, centring, scrolling and the ellipsis preview.
+
+## Round 2026-10-22c — backdrop, calendar mark, instant greeting clicks, voice append, growing search bar
+
+- **Backdrop** (`Backdrop.tsx`): the dots and lines are brighter in dark (dots 0.05 → 0.09, lines 0.03 → 0.055 white). In light they are charcoal grey (`rgba(74,78,86)`: dots 0.30, lines 0.16) instead of indigo.
+- **Full-screen calendar header** (`CommandCalendar`):
+  - The "AXIOM // COMMAND" title and the "Pro workspace" pill are gone. The date is now the title line, with "Events · To-do · Processing · Queue on one timeline" under it.
+  - The new `MatteCalendarIcon` is a chamfered slab with binding clips, an accent rail and a status dot, and shows the day in mono (two digits). It sits on a matte `.cc-logo` tile (`.cc-mark-*` colours, light variants), replacing the glossy gradient ring.
+- **Greeting clicks** (`DateGreet`): the 240 ms wait for a possible double-click is gone. A click steps the style at once; a double-click steps it back (undoing its first click) and changes the phrase.
+- **Voice typing** (`SearchBar`): the text in the box when the mic starts (`voiceBase`) is kept, and what is heard is appended after a space (it used to replace everything).
+- **Search bar** (`SearchBar`):
+  - The expand button and the composer footer are removed.
+  - Text longer than the bar (`overflowing`: scrollWidth on one line, scrollHeight > 24 px once wrapped) or with a line break wraps, and the bar grows to two lines as an overlay (`data-composer="grown"`).
+  - A 16 px strip under it, separated by a hairline, holds a down caret (`composer-expand`). It shows all the text, up to 240 px then scrolling (`expanded`), and flips up to fold it back.
+  - The AI, mic and Search icons stay in the row. Suggestions are hidden while the text wraps.
+- **Tests:** 264 unit; 90/90 Chromium end-to-end (the quote-shuffle test is flaky against the live API).
+
+## Round 2026-10-22b — free resize + card-step edge tabs, plain greeting, CPU temperature, growing terminal
+
+- **Cockpit resizing** (`lib/cardSnap.ts`, `layout/CardSnapHandle.tsx`, `DashboardLayout` `useCardSnap`):
+  - The settings `cockpitLeftCards` / `cockpitRightCards` (cards taken) are replaced by `cockpitLeftWidth` / `cockpitRightWidth` (px, null = not resized).
+  - `freeColumns(g, leftW, rightW)`: with neither side set, the rest layout (`restColumns`) applies. Otherwise each width is clamped between its base (250 / 300) and `sideMax`, which leaves the centre one card.
+  - **Outside handles** (`CardSnapHandle`) drag freely, px by px. Arrow keys move 24 px; double-click or Home resets. The grid's column transition is off while dragging. The first resize of one side pins the other side where it is, so it doesn't jump.
+  - **Edge tabs** (`EdgeTab`, `data-edge-tab`): half-cut tabs on the inside left and right edges of the cards box, the `panel-notch` look turned on its side. A click runs `stepSide()`:
+    - The centre goes to the whole cards below what it shows (2.5 → 2, 3 → 2 → 1). A view only a sliver (< 0.15) past whole cards counts as whole.
+    - The clicked side takes the freed space.
+    - At one card the click gives the side's space back (null).
+  - `LayoutContext.cards` = `wholeCards()` (1–3).
+- **Greeting** (`DateGreet`): `roll` starts as null, so the page opens on the plain `greetingFor()` (restored in `lib/time.ts`, with its test). The first double-click switches to the themed phrases; later ones re-roll. Click and right-click still cycle the style.
+- **CPU temperature** (`SystemStats`): `chrome.system.cpu.getInfo().temperatures` (the hottest zone, °C) shows beside the CPU meter when Chrome reports any. Only ChromeOS does; Windows, macOS and Linux return an empty list, so nothing shows there.
+- **Terminal:**
+  - Unresized (`topTerminalWidth` null), it is as wide as the Git box (`useWidthOf('[data-testid="git-widget"]')`), else the news column.
+  - The input is an auto-height `<textarea>`. The box is absolutely positioned in its 40 px slot, so a long command wraps and the box grows down over the news column. Enter runs the command, Shift+Enter adds a new line, and the arrows walk history only from an empty box or a history entry.
+- **Removed:** new-tab search focus (`focusNewTab` in `main.tsx`, the `?focus` effect in `App`, the Search settings checkbox, `newTabFocus`).
+- **Tests:** 264 unit (`cardSnap` free and step maths, `greetingFor`). 90/90 Chromium end-to-end (the quote-shuffle test is flaky against the live API), including a new cockpit-tools test for the tabs and the free drag.
+
+## Round 2026-10-22 — own row for quick links + terminal, greeting clicks, CPU/RAM size
+
+- **Top row** (`DashboardLayout`, `layout/TopSplitHandle.tsx`): with all three columns inline the cockpit is a two-row grid.
+  - Row 1 (`data-zone="top-row"`, columns 3–5) holds the links row (All categories + quick links, new `linksRow` prop from `App`), a resize handle, then the terminal. Row 2 holds the left handle, the cards, the right handle and the news. The left column spans both rows.
+  - The terminal width is `settings.topTerminalWidth`, or the news column's width when unset. So by default the bar lines up with the cards and the terminal with the news column in the 1-, 2- and 3-card layouts. Measured at 1920 px: 714–1156 / 298–1160 / 298–1572.
+  - Dragging the handle (or ←/→ in 24 px steps) sizes them independently of the columns below, clamped to 240 px for the terminal and 380 px for the links. Double-click (or Home) goes back to following the news column.
+  - Narrower screens are unchanged: the links row sits above the cards in the centre column.
+- **CPU / RAM** box is half the footer width (`w-1/2`), directly right of the Settings button.
+- **Greeting:** click = next style, right-click = previous style (like the clock), double-click = another phrase. A single click waits 240 ms so a double-click doesn't also change the style.
+
+## Round 2026-10-21 — requirements file (notifications, search keys, layout, stats, greetings)
+
+Implemented from `devdeck-requirements.md` (deleted afterwards). Item numbers refer to that file.
+
+- **1 Notifications** (`settings/NotificationSettings.tsx`, `lib/alertPrefs.ts`):
+  - Settings → Processing → Notifications has three checkboxes: All notifications, Chrome built-in notifications, Alert pop-up notifications. With All ticked, the other two show ticked and are `disabled`; unticking All keeps their last values editable.
+  - Settings fields: `notifyAll` (default true), `notifyChrome`, `notifyPopups`. `alertPrefs()` resolves them to `{ popups, chrome }`.
+  - Page (`useInPageAlerts`): pop-ups gate `pushAlert` (fired events, snoozes, overdue summary, replies to the worker); Chrome gates `notifyWeb`. With pop-ups off and Chrome on, a visible tab sends a system notification instead.
+  - The page mirrors the prefs to `chrome.storage.local['devdeck:alert-prefs']`. The worker's `deliver()` only tries the DevDeck tab and the on-site overlay when pop-ups are on, and only creates a `chrome.notifications` notification when Chrome is on.
+- **2.1 New tab → DevDeck search** (removed in 2026-10-22b) (`main.tsx` `focusNewTab`):
+  - On a fresh new tab (extension, no `?focus`, `history.length === 1`, `newTabFocus` not false), DevDeck calls `chrome.tabs.getCurrent` + `tabs.update(index.html?focus=1 + hash)` and skips rendering.
+  - A tab navigated by the extension focuses the page, not the omnibox, so `App` focuses the search bar on `?focus`. The trade-off is that the address bar shows the extension URL.
+  - Opt-in since 2026-10-22 (default off, so the address bar stays empty): Settings → Profile → Search → "Type straight into DevDeck on a new tab".
+  - Verified in a real Chromium with the extension loaded: `chrome.tabs.create({})` → `?focus=1`, `activeElement` is the search box, and typed text lands in it.
+- **2.2 Keys** (`SearchBar.tsx`):
+  - Enter: the pick, or a search with the chosen engine, in a new active tab.
+  - Ctrl/⌘ + Enter: the same in a new window (`openInNewWindow`).
+  - Alt + Enter: `askAi` with the selected AI.
+  - The hints are in the placeholder, the suggestions footer and the composer footer.
+  - The engine is chosen in Settings → Profile → Search (`searchEngine`: Google, Bing, DuckDuckGo, Brave, Startpage, Ecosia; `SEARCH_ENGINES`, `searchUrl`, `destinationFor(q, engine)` in `services/search.ts`). Suggestion rows and "Search … for" use it too; suggestions still come from Google Suggest.
+- **2.3 AI icon wheel:** the wheel over the AI toggle cycles Gemini → ChatGPT → Claude → Perplexity (→ Custom when it has a `{q}` URL) and saves `aiProvider`. A 40 px threshold and a 220 ms lock give one step per notch.
+- **3.1 Alert lifetimes:** To-do and Queue alerts last 10 s; Currently processing 5 s (`LIFE_MS` in `AlertCenter`, and the overlay on other sites). The time-left line follows automatically through `--life`.
+- **4.1 Links bar fit:** `LayoutContext` now carries `cards` (whole cards in view). Below 3, `LinksStrip` is in fit mode (`data-fit`): no horizontal scroll or wheel scroll, no fade mask, and chips or the RECENT label that don't fully fit get `visibility:hidden` (ResizeObserver).
+- **4.2 Neon border:** fixed quick-link chips get `.chip-neon`, a 1 px accent border with a soft glow.
+- **4.3 Pins on main sites:** each tile in a card's main-sites row (`PrimaryRow`) has a pin badge. Clicking it calls `togglePrimary` to unpin (label "<name>: unpin from the main sites", chosen so it can't collide with the card pin or site-remove buttons).
+- **5.1 / 5.2 Widths:** `restColumns()` in `lib/cardSnap.ts`: with nothing dragged and 1–2 cards in view, the centre is exactly as wide as its cards. The leftover goes to the Tech news column first (up to `rightMax`, 560 px), then the left column. The links row therefore matches the cards panel. Three-card views keep the defaults. Unit-tested.
+- **6.1:** the Currently processing expand button moved to the card's bottom-right.
+- **6.2 Tab smoothness:**
+  - *Cause:* a trackpad flick over the tab bar fired a switch on every wheel event.
+  - *Fix:* tab bar, dots and lists share `swipeBy`: deltas add up past 50 px, then the gesture is locked (450 ms, extended while events keep coming). One gesture moves one tab. The Processing and Queue panes are memoised so switching doesn't re-render them.
+- **7.1:** feeds show 20 items per section by default (`feedNewsCount` / `feedJobsCount` default 4 → 20). The sources already fetch 30.
+- **8 Quotes:** online, the DummyJSON quote changes every 30 minutes (`QUOTE_SLOT_MS`; cache keyed by half-hour slot; the id comes from the slot). Offline or if the API fails, the bundled quotes fill in.
+- **9 CPU / RAM** (`ui/SystemStats.tsx`): two meters beside the Settings button, using `chrome.system.cpu` (busy/total delta across cores, every 2 s) and `chrome.system.memory`. Amber from 60 %, red from 85 %. New permissions `system.cpu` and `system.memory`; the website build shows nothing.
+- **10 Greetings** (`lib/greetings.ts`):
+  - 7–8 themed phrases per segment: 09–15 office, 15–20 casual-pro, 20–02 geek, 02–09 night-crawler cyberpunk.
+  - Click re-rolls (1–3 steps, always a different phrase); right-click cycles the greeting style.
+  - `greetingFor` was removed; `time.test.ts` now tests segments and phrases.
+  - The quote line hard-cuts: `white-space: nowrap; overflow: hidden; text-overflow: clip`, no "…".
+- **11:** the mini calendar button is 64 px wide and shows the short date under the icon (`21 Oct`).
+- **12:** the CLI Sophisticated clock cycles 48 scripts, each 26 characters or fewer, in a ticker capped at 75 % of the box.
+- **13:** the UV badge sits a little lower; the date line is 15 px (was 13) and 15 px further right.
+- **14:** the Clear all pill and button are larger (14 px text, more padding).
+- **Tests:** 258 unit tests; 89/90 Chromium end-to-end (the quote-shuffle test is flaky because it depends on the live quotes API); the extension QA spec passes.
+  - Tests updated for the new behaviour: the greeting is a phrase that re-rolls on click, and feeds show 20.
+  - A throwaway extension spec confirmed new-tab focus and the CPU/RAM meters, then was deleted.
+
+## Round 2026-10-20m — layout tidy-ups, smooth work panel, OS-matched terminal, v3.0.0 (branch `vfinal2.0`)
+
+Commits `fdcee53` and `0ccb3b0` on `vfinal2.0` (pushed; not merged into `main` — a week of local testing first).
+
+- **Quick-links bar** (`links/LinksStrip.tsx`):
+  - `.links-bar` gets `overflow-hidden`. Before, the four fixed chips had `shrink-0` and spilled out of the bar into the terminal next to it on narrower centre columns.
+  - The fixed group is now `min-w-0 shrink overflow-x-auto scrollbar-none`: when room runs out, extra chips stay inside the bar and scroll sideways instead of overlapping.
+- **Centre column** (`App.tsx`):
+  - The outer `glass` frame (`data-testid="center-frame"`) is now a plain flex container; the Sonoma light-skin override for it in `index.css` was removed. The cards' own pager panel (`glass-raised`, with the dots) is the only box left.
+  - Cards body padding `p-3` → `px-3 pb-3`, so the cards sit 12 px under the links bar (was 24 px).
+- **Top-row offset (7 px):** the links row (`App.tsx`), the Calendar bar row in the left column (`App.tsx`) and the right column's terminal slot (`DashboardLayout.tsx`, `data-zone="right-top"`) each get `mt-[7px]`. All three columns stay level: at 1920×1080 the cards, the Calendar bar and Tech news all start at the same y.
+- **Git widget** (`topbar/GitWidget.tsx`): the tiles-and-stats row gets `pt-2`, so the contribution tiles sit lower inside the box.
+- **Work panel switching** (`processing/WorkBoard.tsx`):
+  - *Cause of the jank:* the old version used a smooth `scrollTo` on a scroll-snap row, and its `scroll` listener rounded the scroll position back into the active tab on every frame. A jump from tab 1 to tab 3 therefore flickered through tab 2 while the highlight pill retargeted mid-flight.
+  - *Fix:* the three panes sit in one `.work-track` (`w-[300%]`) moved by `translate3d(-tab × 33.333%)`. The track and the tab pill (`.work-pill`) share one transition: `transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)`. There is no scroll listener, so the target can't change mid-flight. The scroll effect, `ResizeObserver` and scroller ref are gone.
+  - Inactive panes are `inert` (not focusable, not read by screen readers) and dim to `opacity: 0.35`; the active one fades to 1.
+  - *Swipes:* a sideways trackpad swipe (or Shift + wheel) over the lists adds up `deltaX`. Past 60 px it moves exactly one tab, then locks for 550 ms, so one gesture never skips two tabs. Vertical scrolling inside a list is unaffected.
+  - Tabs, dots and ←/→ still switch. With `prefers-reduced-motion` the slide is instant.
+  - *Tab label:* "Currently processing" when the tab bar is at least 640 px wide (container query), otherwise "Processing", so it's never cut to "CURRENTLY PROCES…".
+  - Verified in the browser through the animation API: one 500 ms transform transition each for the track and the pill, running in sync with a single target.
+- **Terminal** (`topbar/CommandPrompt.tsx`, `.term*` in `index.css`):
+  - Restyled as a small console. Dark body `#0b1016 → #05080c` with 1-in-3 px scanlines, an accent-tinted 1 px border, and a 3 px accent focus ring plus glow while typing.
+  - A powerline-style prompt segment `.term-seg` (accent background, chevron cut with `clip-path`) shows `PS ❯ ~` on Windows and `$ ❯ ~` on macOS and Linux.
+  - The input has its own text colour, an accent block caret (`caret-shape: block`) and a faint glow.
+  - *Window chrome matches the OS* (`detectPlatform()`): macOS shows the three traffic-light dots; Windows and Linux show a `>_` terminal mark (`.term-mark`, `data-os`). No macOS-only decoration on other systems.
+  - *Administrator mode* (`data-admin`): the border and glow turn amber, the prompt segment turns amber and shows `#`, and the cursor and text glow turn amber (`caret-color: #fbbf24`).
+- **Version:** `public/manifest.json` `version` 2.0.0 → 3.0.0 (the format was already `manifest_version: 3`). `npm run package` writes `release/devdeck-3.0.0.zip`.
+- **Housekeeping:** deleted the reference images (two Gemini PNGs, `screenshots/`) and Playwright's recorded videos and reports (`test-results/`, `playwright-report/`; they come back on the next test run). The design prototype `pro_workspace_command_calendar.tsx` is kept, untracked.
+- **Tests:** 252 unit tests and 90/90 Chromium end-to-end tests pass. `e2e/topbar.spec.ts` and `e2e/cockpit-tools.spec.ts` were updated for the work panel; `e2e/processing.spec.ts` passes because the Queue expand button sits before the cog, which keeps its bottom-right corner.
+
+## Round 2026-10-20l — work panel, AI shortcut, alert polish (branch `vfinal2.0`)
+
+
+- **Work panel** (`processing/WorkBoard.tsx`, `lib/workBoard.ts`):
+  - Opened with `openBoard({ tab, focus?, archive?, focusInput? })`, an event that `WorkBoardHost` (mounted in `App`) listens for.
+  - Holds three panes (Currently processing → Queue → To-do) in a snap scroller; tabs (sliding pill), dots, horizontal wheel/swipe and ←/→ switch between them. 1080 × 86vh; closes on Esc, a click outside or after 30 s idle.
+  - Processing / Queue panes are `WorkList` + `WorkCard`: favicon, host, due/overdue, next reminder + schedule, live timer, age; Open / Timer / Move to Queue ↔ Start processing / Remove (undo); stats chips; Manage opens `ProcessingManager` (now exported).
+  - The To-do pane is `TodoWidget board`, which renders the old pop-up's content and accepts `initialFocus`, `initialArchive` and `focusInput`. The old to-do pop-up and its idle/Esc logic were removed.
+  - Expand buttons: on the Currently processing card (top-right), and in the Queue footer (before the cog). The to-do card's expand, + and archive buttons open the To-do tab.
+  - The overdue alert's Review opens the To-do tab with overdue tasks first. On other websites, the worker opens `index.html#review`.
+- **Search:** Ctrl/⌘+Enter (or Alt+Enter) sends the text to the chosen AI. Hints appear in the placeholder, the suggestions footer and the composer footer.
+- **Top bar:**
+  - The clock box is 424 × 148 (was 380 × 132), or 312 × 102 on short screens.
+  - The UV badge is stacked under the temperature.
+  - On this day has an always-visible refresh icon at the line end, dimmed when there's only one event.
+- **Settings → Greeting:** "Show On this day line" and "Show quote line" checkboxes now sit under the style picker; the old toggles were removed.
+- **Alerts:**
+  - A time-left line (`[data-life]::after`, `--life`) shrinks right → left over the card's life and pauses on hover.
+  - `.alert-shield` (frosted, masked, `pointer-events-auto`) sits behind the stack while any alert is up.
+- **Mini calendar:** double-clicking the month or year opens Month and Year wheels side by side (1900–2200, snap-centred, › ‹ marker). A click sets the value; double-click/Enter closes the wheels; Esc closes the wheels first.
+
+## Round 2026-10-20k — type-to-capture search, Clear all, Command Calendar (branch `vfinal2.0`)
+
+
+- **Type-to-capture** (`hooks/useTypeToCapture.ts`): a window `keydown` listener. `capturedText()` ignores focused fields (input / textarea / select / contentEditable), named keys (Shift, F1–F12, Escape, Tab, arrows, Enter…), Ctrl/⌘/Alt shortcuts (AltGr still types), the page hotkeys `/` and `,`, and Space on a focused button. A `paste` listener handles Ctrl/⌘+V outside a field. Nothing is captured while a dialog is open.
+- **Search composer** (`SearchBar.tsx`): the input is now an auto-sizing `<textarea>` (still `role="combobox"`, `aria-label="Search"`). Over 65 characters, a newline or horizontal overflow shows a small expand button at the bottom-right. Expanded, the drawer covers the whole search row (max 280 px, own scrollbar, line/char count) with the actions in its footer. Shift+Enter adds a line, Enter submits, Esc collapses, and the text is kept. Long or multi-line text skips Google suggestions.
+- **Clear all** (`AlertCenter.tsx`, `alertStore.clearAllAlerts`): a glass pill under the stack while 2+ alerts are up. The cards slide out with a 40 ms stagger (200 ms each), and the pill fades out at ≤1 alert. Cleared alerts stay gone after reload because every alert is marked seen when pushed.
+- **Calendar data**:
+  - `CalendarEvent` (title, date, start/end, category meeting/call/vip/deep-work/deadline/travel, priority, attendees/tags, location, notes, `remindMins`) lives in persisted `events`; it is normalised on load and import.
+  - `ProcessingItem` gains `dueDate`/`dueTime`; Queue = any section other than Currently processing.
+  - Store actions: `addEvent`, `updateEvent`, `deleteEvent` (with undo) and `reinsertEvent`.
+  - `settings.calendar` remembers the view and the second time zone.
+- **Engine** (`lib/calendar.ts`, React-free, unit-tested):
+  - `collectItems` merges events, dated to-dos, Processing/Queue dues and daily/weekly/monthly reminder occurrences (minute/hourly reminders stay off the grid);
+  - `layoutColumns` places overlaps side by side;
+  - `findConflicts` flags overlaps involving an event, plus local hours with more than 3 dues;
+  - `freeGaps` and `focusShieldSlot` find a 2-hour block ending by 23:45;
+  - `briefing` gives the KPIs: focus = free 30-minute-plus gaps in 08–20 plus remaining deep work; risk = booked share plus conflicts and a pile of dues;
+  - `workload` drives the month heat;
+  - `agenda` groups items into next 2h / later today / deadlines, with a passed due time listed once as overdue;
+  - `autoResolve` moves colliding dues to the next free same-length slot, never meetings.
+- **Command Calendar UI** (`components/calendar/`, styled after `pro_workspace_command_calendar.tsx`):
+  - opens full screen from the launcher bar above Currently processing;
+  - command bar: filter box `/`, Focus Shield, New item, alert-stack toggle;
+  - KPI strip: clickable filter pills, conflict radar with Auto-resolve, dual time zone, view switcher;
+  - canvas: day chips, legend filters, Day/Week time grid (72/52 px per hour, Now line, hover hint, click or drag to create), Month capacity heatmap and the three-lane Agenda;
+  - `AlertStack` side panel: live alerts plus the next 24 h;
+  - centred `CalendarComposer`: new event / to-do / Queue / Processing item, scheduling of existing items, and item details;
+  - scoped `--cc-*` tokens built from the theme: frosted glass over the live backdrop (`--color-base` / `--color-base-elevated`), with every primary colour derived from `--color-accent`. Meetings wear the accent; the other categories keep their own colours.
+- **Mini calendar** (`MiniCalendar.tsx`): a square button beside the Calendar bar opens a plain month calendar in macOS-style glass (traffic lights, accent-glow today, ISO week numbers, live clock, picked-day footer). It isn't bound to events. Keys: arrows, PgUp/PgDn, T; Esc closes.
+
+- **Calendar alerts**:
+  - `AlertKind 'calendar'` from `upcomingEvents(…, events)`, firing at start − `remindMins`;
+  - in-page `CalendarPill` (rounded-full, spinning category ring, ringing bell, live countdown, Acknowledge / Snooze 5m / Jump to slot) that stays until acted on;
+  - the same capsule in `alertOverlay.ts` for other websites;
+  - the worker snoozes calendar alerts for 5 minutes and opens `index.html#cal=date:id`.
+  - Processing/Queue due times fire through the existing spotlight/pill designs (`· DUE`).
+
 ## Round 2026-10-20j — On this day, API quotes, All categories by the links bar, store packaging
+
 
 - **On this day** (`services/onThisDay.ts`, `DateGreet.tsx` `OnThisDay`):
   - Wikipedia's On this day feed (`/api/rest_v1/feed/onthisday/all/MM/DD`), cached per day in `devdeck.onthisday.v1`;

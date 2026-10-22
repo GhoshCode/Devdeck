@@ -303,7 +303,7 @@ await step('Deck + search + settings sitemap', async () => {
   await p.keyboard.press('Escape');
   // settings sitemap graph
   await p.getByRole('button', { name: 'Settings' }).click();
-  const sm = p.getByRole('button', { name: /Sitemap/ });
+  const sm = p.getByRole('button', { name: /Site map/ });
   if (await sm.count()) {
     await sm.first().click();
     await p.waitForTimeout(1200);

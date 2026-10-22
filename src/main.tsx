@@ -20,6 +20,7 @@ if (import.meta.env.MODE === 'demo') {
   }
 }
 
+
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element #root not found');
 

@@ -465,7 +465,17 @@ function CliSophisticatedFace({ parts, showSeconds }: FaceProps) {
 
 // Bottom-right corner of the CLI face: commands type themselves out, one
 // after another, with a blinking block cursor.
-const CODE_LINES = ['git pull --rebase', 'npm run build', 'vitest run ✓ 207', 'docker compose up', 'git push origin main', 'deploy → prod ✓'];
+// 48 scripts, all short enough (≤ 26 chars) to stay inside ~75% of the box.
+const CODE_LINES = [
+  'git pull --rebase', 'npm ci', 'npm run build', 'vitest run ✓ 252', 'tsc --noEmit ✓', 'eslint . --fix',
+  'docker compose up -d', 'docker ps', 'kubectl get pods', 'kubectl rollout status', 'helm upgrade api ./chart', 'terraform plan',
+  'terraform apply ✓', 'git switch -c feat/ui', 'git commit -m "wip"', 'git push origin main', 'gh pr create --fill', 'gh run watch',
+  'curl -sI api.local', 'ssh deploy@edge-01', 'tail -f /var/log/app', 'htop', 'grep -rn TODO src/', 'jq .data res.json',
+  'python -m pytest ✓', 'pip install -r req.txt', 'cargo build --release', 'cargo test ✓', 'go test ./... ✓', 'go build ./cmd/api',
+  'redis-cli ping → PONG', 'psql -c "select 1"', 'npx prisma migrate dev', 'pnpm dlx vite', 'bun install', 'deno task dev',
+  'make all', 'nginx -t ✓', 'systemctl restart api', 'openssl rand -hex 16', 'aws s3 sync dist s3://', 'gcloud run deploy',
+  'az login', 'npm audit fix', 'git stash pop', 'git rebase -i HEAD~3', 'git tag v3.0.0', 'deploy → prod ✓',
+];
 function CodingTicker() {
   const [i, setI] = useState(0);
   useEffect(() => {
@@ -475,7 +485,7 @@ function CodingTicker() {
   const prev = CODE_LINES[(i + CODE_LINES.length - 1) % CODE_LINES.length];
   const line = CODE_LINES[i];
   return (
-    <span aria-hidden className={`absolute right-[4cqw] bottom-[6cqh] flex flex-col items-end font-mono ${TINY} leading-tight`}>
+    <span aria-hidden className={`absolute right-[4cqw] bottom-[6cqh] flex max-w-[75%] flex-col items-end overflow-hidden font-mono ${TINY} leading-tight`}>
       <span className="text-white/25">$ {prev}</span>
       <span className="flex items-center" style={{ color: mix(80, '#fff') }}>
         <span style={{ color: A }}>{'$ '}</span>

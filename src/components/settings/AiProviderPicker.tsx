@@ -24,11 +24,11 @@ export function AiProviderPicker() {
   const current = aiProvider(id, customUrl);
 
   return (
-    <section aria-label="AI assistant" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+    <section aria-label="AI assistant" className="set-card space-y-4 rounded-2xl border p-5">
       <div>
-        <span className="block text-xs font-semibold tracking-wider text-white/80 uppercase">AI assistant</span>
-        <p className="mt-0.5 text-[11px] text-white/55">
-          With the AI toggle in the search bar on, Enter opens a new {current.name} chat with your text already sent.
+        <span className="set-card-title block text-[13.5px] font-semibold">AI assistant</span>
+        <p className="set-card-hint mt-0.5 text-[12px] leading-relaxed">
+          Alt+Enter in the search bar (or Enter with the AI toggle on) opens a new {current.name} chat with your text already sent. Scroll on the AI icon to switch.
         </p>
       </div>
       <div role="radiogroup" aria-label="AI assistant" className="grid grid-cols-2 gap-2 sm:grid-cols-5">

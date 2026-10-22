@@ -91,6 +91,7 @@ test('theme filters and clock faces', async ({ page }) => {
   await themes.getByRole('searchbox', { name: 'Search themes' }).fill('nebula');
   await expect(cards).toHaveCount(1);
 
+  await modal.getByRole('button', { name: 'Clock', exact: true }).click();
   await modal.getByRole('radio', { name: 'macOS Minimal' }).click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('timer', { name: 'Digital clock' })).toHaveAttribute('data-clock-style', 'macos');
@@ -121,6 +122,7 @@ test('Reduce transparency survives a reload; reset restores the defaults', async
 test('Multi-Timezone shows zone options under the gallery and adds a city', async ({ page }) => {
   test.setTimeout(60_000); // the world zone list loads on first search
   const modal = await openAppearance(page);
+  await modal.getByRole('button', { name: 'Clock', exact: true }).click();
   await expect(modal.getByTestId('zone-picker')).toHaveCount(0);
   await modal.getByRole('radio', { name: 'Multi-Timezone' }).click();
   const picker = modal.getByTestId('zone-picker');

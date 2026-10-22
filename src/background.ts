@@ -16,8 +16,9 @@
 
 import { nextFireTime } from './lib/schedule';
 import { REMINDERS_STORAGE_KEY, type ReminderItem } from './lib/reminders-shared';
-import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, PENDING_ACTIONS_KEY, notificationText, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
+import { ALERT_EVENTS_KEY, ALERT_THEME_KEY, CALENDAR_SNOOZE_MS, PENDING_ACTIONS_KEY, reminderAlert, type AlertData, type AlertEvent } from './lib/alertEvents';
 import { renderAlertOverlay, type OverlayTheme } from './lib/alertOverlay';
+import { ALERT_PREFS_KEY, type AlertPrefs } from './lib/alertPrefs';
 import type { ProcessingItem } from './types';
 
 // Minimal typings for the chrome.* APIs used here (no @types/chrome needed).
@@ -67,7 +68,6 @@ const EVENT_PREFIX = 'devdeck-ev:'; // to-do / timer events (alert key)
 const SNOOZE_PREFIX = 'devdeck-snz:'; // snoozes (alert key)
 const SNOOZES_KEY = 'devdeck:bg-snoozes';
 const SNOOZE_MS = 10 * 60_000;
-const NOTE_PREFIX = 'devdeck-note:';
 
 // ---- scheduling -----------------------------------------------------------
 
@@ -144,6 +144,10 @@ async function shownOnCurrentSite(alert: AlertData): Promise<boolean> {
     if (!win?.focused || win.id === undefined) return false; // Chrome isn't in front
     const [tab] = await chrome.tabs.query({ active: true, windowId: win.id });
     if (tab?.id === undefined) return false;
+    // A DevDeck tab has its own alert stack (and its own reminder timer): never
+    // draw the other-websites overlay on top of it — that made two stacks.
+    const url = tab.url ?? '';
+    if (url.startsWith(chrome.runtime.getURL('')) || url.startsWith('chrome://newtab')) return true;
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: renderAlertOverlay as (...a: never[]) => unknown, args: [alert, await theme()] });
     return true;
   } catch {
@@ -151,17 +155,19 @@ async function shownOnCurrentSite(alert: AlertData): Promise<boolean> {
   }
 }
 
-function notify(alert: AlertData) {
-  const { title, message } = notificationText(alert);
-  chrome.notifications.create(NOTE_PREFIX + alert.key, { type: 'basic', iconUrl: 'icons/icon-128.png', title, message });
+async function prefs(): Promise<AlertPrefs> {
+  const got = await chrome.storage.local.get(ALERT_PREFS_KEY);
+  const p = got[ALERT_PREFS_KEY] as AlertPrefs | undefined;
+  return { popups: p?.popups ?? true };
 }
 
-const lastNote = new Map<string, AlertData>();
+// Alerts are DevDeck's own pop-ups: in an open DevDeck tab, or drawn on the
+// site you're on. (Chrome's built-in notifications are not used.)
 async function deliver(alert: AlertData, reminder?: { id: string; at: number }) {
+  const p = await prefs();
+  if (!p.popups) return;
   if (await shownInDevDeckTab(alert, reminder)) return;
-  if (await shownOnCurrentSite(alert)) return;
-  lastNote.set(NOTE_PREFIX + alert.key, alert);
-  notify(alert);
+  await shownOnCurrentSite(alert);
 }
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -192,13 +198,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // ---- actions --------------------------------------------------------------
 
 const devdeckUrl = (todoId?: string) => chrome.runtime.getURL('index.html') + (todoId ? `#todo=${todoId}` : '');
+// "Jump to slot": DevDeck opens its calendar on the event.
+const calendarUrl = (a: AlertData) => chrome.runtime.getURL('index.html') + `#cal=${a.date ?? ''}:${a.eventId ?? ''}`;
 
 async function act(action: string, alert: AlertData) {
   if (action === 'open') {
-    chrome.tabs.create({ url: alert.url ?? devdeckUrl(alert.todoId) });
+    // Review on the overdue summary opens DevDeck's work panel (#review).
+    const url = alert.kind === 'calendar' ? calendarUrl(alert) : alert.kind === 'overdue' ? `${devdeckUrl()}#review` : (alert.url ?? devdeckUrl(alert.todoId));
+    chrome.tabs.create({ url });
   } else if (action === 'snooze') {
     const all = (await loadSnoozes()).filter((x) => x.alert.key !== alert.key);
-    const until = Date.now() + SNOOZE_MS;
+    const until = Date.now() + (alert.kind === 'calendar' ? CALENDAR_SNOOZE_MS : SNOOZE_MS);
+
     all.push({ until, alert });
     await chrome.storage.local.set({ [SNOOZES_KEY]: all });
     chrome.alarms.create(SNOOZE_PREFIX + alert.key, { when: until });
@@ -261,12 +272,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   return false;
 });
 
-chrome.notifications.onClicked.addListener(async (notificationId) => {
-  const alert = lastNote.get(notificationId);
-  if (alert) void act('open', alert);
-  else if (notificationId.startsWith(ALARM_PREFIX)) {
-    const item = (await loadItems()).find((i) => ALARM_PREFIX + i.id === notificationId);
-    if (item) chrome.tabs.create({ url: item.url });
-  }
-  chrome.notifications.clear(notificationId);
-});
+

@@ -9,6 +9,7 @@ export type {
   NewTodo,
   NewProcessingItem,
   NewTopic,
+  NewEvent,
   NewFeedSource,
 } from './store';
 export { migrate, normalizePersisted, defaultSchedule, SCHEMA_VERSION } from './store';

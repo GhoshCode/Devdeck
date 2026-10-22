@@ -18,7 +18,7 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
 
     // Check the 4 fixed quick links rendered
     const quickLinks = linksStrip.locator('[data-chip=fixed]');
-    await expect(quickLinks).toHaveCount(4);
+    await expect(quickLinks).toHaveCount(5);
 
     // Check category cards rendered
     const cards = page.locator('[data-category-id]');
@@ -123,16 +123,16 @@ test.describe('Complete Playwright Visual Testing Simulation', () => {
     // 3. Quick Links Tab
     const quickLinksTab = modal.getByRole('button', { name: /Quick Links/i });
     await quickLinksTab.click();
-    await expect(modal.getByText('The links strip at the top of the centre frame')).toBeVisible();
+    await expect(modal.getByRole('heading', { name: 'Quick links' })).toBeVisible();
 
     // 4. Data Tab
     const dataTab = modal.getByRole('button', { name: /Data/i });
     await dataTab.click();
-    await expect(modal.getByText('Data Management')).toBeVisible();
-    await expect(modal.getByText('Catalog Sites')).toBeVisible();
+    await expect(modal.getByRole('heading', { name: 'Data & backup' })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Download backup/ })).toBeVisible();
 
     // 5. Sitemap Tab
-    const sitemapTab = modal.getByRole('button', { name: /Sitemap/i });
+    const sitemapTab = modal.getByRole('button', { name: /Site map/i });
     await sitemapTab.click();
     const reactFlow = modal.locator('.react-flow');
     await expect(reactFlow).toBeVisible();

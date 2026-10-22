@@ -220,7 +220,7 @@ test.describe('other AI providers', () => {
     await page.locator('[data-category-id]').first().waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const modal = page.getByRole('dialog', { name: 'DevDeck Settings' });
-    await modal.getByRole('button', { name: /Profile/ }).click();
+    await modal.getByRole('button', { name: /Search & AI/ }).click();
     await modal.getByRole('radio', { name: /^Perplexity/ }).click();
     await page.keyboard.press('Escape');
     await context.route('https://www.perplexity.ai/**', (route) => route.fulfill({ body: 'pplx' }));

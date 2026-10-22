@@ -38,6 +38,10 @@ async function clearAppCaches(): Promise<number> {
   return n;
 }
 
+// Demo data is a testing aid: the store build only offers to remove it (in case
+// a backup brought some in), never to load it.
+const SHOW_DEMO = import.meta.env.DEV || import.meta.env.MODE === 'demo';
+
 export function DataCleanup() {
   const trash = useStore((s) => s.trash);
   const todos = useStore((s) => s.todos);
@@ -69,7 +73,7 @@ export function DataCleanup() {
 
   return (
     <>
-      <section aria-label="Clear cache" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+      <section aria-label="Clear cache" className="set-card space-y-4 rounded-2xl border p-5">
         <div>
           <h4 className="font-semibold text-white">Clear cache</h4>
           <p className="text-xs text-white/55">
@@ -92,7 +96,7 @@ export function DataCleanup() {
         </div>
       </section>
 
-      <section aria-label="Clear data" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+      <section aria-label="Clear data" className="set-card space-y-4 rounded-2xl border p-5">
         <div>
           <h4 className="font-semibold text-white">Clear data</h4>
           <p className="text-xs text-white/55">Permanently remove old data you no longer need. Choose what goes.</p>
@@ -183,18 +187,21 @@ export function DataCleanup() {
         )}
       </section>
 
-      <section aria-label="Demo data" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+      {(SHOW_DEMO || demoCount > 0) && (
+      <section aria-label="Demo data" className="set-card space-y-4 rounded-2xl border p-5">
         <div>
-          <h4 className="font-semibold text-white">Demo data (for testing)</h4>
+          <h4 className="font-semibold text-white">Demo data</h4>
           <p className="text-xs text-white/55">
             Adds 52 Focus + 52 Queue sites (every reminder type, timers in every state), 156 to-dos (overdue, today, upcoming, repeating,
             completed), 30 topics and 210 news / job sources. Your own data is untouched; remove it all again with one click.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={loadDemoData} className="accent-gradient rounded-xl px-3.5 py-1.5 text-xs font-semibold text-white">
-            {demoCount ? 'Reload demo data' : 'Load demo data'}
-          </button>
+          {SHOW_DEMO && (
+            <button type="button" onClick={loadDemoData} className="accent-gradient rounded-xl px-3.5 py-1.5 text-xs font-semibold text-white">
+              {demoCount ? 'Reload demo data' : 'Load demo data'}
+            </button>
+          )}
           {demoCount > 0 && (
             <button type="button" onClick={clearDemoData} className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/10">
               Remove demo data ({demoCount})
@@ -202,6 +209,7 @@ export function DataCleanup() {
           )}
         </div>
       </section>
+      )}
     </>
   );
 }

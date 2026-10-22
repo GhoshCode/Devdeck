@@ -34,10 +34,10 @@ export function TerminalHelper() {
   };
 
   return (
-    <section aria-label="Terminal helper" className="glass-inner space-y-3 rounded-2xl border border-white/10 p-5">
+    <section aria-label="Terminal helper" className="set-card space-y-4 rounded-2xl border p-5">
       <div>
-        <span className="block text-xs font-semibold tracking-wider text-white/80 uppercase">Terminal</span>
-        <p className="mt-0.5 text-[11px] text-white/55">
+        <span className="set-card-title block text-[13.5px] font-semibold">Terminal helper</span>
+        <p className="set-card-hint mt-0.5 text-[12px] leading-relaxed">
           Commands typed in the terminal box open in {platform === 'windows' ? 'PowerShell' : 'your terminal'}; the admin toggle
           runs them {platform === 'windows' ? 'as administrator (Windows asks first)' : 'with sudo'}. Browsers can’t start
           programs, so this needs a small helper, installed once for your user only.

@@ -92,13 +92,9 @@ export function LibraryTab({
   const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="max-w-4xl space-y-6 p-6 text-sm text-white/90">
+    <div className="space-y-5 text-sm text-white/90">
       {/* Top Action Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pr-12">
-        <div>
-          <h3 className="font-display text-base font-semibold text-white">Library</h3>
-          <p className="text-xs text-white/50">Manage categories, subcategories, and your curated sites.</p>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -175,7 +171,7 @@ export function LibraryTab({
       {/* Delete Category Confirm Modal */}
       {deletingCatId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="glass w-full max-w-sm space-y-4 rounded-2xl border-red-500/20 bg-[#150e24] p-5 shadow-2xl">
+          <div className="glass w-full max-w-sm space-y-4 rounded-2xl border-red-500/20 bg-[var(--color-base-elevated)] p-5 shadow-2xl">
             <h4 className="font-semibold text-sm text-red-400">Delete Category?</h4>
             <p className="text-xs text-white/70">
               This deletes the category and its subcategories. Its sites move to the recycle bin — restore them from “+ Add Site”.
