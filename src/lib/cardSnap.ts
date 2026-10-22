@@ -1,45 +1,28 @@
-// Cockpit widths. The handles between the columns resize freely (px); the
-// tabs inside the cards box step the centre down by whole cards (3 → 2 → 1,
-// a part-card view snaps to the whole cards below it). Pure maths, so it is
-// tested on its own (cardSnap.test.ts).
+// Cockpit widths. The page opens in a two-card mode; the tabs inside the
+// cards box switch between whole-card modes (1, 2, 3), each with both side
+// columns sharing the rest evenly, and the handles between the columns resize
+// freely (px). Pure maths, so it is tested on its own (cardSnap.test.ts).
 
 export interface SnapGeometry {
   width: number; // the cockpit row, px
   handle: number; // each resize handle, px
-  leftBase: number; // the side columns at rest, px
+  leftBase: number; // the side columns in the widest (three-card) mode, px
   rightBase: number;
   chrome: number; // centre frame minus the cards themselves (padding, borders), px
   card: number; // one category card, px
   gap: number; // between cards, px
-  count?: number; // categories there are (fewer than fit: the centre sizes to them)
+  count?: number; // categories there are (the modes never show more cards than this)
 }
 
 export const MAX_CARDS = 3;
+export const DEFAULT_CARDS = 2; // the mode a fresh page opens in
 
-// How many cards the centre holds with both sides at rest (capped at 3). A card
-// that is cut by only a sliver still counts — the row already shows it.
+// The most cards the centre can hold with both sides at their base (1–3,
+// capped by the categories there are). A card cut by only a sliver still counts.
 const SLIVER = 0.15;
 export function cardsAtRest(g: SnapGeometry): number {
   const room = g.width - 2 * g.handle - g.leftBase - g.rightBase - g.chrome;
   return Math.max(0, Math.min(MAX_CARDS, g.count ?? MAX_CARDS, Math.floor((room + g.gap) / (g.card + g.gap) + SLIVER)));
-}
-
-// Nothing resized, 1 or 2 cards showing: the centre is exactly as wide as its
-// cards and the two side columns share the rest equally, so the page is
-// symmetric (neither drops below its base). Three cards (the widest view)
-// keep the default columns.
-export function restColumns(g: SnapGeometry): { left: number; right: number; cards: number } | null {
-  const cards = cardsAtRest(g);
-  if (cards < 1 || cards >= MAX_CARDS) return null;
-  const sides = g.width - 2 * g.handle - centreFor(g, cards);
-  if (sides - g.leftBase - g.rightBase <= 0) return null;
-  let right = Math.max(g.rightBase, Math.round(sides / 2));
-  let left = sides - right;
-  if (left < g.leftBase) {
-    left = g.leftBase;
-    right = sides - left;
-  }
-  return { left, right, cards };
 }
 
 // The centre's width between these side widths, px.
@@ -47,6 +30,16 @@ const centreOf = (g: SnapGeometry, left: number, right: number) => g.width - 2 *
 // Room for exactly n cards, px.
 function centreFor(g: SnapGeometry, n: number) {
   return g.chrome + n * g.card + (n - 1) * g.gap;
+}
+
+// An n-card mode: the centre is exactly n cards wide and both side columns get
+// the same extra width over their base, so the page stays balanced. Asking
+// for more cards than fit gives the widest mode there is.
+export function modeColumns(g: SnapGeometry, n: number): { left: number; right: number; cards: number } {
+  const cards = Math.max(1, Math.min(n, cardsAtRest(g) || 1));
+  const slack = Math.max(0, g.width - 2 * g.handle - centreFor(g, cards) - g.leftBase - g.rightBase);
+  const toLeft = Math.floor(slack / 2);
+  return { left: g.leftBase + toLeft, right: g.rightBase + slack - toLeft, cards };
 }
 
 // Cards (fractional) the centre shows between these side widths.
@@ -61,39 +54,29 @@ export const wholeCards = (g: SnapGeometry, left: number, right: number) =>
 // Most px a side may have next to the other side's width (the centre keeps one card).
 export const sideMax = (g: SnapGeometry, other: number) => Math.max(0, g.width - 2 * g.handle - centreFor(g, 1) - other);
 
-// Column widths for the saved side widths (null = not resized). With neither
-// resized the rest layout applies; each width is clamped between its base and
-// what leaves the centre one card.
-export function freeColumns(g: SnapGeometry, leftW: number | null, rightW: number | null): { left: number; right: number; cards: number } {
-  if (leftW === null && rightW === null) {
-    const r = restColumns(g);
-    const left = r?.left ?? g.leftBase;
-    const right = r?.right ?? g.rightBase;
-    return { left, right, cards: wholeCards(g, left, right) };
-  }
+// The columns for what is saved: free px widths from the outside handles win;
+// otherwise the chosen card mode (null = the default two-card mode). Free
+// widths are clamped between their base and what leaves the centre one card.
+export function freeColumns(
+  g: SnapGeometry,
+  leftW: number | null,
+  rightW: number | null,
+  mode: number | null = null,
+): { left: number; right: number; cards: number } {
+  if (leftW === null && rightW === null) return modeColumns(g, mode ?? DEFAULT_CARDS);
   const right = Math.round(Math.max(g.rightBase, Math.min(rightW ?? g.rightBase, sideMax(g, g.leftBase))));
   const left = Math.round(Math.max(g.leftBase, Math.min(leftW ?? g.leftBase, sideMax(g, right))));
   return { left, right, cards: wholeCards(g, left, right) };
 }
 
-// One click on an edge tab: the centre goes to the whole cards below what it
-// shows now (2.5 → 2, 2 → 1) and that side takes the space. At one card the
-// side gives its space back (null = reset).
-export function stepSide(g: SnapGeometry, side: 'left' | 'right', left: number, right: number): number | null {
+// One click on an edge tab (either side): a part-card view snaps to the whole
+// cards it shows (2.5 → 2); a whole view goes one card fewer, and from one
+// card back to the widest mode (… 3 → 2 → 1 → 3).
+export function nextMode(g: SnapGeometry, left: number, right: number): number {
   const n = centreCards(g, left, right);
-  // a view a sliver past whole cards counts as whole, so the step is a whole card
   const frac = n - Math.floor(n);
-  const target = Math.min(MAX_CARDS, frac < SLIVER ? Math.floor(n) - 1 : frac > 0.95 ? Math.ceil(n) - 1 : Math.floor(n));
-  if (target < 1) return null;
-  const give = centreOf(g, left, right) - centreFor(g, target);
-  return Math.round((side === 'left' ? left : right) + give);
-}
-
-// Dragging an edge tab: that side's width that leaves the centre exactly n
-// cards (the other side as it is), or null when the rest layout already
-// shows that many or the width would be its base or less.
-export function sideFor(g: SnapGeometry, side: 'left' | 'right', left: number, right: number, n: number): number | null {
-  if (n >= cardsAtRest(g)) return null; // as many as at rest: no resize needed
-  const w = Math.round((side === 'left' ? left : right) + centreOf(g, left, right) - centreFor(g, Math.max(1, n)));
-  return w <= (side === 'left' ? g.leftBase : g.rightBase) ? null : w;
+  const most = Math.max(1, cardsAtRest(g));
+  if (frac >= SLIVER && frac <= 0.95) return Math.max(1, Math.min(most, Math.floor(n)));
+  const whole = Math.min(most, frac > 0.95 ? Math.ceil(n) : Math.floor(n));
+  return whole <= 1 ? most : whole - 1;
 }

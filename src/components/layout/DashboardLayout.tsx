@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createContext, useContext } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useStore } from '../../store';
-import { cardsAtRest, freeColumns, sideFor, sideMax, stepSide, type SnapGeometry } from '../../lib/cardSnap';
+import { cardsAtRest, freeColumns, nextMode, sideMax, type SnapGeometry } from '../../lib/cardSnap';
 import { CardSnapHandle, EdgeTab } from './CardSnapHandle';
 import { TopSplitHandle } from './TopSplitHandle';
 
@@ -16,7 +16,7 @@ import { TopSplitHandle } from './TopSplitHandle';
 // Each side slot is rendered exactly once — inline or in its drawer — so
 // widget state is never duplicated. With all three inline, a handle on each
 // side of the centre resizes freely, and a tab on each inside edge of the
-// cards box steps the centre down by whole cards (1 always stays).
+// cards box switches between balanced 1-, 2- and 3-card modes (2 by default).
 
 interface DashboardLayoutProps {
   topBar: ReactNode;
@@ -75,9 +75,10 @@ export function DashboardLayout({
   // Unresized, the terminal is as wide as the Git box in the top bar (or the news column without one).
   const gitWidth = useWidthOf('[data-testid="git-widget"]', rightInline);
   const terminal = termWidth ?? gitWidth ?? snap.rightWidth;
+  const searchSpan = useSpanOf('[data-search-row]', topRowRef, rightInline);
 
   const columns = rightInline
-    ? snap.dragging
+    ? snap.dragging || !snap.settled
       ? ''
       : 'transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none'
     : leftInline
@@ -116,16 +117,27 @@ export function DashboardLayout({
         style={rightInline ? { ...snap.style, gridTemplateRows: 'calc(var(--links-bar-h) + 7px) minmax(0, 1fr)', rowGap: 12 } : undefined}
       >
         {/* Wide screens: the quick-links bar and the terminal share their own row
-            above the cards and the news. By default the terminal is as wide as the Git
-            box in the top bar; drag the handle between them to size them on their
-            own — double-click to go back. */}
+            above the cards and the news. The links bar sits right under the search
+            row, as wide as it, whatever the columns below do (it only gives way
+            when the terminal needs the room). By default the terminal is as wide
+            as the Git box in the top bar; drag the handle between them to size it
+            — double-click to go back. */}
         {rightInline && (
-          <div ref={topRowRef} data-zone="top-row" className="flex min-w-0 items-end pt-[7px]" style={{ gridColumn: '3 / 6', gridRow: 1 }}>
-            <div className="min-w-0 flex-1">{linksRow}</div>
+          <div ref={topRowRef} data-zone="top-row" className="flex min-w-0 items-end pt-[7px]" style={{ gridColumn: '1 / 6', gridRow: 1 }}>
+            <div
+              data-zone="links-row"
+              className="min-w-0 shrink [&>*]:mx-0"
+              style={searchSpan ? { marginLeft: searchSpan.left, width: searchSpan.width } : { flex: 1 }}
+            >
+              {linksRow}
+            </div>
+            {/* the handle stays put just left of the terminal's border */}
+            <div className="min-w-3 flex-1" />
             <TopSplitHandle
               width={terminal}
               custom={termWidth !== null}
               rowRef={topRowRef}
+              lead={(searchSpan?.left ?? 0) + 36}
               onChange={(w) => updateSettings({ topTerminalWidth: w })}
             />
             <div data-zone="right-top" className="ml-3 flex shrink-0 items-center" style={{ width: terminal, height: 'var(--links-bar-h)' }}>
@@ -134,9 +146,9 @@ export function DashboardLayout({
           </div>
         )}
         {leftInline && (
-          <aside data-zone="left" aria-label="Currently processing" className="flex min-h-0 flex-col gap-3" style={rightInline ? { gridRow: '1 / span 2' } : undefined}>
+          <aside data-zone="left" aria-label="Currently processing" className="flex min-h-0 flex-col gap-3" style={rightInline ? { gridColumn: 1, gridRow: 2 } : undefined}>
             {/* breathing space level with the quick-links bar */}
-            <div aria-hidden className="shrink-0" style={{ height: 'var(--links-bar-h)' }} />
+            {!rightInline && <div aria-hidden className="shrink-0" style={{ height: 'var(--links-bar-h)' }} />}
             <div className="min-h-0 flex-1">{leftColumn}</div>
           </aside>
         )}
@@ -148,8 +160,8 @@ export function DashboardLayout({
         <section ref={snap.centerRef} data-zone="center" className="relative flex min-h-0 min-w-0 flex-col gap-3" style={rightInline ? { gridColumn: 3, gridRow: 2 } : undefined}>
           {!rightInline && <div className="mt-[7px] shrink-0">{linksRow}</div>}
           {center}
-          {rightInline && <EdgeTab side="left" cards={snap.cards} unit={snap.unit} onStep={() => snap.step('left')} onCards={(n) => snap.toCards('left', n)} />}
-          {rightInline && <EdgeTab side="right" cards={snap.cards} unit={snap.unit} onStep={() => snap.step('right')} onCards={(n) => snap.toCards('right', n)} />}
+          {rightInline && <EdgeTab side="left" cards={snap.cards} next={snap.next} unit={snap.unit} onStep={snap.step} onCards={snap.toCards} />}
+          {rightInline && <EdgeTab side="right" cards={snap.cards} next={snap.next} unit={snap.unit} onStep={snap.step} onCards={snap.toCards} />}
         </section>
         {rightInline && (
           <div style={{ gridColumn: 4, gridRow: 2 }} className="flex min-h-0">
@@ -221,10 +233,19 @@ function useCardSnap(enabled: boolean) {
   const centerRef = useRef<HTMLElement>(null);
   const leftW = useStore((s) => s.settings.cockpitLeftWidth ?? null);
   const rightW = useStore((s) => s.settings.cockpitRightWidth ?? null);
+  const mode = useStore((s) => s.settings.cockpitCards ?? null);
   const categoryCount = useStore((s) => s.categories.length);
   const updateSettings = useStore((s) => s.updateSettings);
   const [geo, setGeo] = useState<SnapGeometry | null>(null);
   const [dragging, setDragging] = useState(false);
+  // No column animation until the first measured layout is on screen, so the
+  // page doesn't visibly slide into its card mode on load.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!geo || settled) return;
+    const t = setTimeout(() => setSettled(true), 120);
+    return () => clearTimeout(t);
+  }, [geo, settled]);
 
   useLayoutEffect(() => {
     const cockpit = cockpitRef.current;
@@ -258,7 +279,7 @@ function useCardSnap(enabled: boolean) {
     };
   }, [enabled, categoryCount]);
 
-  const cols = geo ? freeColumns(geo, leftW, rightW) : null;
+  const cols = geo ? freeColumns(geo, leftW, rightW, mode) : null;
   const left = cols?.left ?? LEFT_BASE;
   const right = cols?.right ?? RIGHT_BASE;
   const style: CSSProperties = {
@@ -270,24 +291,51 @@ function useCardSnap(enabled: boolean) {
     min: side === 'left' ? LEFT_BASE : RIGHT_BASE,
     max: geo ? sideMax(geo, side === 'left' ? right : left) : side === 'left' ? left : right,
     onChange: (w: number | null) => {
+      // double-click: back to the card mode
+      if (w === null) return updateSettings({ cockpitLeftWidth: null, cockpitRightWidth: null });
       // the first drag of one side pins the other where it is, so it doesn't jump
       const other: Side = side === 'left' ? 'right' : 'left';
-      if (w !== null && leftW === null && rightW === null) save(other, other === 'left' ? left : right);
+      if (leftW === null && rightW === null) save(other, other === 'left' ? left : right);
       save(side, w);
     },
     onDragging: setDragging,
   });
-  const apply = (side: Side, w: number | null) => {
-    const other: Side = side === 'left' ? 'right' : 'left';
-    if (w !== null && leftW === null && rightW === null) save(other, other === 'left' ? left : right);
-    save(side, w);
-  };
-  const step = (side: Side) => geo && apply(side, stepSide(geo, side, left, right));
-  // dragging an edge tab: exactly n cards in the centre
-  const toCards = (side: Side, n: number) => geo && apply(side, sideFor(geo, side, left, right, n));
+  // The edge tabs pick a whole-card mode; both sides follow it (free widths are dropped).
+  const toCards = (n: number) => updateSettings({ cockpitCards: n, cockpitLeftWidth: null, cockpitRightWidth: null });
+  const step = () => geo && toCards(nextMode(geo, left, right));
+  const next = geo ? nextMode(geo, left, right) : 1;
   const unit = geo ? geo.card + geo.gap : 420;
   const cards = cols?.cards ?? (geo ? Math.max(1, cardsAtRest(geo)) : 3);
-  return { cockpitRef, centerRef, style, handle, step, toCards, unit, cards, rightWidth: right, dragging };
+  return { cockpitRef, centerRef, style, handle, step, toCards, next, unit, cards, rightWidth: right, dragging, settled };
+}
+
+// Where the first element matching the selector sits horizontally, relative to
+// the given row ({ left, width } px; null if either is missing). Kept current.
+function useSpanOf(selector: string, rowRef: RefObject<HTMLElement | null>, enabled: boolean) {
+  const [span, setSpan] = useState<{ left: number; width: number } | null>(null);
+  useEffect(() => {
+    const row = rowRef.current;
+    const el = document.querySelector(selector);
+    if (!enabled || !row || !el) return setSpan(null);
+    const read = () => {
+      const r = row.getBoundingClientRect();
+      const b = el.getBoundingClientRect();
+      setSpan((prev) => {
+        const next = { left: Math.round(b.left - r.left), width: Math.round(b.width) };
+        return prev && prev.left === next.left && prev.width === next.width ? prev : next;
+      });
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(row);
+    ro.observe(el);
+    window.addEventListener('resize', read);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', read);
+    };
+  }, [selector, rowRef, enabled]);
+  return span;
 }
 
 // Width of the first element matching the selector, kept current (null if none).

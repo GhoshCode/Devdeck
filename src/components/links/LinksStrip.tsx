@@ -35,21 +35,17 @@ export const LinksStrip = memo(function LinksStrip() {
 
   return (
     <div data-testid="links-strip" className="links-bar glass-raised flex h-[var(--links-bar-h,56px)] min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-white/10 px-3">
-      {/* The first four stay put while the rest scroll; on a narrow bar the
-          rest keep at least 45% of it, and the fixed four scroll on their own. */}
-      <div data-strip="fixed" onWheel={onWheel} className="scrollbar-none flex min-w-0 shrink items-center gap-2 overflow-x-auto">
+      {/* One horizontal scroller for every chip: nothing overlaps or gets cut,
+          and a narrow bar still reaches them all. */}
+      <div ref={scrollerRef} onWheel={onWheel} data-strip="scroll" className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
+      <div data-strip="fixed" className="flex shrink-0 items-center gap-2">
         {strip.fixed.map((link) => (
           <Chip key={link.id} link={link} variant="fixed" onOpen={open} />
         ))}
       </div>
 
       {(strip.scrolling.length > 0 || strip.recent.length > 0) && (
-        <div
-          ref={scrollerRef}
-          onWheel={onWheel}
-          data-strip="scroll"
-          className="scrollbar-none flex min-w-[45%] flex-1 items-center gap-2 overflow-x-auto pl-1 [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-40px),transparent)]"
-        >
+        <div data-strip="rest" className="flex shrink-0 items-center gap-2 pl-1">
           {strip.scrolling.map((link) => (
             <Chip key={link.id} link={link} variant="auto" onOpen={open} />
           ))}
@@ -74,6 +70,7 @@ export const LinksStrip = memo(function LinksStrip() {
           <span aria-hidden className="w-6 shrink-0" />
         </div>
       )}
+      </div>
     </div>
   );
 });

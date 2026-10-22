@@ -7,11 +7,12 @@ import { useState, type PointerEvent, type RefObject } from 'react';
 const MIN_TERMINAL = 240;
 const MIN_LINKS = 380;
 
-export function TopSplitHandle({ width, custom, rowRef, onChange }: { width: number; custom: boolean; rowRef: RefObject<HTMLDivElement | null>; onChange: (w: number | null) => void }) {
+export function TopSplitHandle({ width, custom, rowRef, lead = 0, onChange }: { width: number; custom: boolean; rowRef: RefObject<HTMLDivElement | null>; lead?: number; onChange: (w: number | null) => void }) {
   const [dragging, setDragging] = useState(false);
   const clamp = (w: number) => {
     const row = rowRef.current?.clientWidth ?? 1600;
-    return Math.round(Math.max(MIN_TERMINAL, Math.min(row - MIN_LINKS, w)));
+    // lead: the row's width before the links start (they sit under the search row)
+    return Math.round(Math.max(MIN_TERMINAL, Math.min(row - lead - MIN_LINKS, w)));
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {

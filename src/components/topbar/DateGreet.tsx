@@ -163,11 +163,11 @@ export const DateGreet = memo(function DateGreet() {
   const showQuote = useStore((s) => s.settings.showQuote ?? true);
   const greetStyle = useStore((s) => s.settings.greetStyle ?? 'classic');
   const updateSettings = useStore((s) => s.updateSettings);
-  // Click the greeting for the next style, right-click for the previous one (like
-  // the clock); double-click for another phrase of this time of day.
+  // Click the greeting for the next style; right-click for another phrase of
+  // this time of day.
   const at = Math.max(0, GREET_STYLES.findIndex((g) => g.id === greetStyle));
   const segment = segmentOf(now);
-  // The page opens on the plain greeting; the first double-click switches to the
+  // The page opens on the plain greeting; the first right-click switches to the
   // themed phrases, and each one after re-rolls.
   const [roll, setRoll] = useState<number | null>(null);
   const phrase = roll === null ? greetingFor(now) : greetingPhrase(segment, roll);
@@ -203,21 +203,12 @@ export const DateGreet = memo(function DateGreet() {
     <div className="group/greet flex min-w-0 flex-col items-center gap-1 text-center">
       <div className="relative max-w-full">
       <h1
-        onClick={(e) => {
-          // the style changes at once (no wait to rule out a double-click); a double-click
-          // puts the style back and changes the phrase instead
-          if (e.detail > 1) return;
-          step(1);
-        }}
-        onDoubleClick={() => {
-          step(-1); // undo the style step of its first click
-          setRoll((r) => (r === null ? Math.floor(Math.random() * 1000) : r + 1 + Math.floor(Math.random() * 3)));
-        }}
+        onClick={() => step(1)}
         onContextMenu={(e) => {
           e.preventDefault();
-          step(-1);
+          setRoll((r) => (r === null ? Math.floor(Math.random() * 1000) : r + 1 + Math.floor(Math.random() * 3)));
         }}
-        title={`Style: ${GREET_STYLES[at].name} — click: next style · right-click: previous · double-click: ${roll === null ? 'themed greetings' : 'another greeting'}`}
+        title={`Style: ${GREET_STYLES[at].name} — click: next style · right-click: ${roll === null ? 'themed greetings' : 'another greeting'}`}
         className="max-w-full font-display text-[2.15rem] leading-[1.2] font-bold tracking-tight text-balance break-words text-white/95 cursor-pointer select-none"
       >
         {/* The style (Appearance → Greeting) colours the words; the name keeps its own look. */}

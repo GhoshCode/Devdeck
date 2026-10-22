@@ -177,36 +177,54 @@ test('sites reorder in the Site Map by dropping onto another site', async ({ pag
 });
 
 
-test('edge tabs step the cards down a whole card at a time; the handles resize freely', async ({ page }) => {
+test('opens in a balanced two-card mode; edge tabs cycle 2 → 1 → 3 → 2; the handles resize freely', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/');
+  await settle(page);
   const cockpit = page.locator('[data-zone="cockpit"]');
   const cols = () => cockpit.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
+  const extra = async () => {
+    const c = await cols();
+    return [c[0] - 250, c[4] - 300]; // over each side's base
+  };
+  const cards = () => page.locator('[data-cards-track] > *').first().evaluate((card) => {
+    const centre = document.querySelector('[data-zone="center"]')!.getBoundingClientRect();
+    return Math.round(centre.width / card.getBoundingClientRect().width);
+  });
   const tab = page.locator('[data-edge-tab="left"]');
-  await expect(tab).toHaveAttribute('aria-label', 'Widen Currently processing by one card');
-  const start = await cols();
-  await tab.click();
-  await expect.poll(async () => (await cols())[0]).toBeGreaterThan(start[0] + 300); // 3 → 2 cards
-  await tab.click();
-  await expect(tab).toHaveAttribute('aria-label', 'Give Currently processing its space back'); // 2 → 1
-  await tab.click();
-  await expect.poll(async () => (await cols())[0]).toBe(start[0]);
+  await expect(tab).toHaveAttribute('aria-label', 'Show 1 card'); // starts with two
+  let [l, r] = await extra();
+  expect(Math.abs(l - r)).toBeLessThanOrEqual(1); // balanced
+  expect(await cards()).toBe(2);
+
+  await tab.click(); // 2 → 1
+  await expect(tab).toHaveAttribute('aria-label', 'Show 3 cards');
+  [l, r] = await extra();
+  expect(Math.abs(l - r)).toBeLessThanOrEqual(1);
+  await page.locator('[data-edge-tab="right"]').click(); // either tab: 1 → 3
+  await expect(tab).toHaveAttribute('aria-label', 'Show 2 cards');
+  await expect.poll(async () => (await cols())[0]).toBeLessThan(290); // close to the base widths
+  await tab.click(); // 3 → 2
+  await expect(tab).toHaveAttribute('aria-label', 'Show 1 card');
 
   // the outside handle moves px by px
+  await page.waitForTimeout(450); // let the column animation finish
+  const start = (await cols())[0];
   const handle = page.locator('[data-snap-handle="left"]');
   const box = (await handle.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 100, box.y + box.height / 2, { steps: 5 });
   await page.mouse.up();
-  await expect.poll(async () => (await cols())[0]).toBe(start[0] + 100);
+  await expect.poll(async () => (await cols())[0]).toBe(start + 100);
+  await handle.dblclick(); // back to the card mode
+  await expect.poll(async () => (await cols())[0]).toBe(start);
 });
 
 test('edge tabs sit inside the cards box, carry a grip and drag by whole cards both ways', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/');
-  const cockpit = page.locator('[data-zone="cockpit"]');
-  const left = () => cockpit.evaluate((el) => parseFloat(getComputedStyle(el).gridTemplateColumns));
+  await settle(page);
   const tab = page.locator('[data-edge-tab="left"]');
   await expect(tab.locator('.edge-grip')).toHaveCount(3);
   const box = (await page.locator('[data-cards-track]').locator('..').boundingBox())!;
@@ -214,28 +232,42 @@ test('edge tabs sit inside the cards box, carry a grip and drag by whole cards b
   expect(t.x).toBeGreaterThanOrEqual(box.x - 0.5); // inside the box's left edge
   expect(t.x + t.width).toBeLessThanOrEqual(box.x + 24);
 
-  const start = await left();
+  const label = () => tab.getAttribute('aria-label');
   const drag = async (dx: number) => {
+    await settle(page); // the tab moves with the columns: grab it once they stop
     const b = (await tab.boundingBox())!;
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await page.mouse.down();
     await page.mouse.move(b.x + b.width / 2 + dx, b.y + b.height / 2, { steps: 10 });
     await page.mouse.up();
   };
-  await drag(450); // in: one card fewer
-  await expect.poll(left).toBeGreaterThan(start + 300);
-  const two = await left();
-  await drag(450); // in again: one card
-  await expect.poll(left).toBeGreaterThan(two + 300);
-  await drag(-450); // out: back to two
-  await expect.poll(left).toBe(two);
-  await drag(-900); // all the way out: the side gives its space back
-  await expect.poll(left).toBe(start);
+  await drag(450); // in: two → one card
+  await expect.poll(label).toBe('Show 3 cards');
+  await drag(-900); // out two cards: three
+  await expect.poll(label).toBe('Show 2 cards');
+  await drag(450); // in again: two
+  await expect.poll(label).toBe('Show 1 card');
+});
+
+test('the links bar sits under the search row, whatever mode the cards are in', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await settle(page);
+  const span = async () => {
+    const s = (await page.locator('[data-search-row]').boundingBox())!;
+    const l = (await page.locator('[data-zone="links-row"]').boundingBox())!;
+    return [Math.round(l.x - s.x), Math.round(l.width - s.width)];
+  };
+  expect(await span()).toEqual([0, 0]);
+  await page.locator('[data-edge-tab="left"]').click(); // one card
+  await page.waitForTimeout(400);
+  expect(await span()).toEqual([0, 0]);
 });
 
 test('the links / terminal handle sits midway, and a shrunk links bar still scrolls to every chip', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/');
+  await settle(page);
   const strip = page.getByTestId('links-strip');
   const handle = page.getByTestId('top-split-handle');
   const s = (await strip.boundingBox())!;
@@ -266,6 +298,7 @@ test('the links / terminal handle sits midway, and a shrunk links bar still scro
 test('long search text: the bar keeps one line with "…" and a wider panel below holds it all', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/');
+  await settle(page);
   const input = page.getByRole('combobox', { name: 'Search' });
   await input.fill('short');
   await expect(page.getByTestId('search-panel')).toHaveCount(0);
@@ -282,3 +315,37 @@ test('long search text: the bar keeps one line with "…" and a wider panel belo
   await page.keyboard.type(' tail');
   await expect(input).toHaveValue(/ tail$/); // typing continues in the panel
 });
+
+test('the links / terminal handle stays beside the terminal when it is resized', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await settle(page);
+  const handle = page.getByTestId('top-split-handle');
+  const gap = async () => {
+    const h = (await handle.boundingBox())!;
+    const t = (await page.locator('[data-zone="right-top"]').boundingBox())!;
+    return Math.round(t.x - (h.x + h.width));
+  };
+  expect(await gap()).toBe(12);
+  const h = (await handle.boundingBox())!;
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x + 200, h.y + h.height / 2, { steps: 6 }); // narrower terminal
+  await page.mouse.up();
+  await expect.poll(gap).toBe(12); // still right beside it, not floating in the gap
+});
+
+// Waits until the cockpit's columns stop changing (cards measured, layout applied).
+async function settle(page: import('@playwright/test').Page) {
+  const cols = () => page.locator('[data-zone="cockpit"]').evaluate((el) => getComputedStyle(el).gridTemplateColumns);
+  await page.locator('[data-cards-track] > *').first().waitFor();
+  let last = '';
+  await expect
+    .poll(async () => {
+      const now = await cols();
+      const same = now === last;
+      last = now;
+      return same;
+    }, { intervals: [250] })
+    .toBe(true);
+}

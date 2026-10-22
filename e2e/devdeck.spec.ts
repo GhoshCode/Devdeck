@@ -118,10 +118,10 @@ test.describe('Page Load & Header', () => {
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toBeVisible();
 
-    // The page opens on the plain greeting; a double-click switches to the
+    // The page opens on the plain greeting; a right-click switches to the
     // themed phrases (lib/greetings.ts).
     await expect(heading).toHaveText(/^GOOD (MORNING|AFTERNOON|EVENING|NIGHT)/);
-    await heading.dblclick();
+    await heading.click({ button: 'right' });
     await expect(heading).not.toHaveText(/^GOOD (MORNING|AFTERNOON|EVENING|NIGHT)/);
   });
 
@@ -145,7 +145,7 @@ test.describe('Page Load & Header', () => {
     const dateGreet = page.locator('[data-widget="date-greet"]');
     const heading = dateGreet.getByRole('heading', { level: 1 });
     const phrase = await heading.textContent();
-    await heading.dblclick(); // double-click re-rolls the phrase (click changes the style)
+    await heading.click({ button: 'right' }); // right-click changes the phrase (click changes the style)
     await expect(heading).not.toHaveText(phrase ?? '');
     const quote = dateGreet.getByTestId('greeting-quote');
     const first = await quote.textContent();

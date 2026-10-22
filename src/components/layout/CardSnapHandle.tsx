@@ -80,26 +80,27 @@ export function CardSnapHandle({
 }
 
 // A half-cut tab just inside each edge of the cards box (the "Currently
-// processing" notch turned on its side), with a three-line grip. Click: the
-// centre loses one whole card (a part-card view snaps to the whole cards
-// below) and this side takes the space; at one card it gives it back. Drag:
-// whole cards either way — towards the centre for fewer, out for more.
+// processing" notch turned on its side), with a three-line grip. Both tabs
+// do the same: click for the next card mode (2 → 1 → 3 → 2; a part-card view
+// snaps to its whole cards first), drag for whole cards either way — towards
+// the centre for fewer, out for more. Both side columns follow, balanced.
 export function EdgeTab({
   side,
   cards,
+  next,
   unit,
   onStep,
   onCards,
 }: {
   side: 'left' | 'right';
   cards: number; // whole cards in view now
+  next: number; // the mode a click switches to
   unit: number; // one card plus the gap, px
   onStep: () => void;
   onCards: (n: number) => void;
 }) {
   const [dragging, setDragging] = useState(false);
-  const what = side === 'left' ? 'Currently processing' : 'Tech news';
-  const label = cards <= 1 ? `Give ${what} its space back` : `Widen ${what} by one card`;
+  const label = `Show ${next} card${next === 1 ? '' : 's'}`;
   const inward = side === 'left' ? 1 : -1;
 
   const onPointerDown = (e: PointerEvent<HTMLButtonElement>) => {

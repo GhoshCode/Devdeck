@@ -73,6 +73,7 @@ export interface Settings {
   nameFont?: NameFont; // typeface of your name in the greeting
   cockpitLeftWidth?: number | null; // px of the left column when resized; unset = the rest layout
   cockpitRightWidth?: number | null; // …and the news column
+  cockpitCards?: number | null; // card mode chosen with the edge tabs (1–3); unset = two cards
   clockZones?: string[]; // Multi-Timezone face: IANA zones shown beside local time
   gitRepo?: string | null; // Git widget: selected repo (owner/name); null = the most recently pushed
   followSystem?: boolean; // Appearance "Auto": theme mode follows the OS

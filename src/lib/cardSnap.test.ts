@@ -1,78 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import { cardsAtRest, centreCards, freeColumns, restColumns, sideFor, stepSide, type SnapGeometry } from './cardSnap';
+import { cardsAtRest, centreCards, freeColumns, modeColumns, nextMode, type SnapGeometry } from './cardSnap';
 
 // A wide screen: 1900px cockpit, 250 / 300 side columns, 400px cards.
 const g: SnapGeometry = { width: 1900, handle: 12, leftBase: 250, rightBase: 300, chrome: 60, card: 400, gap: 20 };
+const centre = (c: { left: number; right: number }) => g.width - 2 * g.handle - c.left - c.right;
 
 describe('cardSnap', () => {
-  it('counts whole cards at rest, capped at three', () => {
+  it('counts whole cards at rest, capped at three and at the categories there are', () => {
     expect(cardsAtRest(g)).toBe(3);
     expect(cardsAtRest({ ...g, width: 3000 })).toBe(3);
     expect(cardsAtRest({ ...g, width: 1500 })).toBe(2);
     expect(cardsAtRest({ ...g, width: 1872 })).toBe(3); // 10px short of three still counts as three
+    expect(cardsAtRest({ ...g, count: 2 })).toBe(2);
   });
 
-  it('resizes the sides freely but keeps one card in the centre', () => {
-    expect(freeColumns(g, null, null)).toEqual({ left: 250, right: 300, cards: 3 });
-    const free = freeColumns(g, 600, null);
+  it('builds each card mode with the centre exactly n cards and both sides sharing the rest', () => {
+    for (const n of [1, 2, 3]) {
+      const m = modeColumns(g, n);
+      expect(m.cards).toBe(n);
+      expect(centre(m)).toBe(60 + n * 400 + (n - 1) * 20);
+      expect(Math.abs(m.left - g.leftBase - (m.right - g.rightBase))).toBeLessThanOrEqual(1); // same extra each side
+    }
+    expect(modeColumns(g, 3).left).toBe(250 + 13); // the widest mode is close to the bases
+    expect(modeColumns({ ...g, width: 1500 }, 3).cards).toBe(2); // three don't fit: the widest there is
+    expect(modeColumns({ ...g, count: 1 }, 2).cards).toBe(1);
+  });
+
+  it('opens in the two-card mode; free widths win over the mode', () => {
+    expect(freeColumns(g, null, null)).toEqual(modeColumns(g, 2));
+    expect(freeColumns(g, null, null, 1)).toEqual(modeColumns(g, 1));
+    const free = freeColumns(g, 600, null, 1);
     expect(free.left).toBe(600);
     expect(free.cards).toBe(2); // 2.23 cards in view
     expect(freeColumns(g, 5000, null).left).toBe(1900 - 24 - 460 - 300); // one card left
     expect(freeColumns(g, 100, null).left).toBe(250); // never below the base
   });
 
-  it('steps the centre down by whole cards from the edge tabs', () => {
-    expect(stepSide(g, 'left', 250, 300)).toBe(250 + 1326 - 880); // 3.06 → 2
-    expect(stepSide(g, 'left', 600, 300)).toBe(600 + 976 - 880); // 2.23 → 2
-    const two = stepSide(g, 'right', 250, 600)!; // the right tab widens the news column
-    expect(centreCards(g, 250, two)).toBeCloseTo(2);
-    expect(stepSide(g, 'left', 696, 300)).toBe(696 + 880 - 460); // 2 → 1
-    expect(stepSide(g, 'left', 1116, 300)).toBeNull(); // at one card the side gives its space back
-  });
-});
-
-describe('restColumns (nothing resized)', () => {
-  // 1748px: room for two cards plus 314px that is not quite a third
-  const g: SnapGeometry = { width: 1748, handle: 12, leftBase: 250, rightBase: 300, chrome: 24, card: 400, gap: 12 };
-
-  it('splits the leftover evenly so both side columns match', () => {
-    const r = restColumns(g)!;
-    expect(r.cards).toBe(2);
-    const centre = g.chrome + 2 * g.card + g.gap;
-    expect(r.left + r.right + 2 * g.handle + centre).toBe(g.width); // the centre is exactly two cards
-    expect(Math.abs(r.left - r.right)).toBeLessThanOrEqual(1); // symmetric
-  });
-
-  it('never squeezes a side below its base', () => {
-    const r = restColumns({ ...g, width: 1500 })!; // 640px for both sides
-    expect(r).toMatchObject({ left: 320, right: 320 });
-    const tight = restColumns({ ...g, rightBase: 400, width: 1520 })!; // 660px: half would be under 400
-    expect(tight.right).toBe(400);
-    expect(tight.left).toBe(260); // the rest
-  });
-
-  it('keeps the default columns with three cards', () => {
-    expect(restColumns({ ...g, width: 2200 })).toBeNull();
-  });
-});
-
-describe('sideFor (dragging an edge tab)', () => {
-  const g: SnapGeometry = { width: 1900, handle: 12, leftBase: 250, rightBase: 300, chrome: 60, card: 400, gap: 20 };
-  it('sizes the side so the centre holds exactly n cards, either way', () => {
-    expect(sideFor(g, 'left', 250, 300, 2)).toBe(250 + 1326 - 880);
-    expect(sideFor(g, 'left', 696, 300, 1)).toBe(696 + 880 - 460);
-    expect(sideFor(g, 'left', 1116, 300, 2)).toBe(696); // back out again
-    expect(sideFor(g, 'left', 696, 300, 3)).toBeNull(); // three cards: the side gives its space back
-    expect(centreCards(g, 250, sideFor(g, 'right', 250, 300, 2)!)).toBeCloseTo(2);
-  });
-});
-
-describe('only two categories', () => {
-  const g: SnapGeometry = { width: 1900, handle: 12, leftBase: 250, rightBase: 300, chrome: 60, card: 400, gap: 20, count: 2 };
-  it('sizes the centre to the two cards and balances the sides, even with room for three', () => {
-    const r = restColumns(g)!;
-    expect(r.cards).toBe(2);
-    expect(r.left + r.right + 24 + 60 + 820).toBe(1900);
-    expect(Math.abs(r.left - r.right)).toBeLessThanOrEqual(1);
+  it('cycles the modes from the edge tabs: 2 → 1 → 3 → 2, part cards snap down', () => {
+    const at = (n: number) => modeColumns(g, n);
+    expect(nextMode(g, at(2).left, at(2).right)).toBe(1);
+    expect(nextMode(g, at(1).left, at(1).right)).toBe(3);
+    expect(nextMode(g, at(3).left, at(3).right)).toBe(2);
+    expect(centreCards(g, 600, 300)).toBeCloseTo(2.23, 2);
+    expect(nextMode(g, 600, 300)).toBe(2); // 2.23 → 2
+    expect(nextMode({ ...g, count: 1 }, at(1).left, at(1).right)).toBe(1);
   });
 });

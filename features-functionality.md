@@ -17,6 +17,20 @@ wide where layout is involved.
 
 ---
 
+## Round 2026-10-22f — card modes
+
+- The page opens with two category cards, with the To-do / Processing and news columns balanced on either side.
+- The tabs on the inside edges of the cards box both switch modes: 2 → 1 → 3 → 2 cards, and each mode is balanced. Drag a tab to go by whole cards. The thin bars outside still resize freely; double-click one to go back to the card mode.
+- The quick-links bar sits right under the search bar and stays there whatever the cards do. All its chips scroll sideways together, with no overlap.
+- The handle between the quick links and the terminal stays just left of the terminal.
+- Greeting: click for the next style, right-click for another phrase.
+
+**Manual test checklist**
+- [ ] A fresh page shows two cards with matching side columns.
+- [ ] Click either edge tab three times: 1 card, 3 cards, back to 2.
+- [ ] Resize the terminal: the handle stays beside it.
+- [ ] Right-click the greeting: a themed phrase; left-click: the style changes.
+
 ## Round 2026-10-22e — balanced layout
 
 - With only one or two categories (or a 1–2-card view), the cards area is exactly as wide as its cards, and the To-do / Processing column and the news column share the rest equally, for a symmetric page.

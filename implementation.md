@@ -10,6 +10,31 @@ Branch: `vfinal2.0` (extension version 3.0.0) · Stack: Vite + React 19 + TypeSc
 
 ---
 
+## Round 2026-10-22f — card modes, links under the search, greeting clicks
+
+- **Card modes** (`lib/cardSnap.ts`, rewritten):
+  - `modeColumns(g, n)`: the centre is exactly n cards wide, and both side columns get the same extra width over their base (250 / 300). n is capped by what fits and by `count` (the number of categories).
+  - The page opens in `DEFAULT_CARDS` = 2.
+  - New setting `cockpitCards` (1–3, null = 2). `freeColumns(g, leftW, rightW, mode)`: free px widths from the outside handles win; otherwise the mode applies.
+  - `nextMode()`: a part-card view snaps to its whole cards; otherwise one card fewer, and from 1 back to the widest (2 → 1 → 3 → 2).
+  - `stepSide` / `sideFor` / `restColumns` are removed.
+  - At 1920 × 1080: 2 cards 456 | 886 | 506, 1 card 666 | 466 | 716, 3 cards 250 | 1298 | 300.
+- **Edge tabs** (`EdgeTab`): both tabs do the same thing (`onStep`, and `onCards` for whole-card drags). Choosing a mode clears the free widths. The label is "Show N cards".
+- **Outside handles:** they still drag freely (the first drag pins the other side). A double-click clears both widths, back to the card mode.
+- **Links row:**
+  - The top row spans all five columns. The links row is placed under `[data-search-row]` (`useSpanOf`: same left and width), so it no longer follows the cards; it only shrinks if the terminal needs the room.
+  - The left column now starts in row 2.
+  - A flexible spacer, then the split handle, then the terminal with `ml-3`: the handle stays 12 px left of the terminal's border.
+- **Links bar:** one horizontal scroller (`data-strip="scroll"`) holds the fixed group and the rest, so nothing overlaps or is cut. Every chip scrolls together.
+- **Greeting:** click = next style, right-click = another phrase (the first switches from the plain greeting to the themed ones). Double-click and previous-style are gone.
+- **No slide on load:** the grid column transition stays off until the first measured layout has been on screen for 120 ms (`settled`), so the page opens straight in its card mode. The terminal handle clamps the terminal so the links bar keeps 380 px (`lead` = where the links start + 36).
+- **Tests:** unit tests for the modes and the cycle. New end-to-end tests cover:
+  - the mode cycle and balance;
+  - whole-card tab drags;
+  - the links row staying under the search row in every mode;
+  - the handle staying beside the terminal;
+  - chips never overlapping.
+
 ## Round 2026-10-22e — symmetric layout for few categories, stacking and links fixes
 
 - **Symmetric rest layout** (`lib/cardSnap.ts`):
