@@ -55,8 +55,8 @@ function normalizeSettings(raw: unknown): Settings {
     ...s,
     // Retired faces (glass-pro, glass-classic, organic…) fall back to the default.
     clockStyle: CLOCK_STYLES.includes(s.clockStyle) ? s.clockStyle : DEFAULT_SETTINGS.clockStyle,
-    autoQuickLinkCount: clamp(s.autoQuickLinkCount, 2, 12, DEFAULT_SETTINGS.autoQuickLinkCount),
-    recentLinkCount: clamp(s.recentLinkCount, 0, 24, DEFAULT_SETTINGS.recentLinkCount),
+    autoQuickLinkCount: clamp(s.autoQuickLinkCount, 2, 15, DEFAULT_SETTINGS.autoQuickLinkCount),
+    recentLinkCount: clamp(s.recentLinkCount, 0, 15, DEFAULT_SETTINGS.recentLinkCount),
     githubUsername: typeof s.githubUsername === 'string' ? s.githubUsername.trim() : '',
     githubToken: typeof s.githubToken === 'string' ? s.githubToken : '',
     manualCity: typeof s.manualCity === 'string' ? s.manualCity : '',

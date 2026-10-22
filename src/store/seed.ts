@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   githubUsername: '',
   githubToken: '',
   autoQuickLinkCount: 6,
-  recentLinkCount: 8,
+  recentLinkCount: 15,
   weatherEnabled: true,
   useGeolocation: true,
   manualCity: '',

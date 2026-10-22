@@ -180,9 +180,9 @@ export const PrimaryRow = memo(function PrimaryRow({ sites, categoryColor }: Pri
                 }}
                 aria-label={`${site.name}: unpin from the main sites`}
                 title="Pinned — click to unpin"
-                className="tile-pin site-pinned absolute -top-1 -right-1 z-10 flex size-[22px] items-center justify-center rounded-full"
+                className="tile-pin site-pinned absolute top-0.5 right-0.5 z-10 flex size-[18px] items-center justify-center"
               >
-                <PinIcon filled className="size-3" />
+                <PinIcon filled className="size-3.5" />
               </button>
             </div>
           ))}

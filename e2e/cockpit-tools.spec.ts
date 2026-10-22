@@ -351,3 +351,51 @@ async function settle(page: import('@playwright/test').Page) {
     }, { intervals: [250] })
     .toBe(true);
 }
+
+test('quick-links panel: drag the grip down to pull it open, drag its edge up to fold it; no duplicates', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await settle(page);
+  const grip = page.getByTestId('links-expand');
+  const panel = page.getByTestId('links-panel');
+  const shown = () => panel.evaluate((el) => 1 - parseFloat(getComputedStyle(el).clipPath.match(/inset\(\S+ \S+ ([\d.]+)%/)![1]) / 100);
+
+  // drag down: the panel follows the pointer, then springs fully open
+  const g = (await grip.boundingBox())!;
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(g.x + g.width / 2, g.y + 50, { steps: 5 });
+  const part = await shown();
+  expect(part).toBeGreaterThan(0.05);
+  expect(part).toBeLessThan(0.9); // mid-drag: partly unrolled, tracking the pointer
+  await page.mouse.move(g.x + g.width / 2, g.y + 160, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(shown).toBeGreaterThan(0.99);
+
+  // the bar keeps only the fixed sites; the panel has the rest, none twice
+  await expect(page.locator('[data-strip="scroll"]')).toHaveCount(0);
+  const bar = await page.getByTestId('links-strip').locator('[data-chip]').allTextContents();
+  const inPanel = await panel.locator('[data-chip]').allTextContents();
+  expect(inPanel.length).toBeGreaterThan(0);
+  expect(inPanel.length).toBeLessThanOrEqual(15);
+  for (const name of bar) expect(inPanel.some((t) => t.startsWith(name.trim()))).toBe(false);
+
+  // dragging inside the panel does nothing; dragging its bottom edge up folds it
+  const chip = (await panel.locator('[data-chip]').first().boundingBox())!;
+  await page.mouse.move(chip.x + 5, chip.y + chip.height + 2);
+  await page.mouse.down();
+  await page.mouse.move(chip.x + 5, chip.y - 120, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(shown).toBeGreaterThan(0.99);
+  const e = (await page.getByTestId('links-panel-edge').boundingBox())!;
+  await page.mouse.move(e.x + e.width / 2, e.y + e.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(e.x + e.width / 2, e.y - 160, { steps: 6 });
+  await page.mouse.up();
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator('[data-strip="scroll"]')).toHaveCount(1);
+
+  // a click on the grip opens it too
+  await grip.click();
+  await expect.poll(shown).toBeGreaterThan(0.99);
+});

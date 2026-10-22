@@ -262,7 +262,7 @@ function StripSettings() {
         <input
           type="range"
           min={2}
-          max={12}
+          max={15}
           value={autoCount}
           onChange={(e) => updateSettings({ autoQuickLinkCount: Number(e.target.value) })}
           aria-label="Auto-picked links"
@@ -276,7 +276,7 @@ function StripSettings() {
         <input
           type="range"
           min={0}
-          max={24}
+          max={15}
           value={recentCount}
           onChange={(e) => updateSettings({ recentLinkCount: Number(e.target.value) })}
           aria-label="Recent links"

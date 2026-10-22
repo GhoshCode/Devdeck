@@ -251,7 +251,7 @@ describe('schema v2 migration', () => {
       2,
     );
     expect(out.settings.clockStyle).toBe('dseg7');
-    expect(out.settings.autoQuickLinkCount).toBe(12);
+    expect(out.settings.autoQuickLinkCount).toBe(15);
   });
 
   test('drops a pin that points at a missing category', () => {
